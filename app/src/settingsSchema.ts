@@ -326,6 +326,7 @@ export const FILE_ONLY_LABELS: Record<string, string> = {
   "metas.user_file": "Fichier de tes metas",
   "plonkit.data_dir": "Dossier des guides Plonk It",
   "streetclip.model": "Modèle StreetCLIP",
+  "streetclip.revision": "Version des poids StreetCLIP",
   "plonk.model": "Modèle PLONK",
   "plonk.revision": "Version des poids PLONK",
   "map.tile_url": "Serveur de tuiles",

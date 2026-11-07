@@ -121,6 +121,29 @@ Enseignements de la phase 0 (tests de faisabilité) :
 - Un `gsettings` tiers (Linuxbrew) peut ne pas écrire dans les réglages GNOME : le script appelle
   explicitement `/usr/bin/gsettings`.
 
+## Ce que GeoNesClick télécharge
+
+Tout accès réseau de l'application est listé dans [`engine/src/geonesclick/downloads.toml`](engine/src/geonesclick/downloads.toml),
+affiché par l'assistant de premier lancement **avant le moindre téléchargement**, et repris ici. Un test vérifie que
+chaque adresse écrite dans le code y figure. Les éléments obligatoires (sans eux l'app ne fait rien) demandent un seul
+accord ; chaque option a le sien et se coupe ensuite dans les Réglages. PyTorch CUDA est choisi s'il y a une carte
+NVIDIA, sinon la version processeur.
+
+| Quoi | D'où | Taille | Licence | Quand | Ce qui part de ta machine |
+|---|---|---|---|---|---|
+| Python 3.12 (interpréteur autonome, python-build-standalone) **(obligatoire)** | `github.com`, `objects.githubusercontent.com` | 30 Mo | PSF-2.0 | une fois, à l'installation | — |
+| Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte **(obligatoire)** | `pypi.org`, `files.pythonhosted.org` | 3,1 Go | variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet dans le tunnel | une fois, à l'installation | — |
+| PyTorch pour processeur (à la place de la version CUDA, s'il n'y a pas de carte NVIDIA) **(obligatoire)** | `download.pytorch.org` | 200 Mo | BSD-3-Clause | une fois, à l'installation | — |
+| Modèle StreetCLIP (geolocal/StreetCLIP, version figée, poids safetensors) **(obligatoire)** | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 1,7 Go | CC BY-NC 4.0 (usage non commercial) | une fois, à l'installation | — |
+| Répertoire des lieux GeoNames (villes de plus de 1 000 habitants) et noms des régions | `download.geonames.org` | 11 Mo | CC BY 4.0 (GeoNames) | une fois, si tu l'acceptes | — |
+| Villages d'un pays (répertoire complet GeoNames du pays en tête) | `download.geonames.org` | 8 Mo | CC BY 4.0 (GeoNames) | à la demande | — |
+| Guides Plonk It (84 pages), puis contrôle des mises à jour tous les 30 jours | `www.plonkit.net` | 2 Mo | aucune licence de réutilisation : collectés pour ton usage personnel, jamais redistribués | une fois, si tu l'acceptes | — |
+| Modèle PLONK (nicolas-dufour/PLONK_OSV_5M, version figée, safetensors) | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 Mo | MIT | une fois, si tu l'acceptes | — |
+| Analyse par le modèle de vision NVIDIA (API en ligne) | `integrate.api.nvidia.com` | — | conditions d'utilisation de l'API NVIDIA (build.nvidia.com) ; ta clé API | à chaque usage | tes captures (réduites à 1 280 px), les découpes de tes marques et les astuces à traduire |
+| Fond de carte OpenStreetMap (tuiles) | `tile.openstreetmap.org` | — | données © contributeurs OpenStreetMap (ODbL) ; politique d'usage des tuiles de l'OSMF | à chaque usage | ton adresse IP et les zones de carte affichées |
+
+Licence à connaître : StreetCLIP est sous **CC BY-NC 4.0**, usage **non commercial** uniquement.
+
 ## Prérequis
 
 - Ubuntu 24.04 ou plus récent, avec GNOME (Wayland ou Xorg)

@@ -56,7 +56,7 @@ FILE_ONLY: dict[str, dict[str, str]] = {
     "dataset": {"directory": _DISK},
     "metas": {"user_file": _DISK},
     "plonkit": {"data_dir": _DISK},
-    "streetclip": {"model": _MODEL},
+    "streetclip": {"model": _MODEL, "revision": _MODEL},
     "plonk": {"model": _MODEL, "revision": _MODEL},
     "map": {"tile_url": _CSP, "attribution_url": _CSP},
     "vision": {"base_url": _KEY, "api_key_env": _KEY},

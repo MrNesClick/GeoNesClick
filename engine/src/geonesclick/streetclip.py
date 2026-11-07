@@ -25,8 +25,12 @@ class StreetClip:
         self.cfg = cfg
         self.device = ("cuda" if torch.cuda.is_available() else "cpu") if cfg.device == "auto" else cfg.device
         dtype = torch.float16 if self.device == "cuda" else torch.float32
-        self.model = CLIPModel.from_pretrained(cfg.model, torch_dtype=dtype).to(self.device).eval()
-        self.processor = CLIPProcessor.from_pretrained(cfg.model)  # hors ligne si en cache (__main__)
+        # Version figée, poids en safetensors seulement (2026-11-07) : la version principale du dépôt n'a que
+        # pytorch_model.bin (pickle, qui peut exécuter du code) ; la bibliothèque le téléchargeait PUIS allait chercher
+        # le safetensors de la conversion : 3,2 Go au lieu de 1,7 Go.
+        self.model = CLIPModel.from_pretrained(cfg.model, revision=cfg.revision, use_safetensors=True,
+                                               torch_dtype=dtype).to(self.device).eval()
+        self.processor = CLIPProcessor.from_pretrained(cfg.model, revision=cfg.revision)  # hors ligne si en cache
         self.set_labels(cfg)
 
     def set_labels(self, cfg: StreetClipConfig) -> None:

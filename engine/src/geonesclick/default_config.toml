@@ -94,6 +94,9 @@ pretranslate = true
 [streetclip]
 enabled = true
 model = "geolocal/StreetCLIP"
+# Version figée : celle qui a les poids en safetensors (aucun code exécuté au chargement) ; seuls ces fichiers sont
+# téléchargés (1,7 Go). Licence du modèle : CC BY-NC 4.0 (usage non commercial).
+revision = "adbc2bc00ccebc327500e42a973c98ed7c17b17a"
 device = "auto"          # "auto", "cuda" ou "cpu"
 prompt = "A Street View photo in {}."
 top_k = 5

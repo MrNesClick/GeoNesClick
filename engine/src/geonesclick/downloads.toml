@@ -1,0 +1,135 @@
+# Tout ce que GeoNesClick télécharge ou envoie sur le réseau : la liste unique, affichée par le tunnel de premier
+# lancement AVANT le moindre octet, et reprise dans le README (décidé avec l'utilisateur le 2026-11-07 : « 100 %
+# transparent, indiquer CLAIREMENT tout ce qu'on télécharge »). Un test (tests/test_downloads.py) vérifie que chaque
+# adresse écrite dans le code figure ici, contactée ou seulement affichée.
+#
+# when : installation (une fois, au premier lancement) · option (une fois, si tu l'acceptes) · demande (au fil de
+#        l'usage, quand c'est utile) · continu (à chaque usage de la fonction)
+# required : sans lui, l'app ne fonctionne pas (bloc « obligatoire » du tunnel, un seul accord)
+# sends : ce qui part de ta machine, au-delà de la simple requête de téléchargement
+# Tailles mesurées le 2026-11-07 (paquets Python : calculées depuis uv.lock à la fabrication de l'AppImage).
+
+[[download]]
+id = "python"
+what = "Python 3.12 (interpréteur autonome, python-build-standalone)"
+hosts = ["github.com", "objects.githubusercontent.com"]
+size_mb = 30
+license = "PSF-2.0"
+why = "faire tourner le moteur d'analyse, sans toucher au Python de ton système"
+when = "installation"
+required = true
+
+[[download]]
+id = "packages"
+what = "Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte"
+hosts = ["pypi.org", "files.pythonhosted.org"]
+size_mb = 3060  # avec carte NVIDIA (PyTorch CUDA) ; sans carte NVIDIA, voir « pytorch-cpu »
+license = "variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet dans le tunnel"
+why = "le moteur : analyse locale de la vue, serveur de l'interface, lecture des réponses de l'IA"
+when = "installation"
+required = true
+
+[[download]]
+id = "pytorch-cpu"
+what = "PyTorch pour processeur (à la place de la version CUDA, s'il n'y a pas de carte NVIDIA)"
+hosts = ["download.pytorch.org"]
+size_mb = 200
+license = "BSD-3-Clause"
+why = "faire tourner StreetCLIP sans carte graphique NVIDIA (plus lent)"
+when = "installation"
+required = true
+
+[[download]]
+id = "streetclip"
+what = "Modèle StreetCLIP (geolocal/StreetCLIP, version figée, poids safetensors)"
+hosts = ["huggingface.co", "cas-bridge.xethub.hf.co", "cdn-lfs.hf.co"]
+size_mb = 1712
+license = "CC BY-NC 4.0 (usage non commercial)"
+why = "reconnaître le pays d'après l'allure de la vue, en local (niveau 1)"
+when = "installation"
+required = true
+
+[[download]]
+id = "geonames"
+what = "Répertoire des lieux GeoNames (villes de plus de 1 000 habitants) et noms des régions"
+hosts = ["download.geonames.org"]
+size_mb = 11
+license = "CC BY 4.0 (GeoNames)"
+why = "reconnaître les noms de lieux lus sur tes marques, et les régions"
+when = "option"
+required = false
+option = "rules.places"
+
+[[download]]
+id = "villages"
+what = "Villages d'un pays (répertoire complet GeoNames du pays en tête)"
+hosts = ["download.geonames.org"]
+size_mb = 8  # par pays : France 7,3 Mo, Danemark 1,2 Mo
+license = "CC BY 4.0 (GeoNames)"
+why = "trouver les petits villages lus sur un panneau ; GeoNames voit quel pays est consulté"
+when = "demande"
+required = false
+option = "rules.detail"
+
+[[download]]
+id = "plonkit"
+what = "Guides Plonk It (84 pages), puis contrôle des mises à jour tous les 30 jours"
+hosts = ["www.plonkit.net"]
+size_mb = 2
+license = "aucune licence de réutilisation : collectés pour ton usage personnel, jamais redistribués"
+why = "astuces par pays qui ressemblent à ta vue (mode GeoGuessr)"
+when = "option"
+required = false
+option = "plonkit.enabled"
+
+[[download]]
+id = "plonk"
+what = "Modèle PLONK (nicolas-dufour/PLONK_OSV_5M, version figée, safetensors)"
+hosts = ["huggingface.co", "cas-bridge.xethub.hf.co", "cdn-lfs.hf.co"]
+size_mb = 144
+license = "MIT"
+why = "zones probables sur la carte, calculées en local (+120 Mo de mémoire vidéo)"
+when = "option"
+required = false
+option = "plonk.enabled"
+
+[[download]]
+id = "nvidia"
+what = "Analyse par le modèle de vision NVIDIA (API en ligne)"
+hosts = ["integrate.api.nvidia.com"]
+size_mb = 0
+license = "conditions d'utilisation de l'API NVIDIA (build.nvidia.com) ; ta clé API"
+why = "lire le texte de la vue et de tes marques, classer et traduire les astuces"
+when = "continu"
+required = false
+option = "vision.enabled"
+sends = "tes captures (réduites à 1 280 px), les découpes de tes marques et les astuces à traduire"
+
+[[download]]
+id = "tiles"
+what = "Fond de carte OpenStreetMap (tuiles)"
+hosts = ["tile.openstreetmap.org"]
+size_mb = 0
+license = "données © contributeurs OpenStreetMap (ODbL) ; politique d'usage des tuiles de l'OSMF"
+why = "afficher la carte sous les pays, zones et lieux"
+when = "continu"
+required = false
+option = "map.enabled"
+sends = "ton adresse IP et les zones de carte affichées"
+
+# Adresses écrites dans le code mais JAMAIS contactées par l'application : liens affichés (sources d'une règle,
+# attributions, pages d'aide), liens que tu colles (lus, jamais ouverts), ou outils de développement d'install.sh.
+[shown]
+hosts = [
+  "en.wikipedia.org",           # source d'une règle (alphabets, mots de rue)
+  "build.nvidia.com",           # où obtenir ta clé API
+  "www.openstreetmap.org",      # attribution de la carte
+  "operations.osmfoundation.org",  # politique des tuiles (commentaire)
+  "www.geonames.org",           # attribution des lieux
+  "www.naturalearthdata.com",   # attribution des frontières (fichier livré avec l'app)
+  "raw.githubusercontent.com",  # provenance du fichier des frontières livré avec l'app (commentaire)
+  "github.com",                 # code source de PLONK (commentaire)
+  "www.google.com",             # lien Google Maps que tu colles dans « C'était où ? » : lu, jamais ouvert
+  "schema.tauri.app", "v2.tauri.app", "pygobject.gnome.org",  # documentation
+  "rustup.rs", "nodejs.org", "pnpm.io", "astral.sh",          # outils de développement (install.sh)
+]

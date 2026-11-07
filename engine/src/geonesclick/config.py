@@ -148,7 +148,8 @@ class PlonkitConfig(BaseModel):
 
 class StreetClipConfig(BaseModel):
     enabled: bool
-    model: str
+    model: str = Field(pattern=r"^[\w.\-]+/[\w.\-]+$")
+    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # version figée des poids (safetensors) : celle mesurée
     device: str = Field(pattern=r"^(auto|cpu|cuda(:\d+)?)$")
     prompt: str = Field(min_length=5, max_length=300)
     top_k: int = Field(ge=1, le=20)
@@ -188,7 +189,7 @@ class StreetClipConfig(BaseModel):
 class PlonkConfig(BaseModel):
     # Nuage de positions probables pour la carte (PLONK sur le vecteur de StreetCLIP), jamais un vote de pays.
     enabled: bool
-    model: str
+    model: str = Field(pattern=r"^[\w.\-]+/[\w.\-]+$")
     revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # commit Hugging Face des poids : version mesurée, figée
     steps: int = Field(ge=10, le=250)  # pas du flot : 50 suffisent (mesuré), 25 dégradent le nuage
     points: int = Field(ge=64, le=2048)
