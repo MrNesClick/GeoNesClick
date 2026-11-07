@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from .places import ARCHIVE, DB_NAME, OLD_DBS
+from .places import ARCHIVE, DB_NAME, OLD_DBS, REGIONS
 
 VILLAGES = "detail-*.sqlite"
 PLONKIT_FILES = ("plonkit.sqlite", "plonkit.sqlite-wal", "plonkit.sqlite-shm", "index.json", "checked_at")
@@ -58,7 +58,7 @@ def village_files(places_dir: Path) -> list[Path]:
 
 
 def base_place_files(places_dir: Path) -> list[Path]:
-    return files_of(places_dir, [DB_NAME, ARCHIVE, *OLD_DBS])
+    return files_of(places_dir, [DB_NAME, ARCHIVE, REGIONS, *OLD_DBS])
 
 
 def plonkit_files(plonkit_dir: Path) -> list[Path]:

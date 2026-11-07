@@ -85,7 +85,7 @@ ok "venv isolé à jour"
 
 # Répertoire des lieux (GeoNames, CC BY 4.0, ~11 Mo) pour les règles des marques ; sinon, le coach le
 # télécharge à son premier démarrage. Un échec (hors ligne) n'empêche pas l'installation.
-if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/places/places-v3.sqlite" ]]; then
+if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/places/places-v4.sqlite" ]]; then
   ok "répertoire des lieux GeoNames présent"
 else
   .venv/bin/python -m geonesclick.places && ok "répertoire des lieux GeoNames construit" \

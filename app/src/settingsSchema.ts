@@ -256,6 +256,26 @@ export const GROUPS: Group[] = [
     ],
   },
   {
+    id: "verrous",
+    title: "Verrous",
+    fileSections: [],
+    fields: [
+      { section: "locks", key: "enabled", label: "Verrous pays › région › ville", kind: "bool",
+        hint: "En tête du coach : chaque niveau verrouillé restreint la recherche du suivant. Tu peux toujours rejeter un verrou (✕) ou poser le tien ; ils durent une capture." },
+      { section: "locks", key: "auto_country", label: "Le coach verrouille le pays quand tes marques le rendent certain",
+        kind: "bool", needs: ["locks", "enabled"], hint: "Jamais sur « très probable »." },
+      { section: "locks", key: "auto_region", label: "… et la région quand la position estimée est nette", kind: "bool",
+        needs: ["locks", "enabled"],
+        hint: "Panneau aux distances cohérentes, et tous les lieux autour du point dans la même région." },
+      { section: "locks", key: "propose_city", label: "Le coach propose une ville (un clic pour la verrouiller)",
+        kind: "bool", needs: ["locks", "enabled"],
+        hint: "Jamais verrouillée seule : un panneau « Pau 40 km » nomme un lieu où tu n'es pas." },
+      { section: "locks", key: "region_radius_km", label: "Rayon autour du point pour la région (km)", kind: "float",
+        min: 1, max: 100, advanced: true, needs: ["locks", "auto_region"],
+        hint: "Tous les lieux à cette distance du point doivent être de la même région." },
+    ],
+  },
+  {
     id: "jeu-de-test",
     title: "Jeu de test",
     fileSections: ["dataset"],
@@ -311,5 +331,6 @@ export const FILE_ONLY_LABELS: Record<string, string> = {
   "vision.api_key_env": "Variable de la clé API",
   "rules.places_url": "Source du répertoire de lieux",
   "rules.detail_url": "Source du détail par pays",
+  "rules.regions_url": "Source des noms de régions",
   "rules.places_dir": "Dossier du répertoire de lieux",
 };

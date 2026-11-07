@@ -250,12 +250,24 @@ class RulesConfig(BaseModel):
     detail: bool  # répertoire complet (villages) du pays en tête, téléchargé une fois par pays
     places_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
     detail_url: str = Field(pattern=r"^https://[^\s\"'<>{}]*\{\}[^\s\"'<>{}]*$")  # {} = code du pays
+    regions_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")  # noms des régions (verrou Région)
     places_dir: str
 
     @property
     def places_path(self) -> Path:
         base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "geonesclick" / "places"
         return Path(self.places_dir).expanduser() if self.places_dir else base
+
+
+class LocksConfig(BaseModel):
+    # Verrous pays › région › ville (décidés avec l'utilisateur le 2026-11-07) : chaque niveau verrouillé restreint
+    # la recherche du suivant. Le coach ne verrouille seul que le « certain » ; tu peux toujours rejeter (✕) ou
+    # verrouiller toi-même. Ils durent une capture : une nouvelle capture remet tout à zéro.
+    enabled: bool
+    auto_country: bool  # le coach verrouille le pays quand les marques le rendent certain
+    auto_region: bool  # … et la région quand la position estimée est nette et tombe dans une seule région
+    propose_city: bool  # le coach PROPOSE une ville (un clic pour la verrouiller), jamais seul
+    region_radius_km: float = Field(ge=1, le=100)  # lieux autour du point qui doivent tous être de la même région
 
 
 class StorageConfig(BaseModel):
@@ -282,6 +294,7 @@ class Config(BaseModel):
     vision: VisionConfig
     marks: MarksConfig
     rules: RulesConfig
+    locks: LocksConfig
     storage: StorageConfig
     debug: DebugConfig
 

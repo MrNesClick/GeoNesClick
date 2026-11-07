@@ -99,7 +99,47 @@ export interface Evidence {
   source: string;
   /** Pourquoi elle ne compte pas (« hors de tes pays candidats ») ; vide sinon. */
   note?: string;
+  /** Lieu : homonymes retenus [latitude, longitude, pays, nom GeoNames, région]. */
+  points?: [number, number, string, string, string?][];
 }
+
+/** Un verrou : ce qui est fixé pour la capture (pays › région › ville), par le coach ou par toi. */
+export interface Lock {
+  level: "country" | "region" | "city";
+  country: string;
+  /** Code GeoNames de la région (« FR.75 ») : région, et ville si on la connaît. */
+  region: string;
+  /** Nom de la région ou de la ville (le pays : countryName). */
+  name: string;
+  lat: number | null;
+  lon: number | null;
+  by: "coach" | "user";
+  /** Ce qui l'a fait poser par le coach (« marques 1, 2 »). */
+  why: string;
+}
+
+export interface Locks {
+  held: Partial<Record<Lock["level"], Lock>>;
+  /** Rejetés pour toute la capture : le coach ne les reverrouille pas. */
+  rejected: Lock[];
+  /** Ville proposée par le coach : jamais verrouillée sans toi. */
+  proposal: Lock | null;
+}
+
+/** Résultat de la recherche du « + » (index GeoNames local). */
+export interface PlaceFound {
+  name: string;
+  code?: string;
+  country?: string;
+  region?: string;
+  region_name?: string;
+  lat?: number;
+  lon?: number;
+  population?: number;
+}
+
+/** Pays verrouillé (par toi ou par le coach), ou null. */
+export const lockedCountry = (a: Analysis): string | null => a.locks?.held.country?.country ?? null;
 
 /** Ce que les marques prouvent ensemble (règles locales du moteur, evidence.py). */
 export interface Verdict {
@@ -204,7 +244,9 @@ export function unreadableText(a: Analysis): boolean {
 }
 
 /** Pays en tête : prouvé (certain, les autres écartés) ou lu par l'IA (très probable, les autres restent). */
-export function headCountry(a: Analysis): { code: string; certain: boolean; source: Conclusion["source"] } | null {
+export function headCountry(a: Analysis): { code: string; certain: boolean; source: Conclusion["source"] | "lock" } | null {
+  const locked = lockedCountry(a);
+  if (locked) return { code: locked, certain: true, source: "lock" }; // verrou : astuces et zones s'y centrent
   const certain = certainProof(a);
   if (certain) return { code: certain.country, certain: true, source: certain.source };
   const proof = proofOf(a);
@@ -214,6 +256,8 @@ export function headCountry(a: Analysis): { code: string; certain: boolean; sour
 /** Astuces Plonk It à afficher : le pays en tête d'abord (seul lui s'il est certain), puis les probables. */
 export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
   const head = headCountry(a);
+  // Pays verrouillé hors des candidats de StreetCLIP : ses astuces arrivent à part (message « similar »).
+  if (head?.source === "lock") return [{ code: head.code, tips: a.similar?.[head.code] ?? [] }].filter((c) => c.tips.length);
   return viable(a)
     .filter((s) => !head?.certain || s.code === head.code)
     .sort((x, y) => Number(y.code === head?.code) - Number(x.code === head?.code))
@@ -309,6 +353,8 @@ export interface Analysis {
   marks: Mark[];
   /** Ce que les marques lues prouvent ensemble (null : aucune marque lue). */
   verdict: Verdict | null;
+  /** Verrous de la capture (null : aucun pour l'instant). */
+  locks: Locks | null;
 }
 
 export const engine = reactive({
@@ -323,6 +369,7 @@ export const engine = reactive({
   /** uses / not_yet : ce que le coach tire d'une marque, rappelé sur l'écran des marques. */
   marks: { enabled: false, max: 9, uses: [] as string[], not_yet: [] as string[] },
   places: { enabled: false, ready: false, message: "" },
+  locks: { enabled: false },
   map: { enabled: false, tile_url: "", attribution: "", attribution_url: "", tile_filter: "", tile_filter_close: "",
          close_zoom: 11, max_zoom: 13 },
   countries: [] as string[],
@@ -350,6 +397,7 @@ type Message =
       plonk: typeof engine.plonk;
       marks: typeof engine.marks;
       places: typeof engine.places;
+      locks: typeof engine.locks;
       map: typeof engine.map;
       countries: string[];
       help_level: number;
@@ -379,6 +427,8 @@ type Message =
   | { type: "freeze"; id: string }
   | ({ type: "verdict"; id: string } & Verdict)
   | { type: "mark_removed"; id: string; n: number }
+  | ({ type: "locks"; id: string } & Locks)
+  | { type: "similar"; id: string; similar: Record<string, SimilarTip[]>; batches: number }
   | { type: "error"; message: string };
 
 function handle(msg: Message) {
@@ -394,6 +444,7 @@ function handle(msg: Message) {
       engine.plonk = msg.plonk;
       engine.marks = msg.marks;
       engine.places = msg.places;
+      engine.locks = msg.locks;
       engine.map = msg.map;
       engine.countries = msg.countries;
       engine.helpLevel = msg.help_level;
@@ -420,15 +471,16 @@ function handle(msg: Message) {
         vision: engine.vision.enabled ? { status: "pending", model: engine.vision.model } : { status: "off" },
         marks: [],
         verdict: null,
+        locks: null,
       };
       break;
     case "streetclip":
       if (cur?.id === msg.id) {
         cur.scores = msg.scores;
         cur.lookfor = msg.lookfor;
-        cur.similar = msg.similar;
-        cur.translation = msg.translating ? "pending" : null;
-        cur.translationLeft = msg.batches;
+        cur.similar = { ...(cur.similar ?? {}), ...msg.similar }; // le pays verrouillé a pu arriver avant
+        if (msg.translating) cur.translation = "pending";
+        cur.translationLeft += msg.batches;
         cur.clipMs = msg.ms;
         cur.cloud = msg.cloud ? { status: "pending" } : { status: "off" };
       }
@@ -482,6 +534,18 @@ function handle(msg: Message) {
     }
     case "mark_removed":
       if (cur?.id === msg.id) cur.marks = cur.marks.filter((m) => m.n !== msg.n);
+      break;
+    case "locks":
+      if (cur?.id === msg.id) cur.locks = { held: msg.held, rejected: msg.rejected, proposal: msg.proposal };
+      break;
+    case "similar": // astuces du pays verrouillé, ajoutées à celles des candidats
+      if (cur?.id === msg.id) {
+        cur.similar = { ...(cur.similar ?? {}), ...msg.similar };
+        if (msg.batches) {
+          cur.translationLeft += msg.batches;
+          cur.translation = "pending";
+        }
+      }
       break;
     case "labelled":
       if (cur?.id === msg.id) cur.labelled = { country: msg.country, guessed: msg.guessed, found: msg.found };
@@ -547,6 +611,25 @@ export const reselectWindow = () => request("/capture/reselect");
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null) =>
   request("/label", { id, country, guessed, found });
 export const refreshPlonkit = () => request("/plonkit/refresh");
+/** Verrouille un pays, une région ou une ville pour la capture (ou accepte la ville proposée). */
+export const setLock = (id: string, lock: Pick<Lock, "level" | "country"> & Partial<Lock>) =>
+  request("/locks", { id, level: lock.level, country: lock.country, region: lock.region ?? "", name: lock.name ?? "",
+                      lat: lock.lat ?? null, lon: lock.lon ?? null });
+/** ✕ sur un verrou ou sur la ville proposée : écarté pour toute la capture. */
+export const rejectLock = (id: string, level: Lock["level"] | "proposal") => request("/locks/reject", { id, level });
+/** Recherche d'une région ou d'une ville dans l'index local (sans réseau, sans bloquer les boutons). */
+export async function searchPlaces(level: "region" | "city", q: string, country: string, region = ""): Promise<PlaceFound[]> {
+  try {
+    const res = await fetch(ENGINE_URL + "/locks/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, q, country, region }),
+    });
+    return res.ok ? ((await res.json()).results as PlaceFound[]) : [];
+  } catch {
+    return [];
+  }
+}
 /** Vide un élément du stockage (Réglages › Stockage) ; renvoie l'inventaire à jour et la place libérée. */
 export async function clearStorage(id: string): Promise<{ freed: number; items: unknown[] } | null> {
   const res = await request("/storage/clear", { id });
@@ -618,6 +701,8 @@ export async function openAttribution() {
 // --- Pays : noms français et drapeaux ------------------------------------------------------------
 const regionNames = new Intl.DisplayNames(["fr"], { type: "region" });
 export const countryName = (code: string) => regionNames.of(code) ?? code;
+/** Forme de comparaison d'un nom : minuscules, sans accents (« Égypte » ~ « egy »). */
+export const normalise = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
 /** Nombre à la française : « 13,2 ». */
 export const fr = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 export const flag = (code: string) =>

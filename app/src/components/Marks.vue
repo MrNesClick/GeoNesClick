@@ -2,7 +2,7 @@
 // Marques : chaque indice entouré sur la vue figée, avec sa découpe et ce que l'IA y a lu mot pour mot.
 // Ce sont des éléments de preuve : les conclusions du coach les citeront par leur numéro.
 import type { Evidence, Mark, Verdict } from "../engine";
-import { flag, fr, removeMark } from "../engine";
+import { engine, flag, fr, removeMark, setLock } from "../engine";
 
 const props = defineProps<{ marks: Mark[]; analysisId: string; verdict: Verdict | null }>();
 
@@ -28,6 +28,14 @@ function text(n: number, e: Evidence): string {
   if (e.kind === "rue") return e.value;
   if (e.kind === "lieu") return `${e.value} → ${placeLabel(n, e)} ${flags(e.countries)}`.trim();
   return describe(e);
+}
+/** Ville à verrouiller depuis un lieu lu : l'homonyme retenu (celui de la carte), sinon le plus peuplé. */
+function cityOf(n: number, e: Evidence) {
+  if (!engine.locks.enabled || e.kind !== "lieu" || status(n, e) || e.countries.length !== 1 || !e.points?.length) return null;
+  const where = props.verdict?.location?.places.find((p) => p.n === n && p.name === e.value);
+  const p = e.points.find((q) => q[2] === e.countries[0] && (!where || (Math.abs(q[0] - where.lat) < 1e-4 && Math.abs(q[1] - where.lon) < 1e-4)))
+    ?? e.points.find((q) => q[2] === e.countries[0]);
+  return p ? { level: "city" as const, country: p[2], name: p[3], lat: p[0], lon: p[1], region: p[4] ?? "" } : null;
 }
 const KIND: Record<Evidence["kind"], string> = {
   alphabet: "Alphabet", lettres: "Lettres", mot: "Mot", lieu: "Lieu", rue: "Rue",
@@ -67,6 +75,16 @@ const KIND: Record<Evidence["kind"], string> = {
               <span :class="status(m.n, e) ? 'text-courbe' : 'text-marque'">{{ KIND[e.kind] }}</span>{{ " " }}
               <span :class="status(m.n, e) ? 'text-courbe' : 'text-papier/90'">{{ text(m.n, e) }}</span>
               <span v-if="status(m.n, e)" class="text-courbe"> · {{ status(m.n, e) }}</span>
+              <button
+                v-if="cityOf(m.n, e)"
+                type="button"
+                class="ml-1.5 text-courbe underline underline-offset-2 hover:text-papier disabled:opacity-40"
+                :title="`On y est : verrouiller ${cityOf(m.n, e)!.name} (un panneau directionnel nomme un lieu où l'on n'est pas)`"
+                :disabled="engine.busy"
+                @click="setLock(analysisId, cityOf(m.n, e)!)"
+              >
+                verrouiller
+              </button>
             </li>
           </ul>
           <p v-if="m.scale >= 2.5" class="text-[0.85rem] text-courbe">

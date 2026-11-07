@@ -21,9 +21,10 @@ from . import storage
 from .capture import data_url, new_id, save_png
 from .evidence import Evidence, as_dict, from_dict, text_evidence, verdict
 from .locate import keep_nearby, locate
+from .locks import NO_SCOPE, Scope, restrict
 from .marks import MAX_PER_ANALYSIS, DeleteRequest, FrameRequest, MarksRequest, crop_mark, reading
 from .places import DB_NAME as PLACES_DB
-from .places import COUNTRY, OLD_DBS, Places, PlacesError, detail_name
+from .places import COUNTRY, OLD_DBS, VERSION, Places, PlacesError, detail_name
 from .places import build as build_places
 from .vision import VisionError
 
@@ -116,7 +117,8 @@ class MarksMixin:
                     fiche, seconds = await self.vision.ask(img, mc.prompt, mc.model or self.cfg.vision.model,
                                                            mc.max_tokens)
                     mark.update(status="done", seconds=round(seconds, 1), **reading(fiche))
-                    mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"]))
+                    mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"],
+                                                                       self.lock_scope(capture_id)))
                 except VisionError as exc:
                     mark.update(status="error", error=str(exc)[:300])
         entry = self.recent.get(capture_id)
@@ -127,8 +129,11 @@ class MarksMixin:
         await self.broadcast(message)
         await self._verdict(capture_id)
 
-    def evidence_of(self, lines: list[str]) -> list[Evidence]:
-        """Preuves tirées du texte d'une marque, selon les règles actives (appelée hors de la boucle)."""
+    def evidence_of(self, lines: list[str], scope: Scope = NO_SCOPE) -> list[Evidence]:
+        """Preuves tirées du texte d'une marque, selon les règles actives (appelée hors de la boucle).
+
+        scope : verrous du joueur et rejets de la capture (locks.restrict) ; une preuve hors d'eux reste affichée.
+        """
         rc = self.cfg.rules
         found = [e for e in text_evidence(lines)
                  if (e.kind == "alphabet" and rc.scripts) or (e.kind in ("lettres", "mot") and rc.letters)]
@@ -142,7 +147,7 @@ class MarksMixin:
             if e.countries and not kept:
                 e.note = f"hors de tes pays candidats ({', '.join(e.countries[:4])})"
             e.countries = kept
-        return found
+        return restrict(found, scope) if scope != NO_SCOPE else found
 
     async def _verdict(self, capture_id: str) -> None:
         """Conclusion des marques lues, recalculée à chaque lecture ou retrait, poussée à l'interface."""
@@ -164,6 +169,7 @@ class MarksMixin:
         entry["verdict"] = result
         await self._log(capture_id, verdict=result)
         await self.broadcast({"type": "verdict", "id": capture_id, **result})
+        await self.coach_locks(capture_id, v, read, result["location"])
 
     async def remove_mark(self, req: DeleteRequest) -> dict[str, Any]:
         """Le joueur retire une marque (lecture fausse) : elle ne compte plus, les autres gardent leur numéro."""
@@ -198,15 +204,15 @@ class MarksMixin:
         for old in OLD_DBS:  # anciens formats, remplacés (l'archive gardée évite de retélécharger)
             (rc.places_path / old).unlink(missing_ok=True)
         for old in rc.places_path.glob("detail-*.sqlite"):
-            if not old.name.endswith("-v3.sqlite"):
+            if not old.name.endswith(f"-{VERSION}.sqlite"):
                 old.unlink(missing_ok=True)
         try:
             if not path.exists():
                 self.places_message = "téléchargement du répertoire GeoNames (~11 Mo)…"
                 await self.broadcast(self.state())
-                await asyncio.to_thread(build_places, rc.places_url, rc.places_path)
+                await asyncio.to_thread(build_places, rc.places_url, rc.places_path, regions_url=rc.regions_url)
             places = await asyncio.to_thread(Places, path)
-            for detail in sorted(rc.places_path.glob("detail-*-v3.sqlite")):  # pays déjà détaillés
+            for detail in sorted(rc.places_path.glob(f"detail-*-{VERSION}.sqlite")):  # pays déjà détaillés
                 await asyncio.to_thread(places.add_detail, detail.name.split("-")[1], detail)
             self.places = places
             self.places_message = self._places_summary()
@@ -250,11 +256,5 @@ class MarksMixin:
         await self.evict_caches(keep={country})
         self.places_message = self._places_summary()
         await self.broadcast(self.state())
-        for capture_id, entry in list(self.recent.items()):  # relire les marques avec les villages
-            done = [m for m in entry["marks"] if m.get("status") == "done"]
-            for mark in done:
-                mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"]))
-                await self.broadcast({"type": "mark", "id": capture_id, "n": mark["n"], "status": "done",
-                                      "evidence": mark["evidence"]})
-            if done:
-                await self._verdict(capture_id)
+        for capture_id in list(self.recent):  # relire les marques avec les villages
+            await self.reread_marks(capture_id)

@@ -257,7 +257,34 @@ tort la France ; « ORION » (de L'Hôpital-d'Orion) tombait aux Philippines. D'
 Le répertoire des lieux est celui des localités de plus de 1 000 habitants de [GeoNames](https://www.geonames.org)
 (licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), téléchargé une fois (~11 Mo) par
 `scripts/install.sh` ou au premier démarrage, puis indexé en local (~55 Mo, 918 000 noms dans toutes les langues).
-Chaque règle se coupe dans Réglages › Marques (`[rules]`).
+Chaque règle se coupe dans Réglages › Marques (`[rules]`). La région de chaque lieu (code GeoNames « admin1 ») est
+indexée aussi, avec le nom des régions (`admin1CodesASCII.txt`, ~140 Ko, téléchargé une fois ; sans réseau, la
+région s'affiche par son code) : elle sert aux verrous.
+
+### Verrous
+
+Un bandeau en tête du coach montre ce qui est **fixé pour la capture** : pays › région › ville. Chaque niveau
+verrouillé restreint la recherche du suivant (lieux et homonymes du pays, villages de la région, zones de la carte
+et astuces Plonk It du pays). Décidé le 2026-11-07 :
+
+- **le coach** verrouille seul le pays quand tes marques le rendent **certain** (jamais sur « très probable »), et la
+  région quand la position estimée est un point net (panneau aux distances cohérentes) et que tous les lieux à
+  moins de 10 km de ce point sont de la même région. Une **ville**, il ne fait que la **proposer** (« Laàs ? », un
+  clic pour la verrouiller) : un panneau « Pau 40 km » nomme justement un lieu où tu n'es pas. Ses verrous suivent
+  les preuves : une marque retirée peut les défaire ;
+- **toi**, tu peux toujours **rejeter** un verrou (✕) : il reste écarté pendant toute la capture, le coach ne le
+  repose pas. Tu peux aussi verrouiller toi-même (« + » : recherche dans l'index local, sans réseau ; ou
+  « verrouiller » sur un lieu lu dans tes marques, ou sur un drapeau de la section Pays). Le coach ne remplace
+  jamais ton verrou ; une ville que tu verrouilles verrouille aussi sa région et son pays ;
+- **les avis indépendants restent affichés** : si StreetCLIP ou l'IA voient un autre pays, le bandeau le signale,
+  et une preuve de tes marques hors du verrou reste visible (« hors du pays verrouillé »). C'est ce qui révèle un
+  verrou faux ;
+- un verrou du coach ne se nomme qu'au niveau d'aide qui le dévoile (pays au niveau 3, région et ville au 4) ; en
+  dessous, le bandeau dit « pays verrouillé, caché à ce niveau » ;
+- les verrous **durent une capture** : une nouvelle capture repart de zéro (un verrou périmé fausserait la manche
+  suivante). En mode débogage, chaque verrou et chaque rejet est journalisé dans `capture-<id>.json`.
+
+Réglages › Verrous (`[locks]`) : activation, verrou automatique du pays et de la région, ville proposée, rayon.
 
 Pour lancer le moteur seul (sans interface) : `cd engine && .venv/bin/python -m geonesclick`.
 
@@ -592,12 +619,13 @@ les pages Plonk It et la page de copyright d'OpenStreetMap.
 app/                      interface Tauri + Vue
   src-tauri/src/lib.rs    lance et arrête le moteur
   src/engine.ts           connexion au moteur (WebSocket + HTTP)
-  src/components/         pays (Countries), carte (CoachMap), ce que voit l'IA (Observations),
-                          « C'était où ? » (LabelForm), réglages (SettingsPanel + SettingField)…
+  src/components/         pays (Countries), carte (CoachMap), ce que voit l'IA (Observations), verrous
+                          (Locks), « C'était où ? » (LabelForm), réglages (SettingsPanel + SettingField)…
   src/settingsSchema.ts   description de chaque réglage de l'écran (libellé, aide, type, section)
 engine/                   moteur Python
   src/geonesclick/     capture, StreetCLIP, PLONK (plonk.py), frontières (borders.py), vision, metas
-                          (+ amorce), jeu de test, réglages, serveur
+                          (+ amorce), marques et règles locales (marks_engine, evidence, places, locate),
+                          verrous (locks, locks_engine), jeu de test, réglages, serveur
     data/                 contours des pays Natural Earth 1:50m (domaine public)
   spikes/                 bancs d'essai : StreetCLIP, modèle de vision, recadrage, multi-recadrage,
                           recherche, PLONK (code tiers du banc PLONK dans spikes/.vendor/, ignoré)

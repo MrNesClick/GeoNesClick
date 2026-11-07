@@ -311,6 +311,22 @@ prior_min = 0.10
 # (GeoNames : FR 7,3 Mo, IT 4,4 Mo, BG 0,8 Mo) et ajouté. GeoNames voit alors quel pays est consulté.
 detail = true
 detail_url = "https://download.geonames.org/export/dump/{}.zip"
+# Noms des régions (~140 Ko, une fois) : région de chaque lieu, pour le verrou Région. Sans eux, le code s'affiche.
+regions_url = "https://download.geonames.org/export/dump/admin1CodesASCII.txt"
+
+[locks]
+# Verrous pays › région › ville, en tête du coach : chaque niveau verrouillé restreint la recherche du suivant
+# (lieux du pays, villages de la région). Les avis indépendants (StreetCLIP, l'IA) restent affichés, et un désaccord
+# est signalé : c'est ce qui révèle un verrou faux. Tu peux toujours rejeter un verrou (✕) ou poser le tien ; le coach
+# ne remplace jamais le tien. Ils durent une capture : une nouvelle capture remet tout à zéro.
+enabled = true
+auto_country = true      # pays verrouillé seul quand tes marques le rendent CERTAIN (jamais sur « très probable »)
+# Région verrouillée seule quand la position estimée est un point net (panneau aux distances cohérentes) et que
+# tous les lieux à moins de region_radius_km de ce point sont de la même région.
+auto_region = true
+region_radius_km = 10
+# Ville : jamais verrouillée seule (un panneau « Pau 40 km » nomme un lieu où tu n'es pas) ; le coach la propose.
+propose_city = true
 
 [storage]
 # Taille maximale des caches qui grossissent tout seuls (villages des pays rencontrés ; plus tard rues par ville

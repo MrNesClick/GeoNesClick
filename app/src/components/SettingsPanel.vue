@@ -83,6 +83,11 @@ function summary(g: Group): string {
       const copies = v.capture.save_to_disk ? (keep ? `${keep} gardées` : "toutes gardées") : "sans copie";
       return `${notify} · ${copies}`;
     }
+    case "verrous": {
+      if (!v.locks.enabled) return "désactivés";
+      const auto = [v.locks.auto_country ? "pays" : "", v.locks.auto_region ? "région" : ""].filter(Boolean).join(" et ");
+      return `${auto ? `le coach verrouille ${auto}` : "toi seul verrouilles"}${v.locks.propose_city ? " · ville proposée" : ""}`;
+    }
     case "stockage":
       return `caches limités à ${v.storage.max_cache_mb} Mo`;
     case "jeu-de-test":

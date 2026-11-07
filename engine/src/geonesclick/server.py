@@ -16,6 +16,8 @@ Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
   mark           une marque : découpe agrandie (pending), puis ce que le modèle y a lu (done) ou l'erreur
   verdict        ce que les marques prouvent ensemble (règles locales : alphabet, lettres, lieux)
   mark_removed   une marque retirée par le joueur
+  locks          verrous de la capture (pays › région › ville), rejets et ville proposée
+  similar        astuces Plonk It du pays verrouillé, s'il n'était pas parmi les candidats
   error          capture impossible
 Déclencheurs : POST /capture et /marks/freeze (boutons de l'interface) ou socket Unix (raccourcis GNOME,
 voir trigger.py).
@@ -44,6 +46,7 @@ from pydantic import BaseModel, Field
 from .analysis_log import AnalysisLog
 from .borders import Borders
 from .capture import CaptureError, CaptureService, apply_crop_and_masks, data_url, new_id, prune_captures, save_png
+from .locks_engine import LockRequest, LocksMixin, PlaceSearchRequest, RejectRequest
 from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, progress
@@ -92,7 +95,7 @@ class JudgeRequest(BaseModel):
     id: str = Field(default="", max_length=32)
 
 
-class Engine(MarksMixin):
+class Engine(MarksMixin, LocksMixin):
     def __init__(self, cfg: Config, settings_path: Path = USER_CONFIG) -> None:
         self.cfg = cfg
         self.settings_path = settings_path  # fichier écrit par l'écran Réglages
@@ -226,6 +229,7 @@ class Engine(MarksMixin):
                                  strict=True))},
             "places": {"enabled": self.cfg.rules.places, "ready": self.places is not None,
                        "message": self.places_message},
+            "locks": {"enabled": self.cfg.locks.enabled},
             "map": {
                 "enabled": self.cfg.map.enabled, "tile_url": self.cfg.map.tile_url,
                 "attribution": self.cfg.map.attribution, "attribution_url": self.cfg.map.attribution_url,
@@ -468,14 +472,17 @@ class Engine(MarksMixin):
         pc, lang = self.cfg.plonkit, self.cfg.coach.language
         return lang if pc.translate and lang != "en" and self.vision.client else None
 
-    def similar(self, emb, pairs: list[tuple[str, float]]) -> dict[str, list[dict[str, Any]]]:
-        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (vide si désactivé),
-        avec leur traduction si elle est déjà en cache. Appelée hors de la boucle : elle lit la base."""
+    def similar(self, emb, pairs: list[tuple[str, float]], codes: list[str] | None = None
+                ) -> dict[str, list[dict[str, Any]]]:
+        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (ou codes : le pays verrouillé),
+        vide si désactivé, avec leur traduction si elle est déjà en cache. Appelée hors de la boucle : elle lit
+        la base."""
         pc, m = self.cfg.plonkit, self.cfg.metas
         tips, matrix = self.plonkit_base  # une seule lecture : astuces et matrice vont ensemble
         if not (pc.enabled and pc.similar_tips and tips and emb is not None):
             return {}
-        codes = [c for c, _ in select_candidates(pairs, m.min_probability, m.max_candidates)]
+        if codes is None:
+            codes = [c for c, _ in select_candidates(pairs, m.min_probability, m.max_candidates)]
         found = similar_tips(emb, tips, matrix, codes, pc.similar_per_country)
         lang = self.translation_lang
         cached = {}
@@ -605,8 +612,15 @@ class Engine(MarksMixin):
                 return {"ok": False, "id": capture_id, "error": str(exc)}
             pairs = [(s.code, s.probability) for s in scores]
             if capture_id in self.recent and scores:
-                self.recent[capture_id].update(predicted=scores[0].code, scores=pairs)
+                self.recent[capture_id].update(predicted=scores[0].code, scores=pairs, emb=emb)
             similar = await asyncio.to_thread(self.similar, emb, pairs)
+            if capture_id in self.recent:  # pays dont les astuces sont déjà envoyées (verrou : voir locks_engine)
+                self.recent[capture_id]["tips_for"] = set(similar)
+                locks = self.recent[capture_id].get("locks")
+                if locks and locks.country() and locks.country() not in similar:  # verrouillé avant la fin du calcul
+                    task = asyncio.create_task(self._tips_for(capture_id, locks.country()))
+                    self.background.add(task)
+                    task.add_done_callback(self.background.discard)
             missing = list({tip["id"]: tip["text"] for tips in similar.values() for tip in tips
                             if tip["translated"] is None}.items())
             lang = self.translation_lang
@@ -826,6 +840,21 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def remove_mark(req: DeleteRequest) -> dict[str, Any]:
         """Retirer une marque dont la lecture est fausse : la conclusion est recalculée sans elle."""
         return await engine.remove_mark(req)
+
+    @app.post("/locks")
+    async def set_lock(req: LockRequest) -> dict[str, Any]:
+        """Le joueur verrouille un pays, une région ou une ville (« je vois la tour Eiffel : Paris »)."""
+        return await engine.set_lock(req)
+
+    @app.post("/locks/reject")
+    async def reject_lock(req: RejectRequest) -> dict[str, Any]:
+        """✕ sur un verrou ou sur la ville proposée : écarté pour toute la capture."""
+        return await engine.reject_lock(req)
+
+    @app.post("/locks/search")
+    async def search_places(req: PlaceSearchRequest) -> dict[str, Any]:
+        """Recherche d'une région ou d'une ville dans l'index local (aucun réseau). POST : origine contrôlée."""
+        return await engine.search_places(req)
 
     @app.post("/marks")
     async def marks(req: MarksRequest) -> dict[str, Any]:

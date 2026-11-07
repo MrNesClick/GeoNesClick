@@ -15,6 +15,7 @@ Données : GeoNames, https://www.geonames.org (CC BY 4.0), attribution affichée
 from __future__ import annotations
 
 import io
+import math
 import re
 import sqlite3
 import threading
@@ -22,12 +23,19 @@ import unicodedata
 import urllib.request
 import zipfile
 from pathlib import Path
+from typing import Any
 
 from .evidence import STREET_AFTER, STREET_BEFORE, Evidence
+from .locate import haversine
 
-DB_NAME = "places-v3.sqlite"  # v3 : comparaison sans accents latins ni traits d'union (« Sauveterre de Bearn »)
-OLD_DBS = ("places.sqlite", "places-v2.sqlite")
+# v3 : comparaison sans accents latins ni traits d'union (« Sauveterre de Bearn ») ; v4 : région de chaque lieu
+# (code admin1 GeoNames) et index des latitudes, pour les verrous pays › région › ville (2026-11-07).
+VERSION = "v4"
+DB_NAME = f"places-{VERSION}.sqlite"
+OLD_DBS = ("places.sqlite", "places-v2.sqlite", "places-v3.sqlite")
 ARCHIVE = "source.zip"  # archive gardée : un changement de format reconstruit sans retélécharger
+REGIONS = "admin1.txt"  # noms des régions (admin1CodesASCII.txt de GeoNames, ~140 Ko), gardé de même
+MAX_RESULTS = 20  # résultats d'une recherche de lieu (champ « + » du bandeau des verrous)
 PER_NAME = 3  # homonymes gardés par nom et par pays (les plus peuplés), départagés par les distances
 SOURCE = "https://www.geonames.org"
 USER_AGENT = "GeoNesClick/0.1 (personal training app, one-time download)"
@@ -35,6 +43,7 @@ MAX_WORDS = 4  # noms de lieux d'au plus 4 mots (« Gotse Delchev », « San Car
 MAX_BYTES = 64 * 1024 * 1024  # garde-fou : l'archive fait ~11 Mo
 MAX_UNZIPPED = 600 * 1024 * 1024  # garde-fou contre une archive piégée (cities1000 : ~31 Mo ; FR : ~50 Mo)
 COUNTRY = re.compile(r"[A-Z]{2}")  # code pays : sert à une adresse et à un nom de fichier
+REGION = re.compile(r"[A-Z]{2}\.[0-9A-Z]{1,20}")  # code de région GeoNames : « FR.75 »
 
 
 class PlacesError(RuntimeError):
@@ -85,11 +94,40 @@ def _fetch(url: str) -> bytes:
     return data
 
 
+def _regions(url: str | None, directory: Path) -> dict[str, str]:
+    """Noms des régions (« FR.75 » → « Nouvelle-Aquitaine »), gardés à côté de l'archive.
+
+    Facultatif : sans réseau, l'index se construit quand même et une région s'affiche par son code.
+    """
+    if not url:
+        return {}
+    cached = directory / REGIONS
+    fresh = not cached.exists()
+    if fresh:
+        if not url.startswith("https://"):
+            raise PlacesError("adresse des régions refusée : https attendu")
+        try:
+            text = _fetch(url).decode("utf-8")
+        except (PlacesError, UnicodeDecodeError):
+            return {}
+    else:
+        text = cached.read_text(encoding="utf-8", errors="replace")
+    out = {}
+    for line in text.splitlines():
+        cols = line.split("\t")
+        if len(cols) >= 2 and REGION.fullmatch(cols[0]):
+            out[cols[0]] = cols[1][:200]
+    if fresh and out:  # une page d'erreur à la place du fichier n'est pas gardée : retentée la prochaine fois
+        cached.write_text(text, encoding="utf-8")
+    return out
+
+
 def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, archive_name: str | None = ARCHIVE,
-          populated_only: bool = False) -> Path:
+          populated_only: bool = False, regions_url: str | None = None) -> Path:
     """Télécharge le répertoire et construit l'index local ; écriture atomique de la base.
 
     populated_only : fichier complet d'un pays (montagnes, rivières…) dont on ne garde que les lieux habités (P).
+    regions_url : noms des régions (répertoire général seulement ; les détails des pays partagent ces codes).
     """
     if not url.startswith("https://"):
         raise PlacesError("adresse du répertoire refusée : https attendu")
@@ -108,12 +146,13 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
             text = archive.read(member).decode("utf-8")
     except (zipfile.BadZipFile, UnicodeDecodeError) as exc:
         raise PlacesError("archive illisible") from exc
-    best: dict[tuple[str, str], list[tuple[int, str, float, float]]] = {}
+    best: dict[tuple[str, str], list[tuple[int, str, float, float, str]]] = {}
     for line in text.splitlines():
         cols = line.split("\t")
         if len(cols) < 15 or not COUNTRY.fullmatch(cols[8]) or (populated_only and cols[6] != "P"):
             continue
         name, ascii_name, alternates, country = cols[1], cols[2], cols[3], cols[8]
+        region = f"{country}.{cols[10]}" if REGION.fullmatch(f"{country}.{cols[10]}") else ""
         try:
             population, lat, lon = int(cols[14] or 0), float(cols[4]), float(cols[5])
         except ValueError:
@@ -123,20 +162,24 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
             if len(key) < min_len or not any(ch.isalpha() for ch in key) or len(key.split()) > MAX_WORDS:
                 continue
             same = best.setdefault((key, country), [])
-            same.append((population, name, lat, lon))
+            same.append((population, name, lat, lon, region))
             if len(same) > PER_NAME:
                 same.sort(reverse=True)
                 del same[PER_NAME:]
+    regions = _regions(regions_url, directory)
     tmp = directory / (db_name + ".tmp")
     tmp.unlink(missing_ok=True)
     con = sqlite3.connect(tmp)
     try:
         with con:
             con.execute("CREATE TABLE place(norm TEXT NOT NULL, country TEXT NOT NULL, population INTEGER, name TEXT,"
-                        " lat REAL NOT NULL, lon REAL NOT NULL)")
-            con.executemany("INSERT INTO place VALUES (?, ?, ?, ?, ?, ?)",
+                        " lat REAL NOT NULL, lon REAL NOT NULL, region TEXT NOT NULL DEFAULT '')")
+            con.executemany("INSERT INTO place VALUES (?, ?, ?, ?, ?, ?, ?)",
                             [(k, c, *row) for (k, c), rows in best.items() for row in rows])
             con.execute("CREATE INDEX place_norm ON place(norm)")
+            con.execute("CREATE INDEX place_lat ON place(lat)")  # lieux autour d'une position (région du point)
+            con.execute("CREATE TABLE region(code TEXT PRIMARY KEY, name TEXT NOT NULL)")
+            con.executemany("INSERT INTO region VALUES (?, ?)", sorted(regions.items()))
     finally:
         con.close()
     path = directory / db_name
@@ -164,7 +207,12 @@ def _distance_after(words: list[str], end: int, line: str) -> float | None:
 def detail_name(country: str) -> str:
     if not COUNTRY.fullmatch(country):
         raise PlacesError(f"code pays invalide : {country!r}")
-    return f"detail-{country}-v3.sqlite"
+    return f"detail-{country}-{VERSION}.sqlite"
+
+
+def _unique(rows) -> dict[tuple, tuple]:
+    """Un même lieu peut venir du répertoire général et du détail du pays : on le garde une fois."""
+    return {(c, n, round(lat, 2), round(lon, 2)): (c, p, n, lat, lon, r) for c, p, n, lat, lon, r in rows}
 
 
 def _open(path: Path) -> sqlite3.Connection:
@@ -194,15 +242,55 @@ class Places:
         if con is not None:
             con.close()
 
-    def lookup(self, name: str) -> list[tuple[str, int, str, float, float]]:
-        """[(pays, population, nom GeoNames, latitude, longitude)] pour un nom (forme normalisée), répertoire
-        général et détails des pays réunis, sans doublon (même lieu dans les deux)."""
-        key = normalise(name)
-        sql = "SELECT country, population, name, lat, lon FROM place WHERE norm = ?"
+    def _rows(self, sql: str, args: tuple) -> list[tuple]:
         with self._lock:
-            rows = [r for con in (self.con, *self.details.values()) for r in con.execute(sql, (key,))]
-        unique = {(c, n, round(lat, 2), round(lon, 2)): (c, p, n, lat, lon) for c, p, n, lat, lon in rows}
-        return sorted(unique.values(), key=lambda r: -r[1])
+            return [r for con in (self.con, *self.details.values()) for r in con.execute(sql, args)]
+
+    def lookup(self, name: str) -> list[tuple[str, int, str, float, float, str]]:
+        """[(pays, population, nom GeoNames, latitude, longitude, région)] pour un nom (forme normalisée),
+        répertoire général et détails des pays réunis, sans doublon (même lieu dans les deux)."""
+        rows = self._rows("SELECT country, population, name, lat, lon, region FROM place WHERE norm = ?",
+                          (normalise(name),))
+        return sorted(_unique(rows).values(), key=lambda r: -r[1])
+
+    def region_name(self, code: str) -> str:
+        """Nom d'une région (« FR.75 » → « Nouvelle-Aquitaine ») ; son code si les noms sont absents."""
+        with self._lock:
+            row = self.con.execute("SELECT name FROM region WHERE code = ?", (code,)).fetchone()
+        return row[0] if row else code
+
+    def regions(self, country: str, query: str = "") -> list[dict[str, str]]:
+        """Régions d'un pays dont le nom commence par query (sans accents ni casse), par ordre alphabétique."""
+        with self._lock:
+            rows = self.con.execute("SELECT code, name FROM region WHERE code LIKE ? ORDER BY name",
+                                    (f"{country}.%",)).fetchall()
+        key = normalise(query)
+        return [{"code": c, "name": n} for c, n in rows
+                if not key or any(w.startswith(key) for w in [normalise(n), *normalise(n).split()])][:MAX_RESULTS]
+
+    def search(self, query: str, country: str, region: str = "") -> list[dict[str, Any]]:
+        """Lieux habités dont un nom commence par query, dans le pays (et la région) ; les plus peuplés d'abord."""
+        key = normalise(query)
+        if len(key) < 2:
+            return []
+        sql = ("SELECT country, population, name, lat, lon, region FROM place"
+               " WHERE norm >= ? AND norm < ? AND country = ?" + (" AND region = ?" if region else "") +
+               f" ORDER BY population DESC LIMIT {MAX_RESULTS * 10}")  # « sa » : des milliers de villages
+        args = (key, key + "\U0010ffff", country, *((region,) if region else ()))
+        found = sorted(_unique(self._rows(sql, args)).values(), key=lambda r: -r[1])[:MAX_RESULTS]
+        return [{"name": n, "country": c, "region": r, "region_name": self.region_name(r) if r else "",
+                 "lat": lat, "lon": lon, "population": p} for c, p, n, lat, lon, r in found]
+
+    def around(self, lat: float, lon: float, km: float, country: str) -> list[tuple[float, str, str, float, float]]:
+        """[(distance, nom, région, latitude, longitude)] des lieux du pays à moins de km de la position, le plus
+        proche d'abord."""
+        dlat = km / 111.0
+        dlon = km / max(1.0, 111.0 * math.cos(math.radians(lat)))
+        sql = ("SELECT country, population, name, lat, lon, region FROM place"
+               " WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ? AND country = ?")
+        rows = _unique(self._rows(sql, (lat - dlat, lat + dlat, lon - dlon, lon + dlon, country))).values()
+        near = [(haversine((lat, lon), (la, lo)), n, r, la, lo) for _, _, n, la, lo, r in rows]
+        return sorted(x for x in near if x[0] <= km)
 
     def match(self, lines: list[str], min_len: int = 4) -> list[Evidence]:
         """Lieux nommés dans le texte d'une marque : groupes de mots consécutifs, le plus long d'abord.
@@ -243,7 +331,7 @@ class Places:
                     countries = sorted({r[0] for r in rows})
                     out.append(Evidence("lieu", candidate, rows[0][2], countries, SOURCE,
                                         km=_distance_after(words, start + size, line),
-                                        points=[[lat, lon, c, n] for c, _, n, lat, lon in rows]))
+                                        points=[[lat, lon, c, n, r] for c, _, n, lat, lon, r in rows]))
         return out
 
     def close(self) -> None:
@@ -258,7 +346,7 @@ def main() -> int:
 
     cfg = load_config().rules
     try:
-        path = build(cfg.places_url, cfg.places_path)
+        path = build(cfg.places_url, cfg.places_path, regions_url=cfg.regions_url)
     except PlacesError as exc:
         print(f"Lieux GeoNames : {exc}")
         return 1

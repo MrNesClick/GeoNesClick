@@ -5,6 +5,7 @@ import CoachMap from "./components/CoachMap.vue";
 import Countries from "./components/Countries.vue";
 import HelpLevel from "./components/HelpLevel.vue";
 import LabelForm from "./components/LabelForm.vue";
+import Locks from "./components/Locks.vue";
 import LookHere from "./components/LookHere.vue";
 import Marks from "./components/Marks.vue";
 import MetaHints from "./components/MetaHints.vue";
@@ -13,7 +14,7 @@ import PlonkitTips from "./components/PlonkitTips.vue";
 import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import Summary from "./components/Summary.vue";
-import { engine, requestCapture, requestFreeze, restartSharing, tipsByCountry } from "./engine";
+import { countryName, engine, flag, lockedCountry, requestCapture, requestFreeze, restartSharing, tipsByCountry } from "./engine";
 import * as sum from "./summaries";
 
 const status = computed(() => {
@@ -109,6 +110,8 @@ const tabs = computed(() => [
     </main>
 
     <main v-else-if="engine.current" class="flex-1">
+      <!-- Verrous : en tête, hors des sections repliables (ils restreignent tout ce qui suit). -->
+      <Locks v-if="engine.locks.enabled" :analysis="engine.current" />
       <Transition name="arrivee" appear mode="out-in">
         <div :key="engine.current.id" class="pt-2">
           <!-- Sections dans l'ordre d'utilité ; le résumé de chacune reste lisible quand elle est repliée. -->
@@ -133,8 +136,13 @@ const tabs = computed(() => [
             <Section id="pays" title="Pays" :summary="sum.countries(engine.current)">
               <Countries :analysis="engine.current" />
             </Section>
-            <Section id="departage" title="Ce qui les départage" :summary="sum.metas(engine.current)">
-              <MetaHints :lookfor="engine.current.lookfor" />
+            <Section id="departage" title="Ce qui les départage"
+                     :summary="lockedCountry(engine.current) ? 'pays verrouillé' : sum.metas(engine.current)">
+              <p v-if="lockedCountry(engine.current)" class="text-[0.9rem] text-courbe">
+                Pays verrouillé ({{ flag(lockedCountry(engine.current)!) }} {{ countryName(lockedCountry(engine.current)!) }}) :
+                plus rien à départager entre pays. Rejette le verrou si tu en doutes.
+              </p>
+              <MetaHints v-else :lookfor="engine.current.lookfor" />
             </Section>
             <Section
               v-if="tipsByCountry(engine.current).length"

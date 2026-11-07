@@ -40,6 +40,7 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     ),
     "marks": ("enabled", "max_marks", "upscale_to_px", "max_upscale", "parallel", "model", "max_tokens", "prompt"),
     "rules": ("scripts", "letters", "places", "place_min_len", "place_max_spread_km", "prior_min", "detail"),
+    "locks": ("enabled", "auto_country", "auto_region", "propose_city", "region_radius_km"),
     "storage": ("max_cache_mb",),
     "debug": ("enabled",),
 }
@@ -61,6 +62,7 @@ FILE_ONLY: dict[str, dict[str, str]] = {
     "vision": {"base_url": _KEY, "api_key_env": _KEY},
     "rules": {"places_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
               "detail_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
+              "regions_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
               "places_dir": _DISK},
 }
 

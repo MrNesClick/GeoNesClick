@@ -22,10 +22,10 @@ def write(path, size):
 @pytest.fixture
 def folders(tmp_path):
     places, plonkit, captures = tmp_path / "places", tmp_path / "plonkit", tmp_path / "captures"
-    write(places / "places-v3.sqlite", 1000)
+    write(places / "places-v4.sqlite", 1000)
     write(places / "source.zip", 500)
     for i, country in enumerate(["FR", "IT", "BG"]):
-        f = write(places / f"detail-{country}-v3.sqlite", 300)
+        f = write(places / f"detail-{country}-v4.sqlite", 300)
         os.utime(f, (time.time() - 100 + i, time.time() - 100 + i))  # FR le plus ancien, BG le plus récent
     write(plonkit / "plonkit.sqlite", 700)
     write(plonkit / "raw" / "france.json", 50)
@@ -46,8 +46,8 @@ def test_inventory_gives_each_size(folders):
 def test_least_recently_used_villages_go_first(folders):
     places, _, _ = folders
     assert storage.evict(places, 650, keep={"FR"}) == ["IT"]  # FR gardé (manche en cours), IT le plus ancien ensuite
-    assert sorted(f.name for f in storage.village_files(places)) == ["detail-BG-v3.sqlite", "detail-FR-v3.sqlite"]
-    assert (places / "places-v3.sqlite").exists()  # le socle ne part jamais tout seul
+    assert sorted(f.name for f in storage.village_files(places)) == ["detail-BG-v4.sqlite", "detail-FR-v4.sqlite"]
+    assert (places / "places-v4.sqlite").exists()  # le socle ne part jamais tout seul
 
 
 def test_only_known_files_are_removed(folders):
