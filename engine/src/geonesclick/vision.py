@@ -44,7 +44,7 @@ class VisionClient:
     async def ask(self, img: Image.Image, prompt: str, model: str, max_tokens: int) -> tuple[dict[str, Any], float]:
         """Une image, une consigne : renvoie l'objet JSON de la réponse et la durée de l'appel."""
         if not self.client:
-            raise VisionError(f"clé API absente : renseigne {self.cfg.api_key_env} dans .env")
+            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
         t0 = time.perf_counter()
         try:
             resp = await self.client.chat.completions.create(
@@ -67,7 +67,7 @@ class VisionClient:
     async def list_models(self) -> list[str]:
         """Identifiants des modèles disponibles (liste publique de l'API)."""
         if not self.client:
-            raise VisionError(f"clé API absente : renseigne {self.cfg.api_key_env} dans .env")
+            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
         try:
             page = await self.client.models.list()
         except Exception as exc:
@@ -77,7 +77,7 @@ class VisionClient:
     async def probe(self, model: str) -> float:
         """Envoie une petite image au modèle : vérifie qu'il accepte les images et mesure sa latence."""
         if not self.client:
-            raise VisionError(f"clé API absente : renseigne {self.cfg.api_key_env} dans .env")
+            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
         img = Image.new("RGB", (96, 64), (90, 140, 200))  # ciel uni : test minimal
         t0 = time.perf_counter()
         try:

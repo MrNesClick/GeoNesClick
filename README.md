@@ -139,12 +139,12 @@ scripts/install.sh --with-apt       # installe aussi les paquets système manqua
 scripts/install.sh --setup-shortcut # ajoute les raccourcis GNOME : capture (Super+Maj+G), marques (Super+Maj+Z)
 ```
 
-Le script peut être relancé sans risque, par exemple après chaque `git pull`. Ensuite, renseigne ta clé
-dans `.env` (le script le crée à partir de `.env.example`) :
-
-```
-NVAPI=nvapi-...
-```
+Le script peut être relancé sans risque, par exemple après chaque `git pull`. Ensuite, au premier lancement,
+saisis ta clé API NVIDIA (gratuite sur [build.nvidia.com](https://build.nvidia.com), « Get API Key ») dans
+**Réglages › Analyse**. Elle est rangée hors du dépôt, dans `~/.config/geonesclick/nvapi.key`, lisible par toi seul
+(0600), et n'est jamais réaffichée (seulement ses 4 derniers caractères). La variable d'environnement `NVAPI`, si
+elle est définie, reste prioritaire. Une clé encore dans l'ancien `.env` y est **déplacée** au démarrage (la
+ligne est retirée du `.env`).
 
 Pour changer les raccourcis : `GNC_SHORTCUT="<Super><Shift>h" GNC_MARK_SHORTCUT="<Super><Shift>m"
 scripts/install.sh --setup-shortcut`.

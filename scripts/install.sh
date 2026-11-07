@@ -101,11 +101,17 @@ ok "dépendances front installées"
 # ---------------------------------------------------------------------------
 step "5. Configuration"
 cd "$ROOT"
-if [[ -f .env ]]; then
-  grep -q '^NVAPI=.\+' .env && ok ".env présent avec NVAPI" || warn ".env présent mais NVAPI vide"
+# Clé API : saisie dans l'app (Réglages › Analyse), rangée dans ~/.config/geonesclick/nvapi.key (0600), jamais
+# dans le dépôt. Une clé restée dans l'ancien .env y est déplacée au premier démarrage du moteur.
+KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/geonesclick/nvapi.key"
+if [[ -n "${NVAPI:-}" ]]; then
+  ok "clé API fournie par la variable NVAPI"
+elif [[ -s "$KEY_FILE" ]]; then
+  ok "clé API enregistrée ($KEY_FILE)"
+elif [[ -f .env ]] && grep -q '^NVAPI=.\+' .env; then
+  ok "clé API dans l'ancien .env : elle sera déplacée au premier démarrage"
 else
-  cp .env.example .env && chmod 600 .env
-  warn ".env créé depuis .env.example : renseigne ta clé NVAPI (https://build.nvidia.com)"
+  warn "pas encore de clé API : saisis-la dans l'app, Réglages › Analyse (https://build.nvidia.com)"
 fi
 
 # ---------------------------------------------------------------------------

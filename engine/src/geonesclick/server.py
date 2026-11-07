@@ -61,7 +61,7 @@ from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .plonk import PlonkCloud, summarise
-from . import storage
+from . import apikey, storage
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
@@ -81,6 +81,10 @@ class LabelRequest(BaseModel):
     guessed: str = Field(default="", max_length=2)  # pays répondu par le joueur, facultatif
     area: str = Field(default="", max_length=200)
     link: str = Field(default="", max_length=2000)  # lien Google Maps du vrai lieu (jamais ouvert : lu seulement)
+
+
+class ApiKeyRequest(BaseModel):
+    key: str = Field(default="", max_length=300)  # vide : oublier la clé
 
 
 class TruthRequest(BaseModel):
@@ -215,6 +219,7 @@ class Engine(MarksMixin, LocksMixin):
                 "enabled": self.cfg.vision.enabled,
                 "ready": self.vision.ready,
                 "model": self.cfg.vision.model,
+                "key": apikey.hint(self.cfg.vision.api_key_env),  # d'où vient la clé, 4 derniers caractères
             },
             "help_level": self.cfg.coach.help_level,
             "trust_proof": self.cfg.coach.trust_proof,
@@ -965,6 +970,25 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     @app.post("/settings")
     async def post_settings(changes: dict[str, dict[str, Any]]) -> dict[str, Any]:
         return await engine.apply_settings(changes)
+
+    @app.post("/settings/api-key")
+    async def set_api_key(req: ApiKeyRequest) -> dict[str, Any]:
+        """Clé API saisie dans Réglages : écrite dans un fichier lisible par toi seul (0600), jamais renvoyée."""
+        name = engine.cfg.vision.api_key_env
+
+        def store() -> None:
+            if req.key.strip():
+                apikey.save(name, req.key)
+            else:  # champ vidé : la clé est oubliée
+                apikey.forget(name)
+
+        try:
+            await asyncio.to_thread(store)
+        except apikey.ApiKeyError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        engine.vision = VisionClient(engine.cfg.vision)
+        await engine.broadcast(engine.state())
+        return {"ok": True, "key": apikey.hint(name)}
 
     @app.get("/models")
     async def models() -> dict[str, Any]:

@@ -40,3 +40,12 @@ def no_geonames_download(monkeypatch):
         raise AssertionError(f"téléchargement interdit pendant les tests : {url}")
 
     monkeypatch.setattr(places, "_fetch", blocked)
+
+
+@pytest.fixture(autouse=True)
+def no_real_key_file(monkeypatch, tmp_path_factory):
+    """Les tests ne lisent ni n'écrivent jamais ta vraie clé (~/.config/geonesclick/nvapi.key)."""
+    from geonesclick import paths
+
+    monkeypatch.setattr(paths, "CONFIG_DIR", tmp_path_factory.mktemp("config"))
+    monkeypatch.delenv("NVAPI", raising=False)

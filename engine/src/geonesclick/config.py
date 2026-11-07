@@ -318,13 +318,7 @@ def load_config(path: Path = USER_CONFIG) -> Config:
 
 
 def read_secret(name: str) -> str | None:
-    """Lit un secret dans l'environnement, sinon dans le .env à la racine du projet."""
-    if value := os.environ.get(name):
-        return value
-    env_file = PROJECT_ROOT / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            key, sep, value = line.partition("=")
-            if sep and key.strip() == name:
-                return value.strip().strip("\"'") or None
-    return None
+    """Clé API : variable d'environnement, sinon fichier protégé ~/.config/geonesclick/<nom>.key (apikey.py)."""
+    from .apikey import read
+
+    return read(name)

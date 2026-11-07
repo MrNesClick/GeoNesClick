@@ -5,7 +5,7 @@
 // lecture seule, avec leur raison et l'endroit où les changer.
 import { onMounted, reactive, ref } from "vue";
 import type { FileOnly, Settings } from "../engine";
-import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveSetting, testModel } from "../engine";
+import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveApiKey, saveSetting, testModel } from "../engine";
 import type { Field, Group } from "../settingsSchema";
 import { FILE_ONLY_LABELS, GROUPS } from "../settingsSchema";
 import Section from "./Section.vue";
@@ -46,6 +46,16 @@ async function save(f: Field, section: string, key: string, value: unknown) {
   if (!r.restart) timers[id] = setTimeout(() => delete status[id], 2500);
 }
 const invalid = (f: Field, text: string) => (status[fieldId(f)] = { tone: "error", text });
+
+// Clé API NVIDIA : saisie ici, rangée par le moteur dans ~/.config/geonesclick/nvapi.key (lisible par toi seul).
+const keyInput = ref("");
+const keyStatus = ref<{ tone: "ok" | "error"; text: string } | null>(null);
+async function storeKey(value: string) {
+  const error = await saveApiKey(value);
+  keyStatus.value = error ? { tone: "error", text: error } : { tone: "ok", text: value ? "Clé enregistrée." : "Clé oubliée." };
+  if (!error) keyInput.value = "";
+  models.value = (await getJSON<{ models: string[] }>("/models"))?.models ?? [];
+}
 
 async function runTest() {
   const model = String(s.value?.vision.model ?? "");
@@ -138,6 +148,32 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
                           @save="(section, key, v) => save(f, section, key, v)" @invalid="(t) => invalid(f, t)" />
 
             <!-- Compléments propres à certains réglages -->
+            <div v-if="f.section === 'vision' && f.key === 'enabled'" class="-mt-2 space-y-1.5">
+              <label for="cle-api" class="block text-papier">Clé API NVIDIA</label>
+              <p class="text-[0.85rem] text-courbe">
+                <template v-if="engine.vision.key">
+                  Enregistrée (…{{ engine.vision.key.end }}, {{ engine.vision.key.source }}).
+                </template>
+                <template v-else>Aucune : l'analyse approfondie et la lecture des marques sont coupées.</template>
+                Gratuite sur build.nvidia.com (« Get API Key »). Rangée dans
+                <code class="text-papier">~/.config/geonesclick/nvapi.key</code>, lisible par toi seul ; jamais réaffichée.
+              </p>
+              <form class="flex flex-wrap gap-2" @submit.prevent="storeKey(keyInput)">
+                <input id="cle-api" v-model="keyInput" type="password" autocomplete="off" spellcheck="false"
+                       class="min-w-0 flex-1 rounded-md border border-courbe-fonce bg-relief px-3 py-1.5 text-papier"
+                       :placeholder="engine.vision.key ? 'Nouvelle clé (nvapi-…)' : 'nvapi-…'" />
+                <button type="submit" :class="[button, 'border-lac/50 hover:bg-lac/10']" :disabled="!keyInput.trim() || engine.busy">
+                  Enregistrer
+                </button>
+                <button v-if="engine.vision.key?.source === 'fichier'" type="button" :class="[button, 'border-alerte/50 hover:bg-alerte/10']"
+                        :disabled="engine.busy" @click="storeKey('')">
+                  Oublier
+                </button>
+              </form>
+              <p v-if="keyStatus" class="text-[0.85rem]" :class="keyStatus.tone === 'ok' ? 'text-foret' : 'text-alerte'" role="status">
+                {{ keyStatus.text }}
+              </p>
+            </div>
             <div v-if="f.section === 'vision' && f.key === 'model'" class="-mt-3 flex flex-wrap items-center gap-3">
               <span class="text-[0.85rem] text-courbe">{{ models.length ? `${models.length} modèles NVIDIA disponibles` : "liste des modèles indisponible" }}</span>
               <button type="button" :class="[button, 'border-lac/50 hover:bg-lac/10']" :disabled="testing || !s.vision.enabled" @click="runTest">

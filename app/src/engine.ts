@@ -367,7 +367,8 @@ export const engine = reactive({
   connected: false,
   capture: { alive: false, starting: true, message: "connexion au moteur…" },
   streetclip: { ready: false, message: "" },
-  vision: { enabled: false, ready: false, model: "" },
+  /** key : d'où vient la clé API et ses 4 derniers caractères (jamais la clé), null si absente. */
+  vision: { enabled: false, ready: false, model: "", key: null as { source: string; end: string } | null },
   metas: { count: 0, message: "", judge: true },
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
@@ -633,6 +634,11 @@ export async function previewTruth(link: string): Promise<
   }
 }
 export const refreshPlonkit = () => request("/plonkit/refresh");
+/** Clé API NVIDIA : écrite par le moteur dans un fichier lisible par toi seul ; vide = l'oublier. */
+export async function saveApiKey(key: string): Promise<string | null> {
+  const res = await request("/settings/api-key", { key });
+  return res?.ok ? null : engine.error ?? "Enregistrement impossible.";
+}
 /** Verrouille un pays, une région ou une ville pour la capture (ou accepte la ville proposée). */
 export const setLock = (id: string, lock: Pick<Lock, "level" | "country"> & Partial<Lock>) =>
   request("/locks", { id, level: lock.level, country: lock.country, region: lock.region ?? "", name: lock.name ?? "",

@@ -1,7 +1,8 @@
 import os
 from pathlib import Path
 
-from .config import load_config
+from .apikey import key_file, migrate_env
+from .config import PROJECT_ROOT, load_config
 from .paths import migrate_legacy
 
 
@@ -19,6 +20,9 @@ def _hf_model_cached(model_id: str) -> bool:
 for _moved in migrate_legacy():  # ancien nom (GeoNesClick) : dossiers déplacés une fois, jamais supprimés
     print(f"GeoNesClick : {_moved}", flush=True)
 _cfg = load_config()
+if migrate_env(_cfg.vision.api_key_env, PROJECT_ROOT / ".env"):  # clé de l'ancien .env : vers le fichier protégé
+    print(f"GeoNesClick : clé {_cfg.vision.api_key_env} déplacée du .env vers {key_file(_cfg.vision.api_key_env)}",
+          flush=True)
 _models = [_cfg.streetclip.model] + ([_cfg.plonk.model] if _cfg.plonk.enabled else [])
 if all(_hf_model_cached(m) for m in _models):
     os.environ.setdefault("HF_HUB_OFFLINE", "1")

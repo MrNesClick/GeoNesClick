@@ -54,12 +54,16 @@ def test_read_secret_prefers_environment(monkeypatch, tmp_path):
     assert config.read_secret("CLE") == "depuis-env"
 
 
-def test_read_secret_falls_back_to_dotenv(monkeypatch, tmp_path):
+def test_read_secret_uses_the_key_file_never_the_dotenv(monkeypatch, tmp_path):
+    """Décidé le 2026-11-07 : la clé n'est plus lue dans le .env (migrée au démarrage vers le fichier protégé)."""
+    from geonesclick import apikey
+
     monkeypatch.setattr(config, "PROJECT_ROOT", tmp_path)
     monkeypatch.delenv("CLE", raising=False)
-    (tmp_path / ".env").write_text('AUTRE=x\nCLE = "nvapi-123"\nVIDE=\n')
-    assert config.read_secret("CLE") == "nvapi-123"
-    assert config.read_secret("VIDE") is None
+    (tmp_path / ".env").write_text('CLE = "nvapi-123"\n')
+    assert config.read_secret("CLE") is None
+    apikey.save("CLE", "nvapi-456789")
+    assert config.read_secret("CLE") == "nvapi-456789"
     assert config.read_secret("ABSENTE") is None
 
 
