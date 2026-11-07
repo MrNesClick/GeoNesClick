@@ -58,7 +58,7 @@ class CaptureConfig(BaseModel):
 
     @property
     def path(self) -> Path:
-        return Path(self.directory).expanduser() if self.directory else PROJECT_ROOT / "engine" / "captures"
+        return Path(self.directory).expanduser() if self.directory else DATA_DIR / "captures"
 
 
 class CoachConfig(BaseModel):
@@ -83,7 +83,7 @@ class DatasetConfig(BaseModel):
 
     @property
     def path(self) -> Path:
-        return Path(self.directory).expanduser() if self.directory else PROJECT_ROOT / "engine" / "dataset"
+        return Path(self.directory).expanduser() if self.directory else DATA_DIR / "dataset"
 
 
 class MetasConfig(BaseModel):

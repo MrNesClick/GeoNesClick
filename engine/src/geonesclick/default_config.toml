@@ -17,7 +17,7 @@ source = "window"
 notify = true            # notification GNOME à chaque capture
 sound = true             # son d'obturateur avec la notification
 save_to_disk = true      # garde une copie PNG de chaque capture
-directory = ""           # vide = engine/captures/
+directory = ""           # vide = ~/.local/share/geonesclick/captures/
 keep_last = 200          # nombre de captures conservées sur le disque (0 = illimité)
 # Zone analysée, en fractions de l'image capturée : [gauche, haut, droite, bas].
 # Vide = image entière. (La détection automatique de la vue Street View viendra plus tard.)
@@ -43,7 +43,7 @@ leader_margin = 0.15
 [dataset]
 # Jeu de test : « C'était où ? » après la manche enregistre la capture brute et le pays réel.
 enabled = true
-directory = ""           # vide = engine/dataset/
+directory = ""           # vide = ~/.local/share/geonesclick/dataset/
 ask_guessed = true       # demander aussi le pays que tu avais répondu (false = simple « trouvé ? » Oui/Non)
 max_confusions = 3       # confusions affichées avec les metas qui les séparent (0 = masquées)
 

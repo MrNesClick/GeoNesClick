@@ -88,3 +88,20 @@ def test_old_folders_are_moved_once_never_deleted(tmp_path, monkeypatch):
     assert (tmp_path / "config" / "geonesclick" / "config.toml").read_text() == "[coach]\n"
     assert len(moved) == 1 and (tmp_path / "data" / "geonesclick" / "plonkit").is_dir()
     assert paths.migrate_legacy() == []  # une seule fois
+
+
+def test_captures_move_and_dataset_is_copied_out_of_the_code(tmp_path, monkeypatch):
+    """Captures et jeu de test sortent de engine/ (lecture seule dans une AppImage) ; la copie git reste."""
+    from geonesclick import paths
+
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    repo = tmp_path / "repo"
+    (repo / "engine" / "captures").mkdir(parents=True)
+    (repo / "engine" / "captures" / "capture-1.png").write_bytes(b"png")
+    (repo / "engine" / "dataset").mkdir()
+    (repo / "engine" / "dataset" / "labels.toml").write_text("[[capture]]\n")
+    assert len(paths.migrate_repo_data(repo)) == 2
+    data = tmp_path / "data" / "geonesclick"
+    assert (data / "captures" / "capture-1.png").exists() and not (repo / "engine" / "captures").exists()
+    assert (data / "dataset" / "labels.toml").exists() and (repo / "engine" / "dataset" / "labels.toml").exists()
+    assert paths.migrate_repo_data(repo) == []

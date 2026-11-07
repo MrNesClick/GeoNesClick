@@ -3,7 +3,7 @@ from pathlib import Path
 
 from .apikey import key_file, migrate_env
 from .config import PROJECT_ROOT, load_config
-from .paths import migrate_legacy
+from .paths import migrate_legacy, migrate_repo_data
 
 
 def _hf_model_cached(model_id: str) -> bool:
@@ -17,7 +17,9 @@ def _hf_model_cached(model_id: str) -> bool:
 # Le niveau 1 doit fonctionner hors ligne et ne rien envoyer sur le réseau : une fois les modèles locaux en
 # cache (StreetCLIP, et PLONK s'il est activé), on active le mode hors ligne AVANT d'importer transformers
 # (il lit la variable à l'import). Tant qu'un modèle manque, il reste possible de le télécharger.
-for _moved in migrate_legacy():  # ancien nom (GeoNesClick) : dossiers déplacés une fois, jamais supprimés
+# Ancien nom (GeoNesClick) : dossiers déplacés une fois, jamais supprimés ; puis captures et jeu de test sortent
+# du dossier du code (lecture seule dans une AppImage).
+for _moved in migrate_legacy() + migrate_repo_data(PROJECT_ROOT):
     print(f"GeoNesClick : {_moved}", flush=True)
 _cfg = load_config()
 if migrate_env(_cfg.vision.api_key_env, PROJECT_ROOT / ".env"):  # clé de l'ancien .env : vers le fichier protégé

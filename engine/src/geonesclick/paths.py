@@ -7,6 +7,7 @@ de traductions Plonk It.
 """
 
 import os
+import shutil
 from pathlib import Path
 
 APP = "geonesclick"
@@ -38,3 +39,23 @@ def migrate_legacy() -> list[str]:
             old.rename(new)  # même système de fichiers : instantané, rien n'est copié ni perdu
             moved.append(f"{old} → {new}")
     return moved
+
+
+def migrate_repo_data(project_root: Path) -> list[str]:
+    """Captures et jeu de test sortent du dossier du code (en lecture seule dans une AppImage) vers DATA_DIR.
+
+    Décidé le 2026-11-07 : les captures sont DÉPLACÉES (ignorées par git) ; le jeu de test est COPIÉ, pour que
+    l'exemplaire suivi par git dans le dépôt (et les bancs de spikes/ qui le lisent) reste intact. Une seule fois :
+    rien n'est fait si la destination existe déjà.
+    """
+    done = []
+    target = data_home() / APP
+    captures, dataset = project_root / "engine" / "captures", project_root / "engine" / "dataset"
+    if captures.is_dir() and not captures.is_symlink() and not (target / "captures").exists():
+        target.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(captures), target / "captures")
+        done.append(f"{captures} → {target / 'captures'} (déplacées)")
+    if (dataset / "labels.toml").is_file() and not dataset.is_symlink() and not (target / "dataset").exists():
+        shutil.copytree(dataset, target / "dataset", symlinks=False)
+        done.append(f"{dataset} → {target / 'dataset'} (copié ; l'exemplaire du dépôt reste)")
+    return done

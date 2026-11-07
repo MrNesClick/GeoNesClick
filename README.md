@@ -509,7 +509,9 @@ tuiles, l'attribution et le filtre ne se changent que dans le fichier. **Un autr
 
 ## Bancs d'essai
 
-Chaque choix technique est mesuré sur le jeu de test (`engine/dataset/`) avant d'entrer dans le coach.
+Chaque choix technique est mesuré sur le jeu de test avant d'entrer dans le coach. Les bancs de `spikes/` lisent
+l'exemplaire versionné dans le dépôt (`engine/dataset/`) ; le coach enregistre les nouvelles manches dans
+`~/.local/share/geonesclick/dataset/`.
 Les bancs sont dans `engine/spikes/` et se lancent depuis `engine/` :
 
 | Banc | Mesure | Commande |
@@ -525,7 +527,7 @@ Les bancs sont dans `engine/spikes/` et se lancent depuis `engine/` :
 **Banc de relecture des marques** (`python -m geonesclick.bench`, depuis `engine/`). Décidé le 2026-11-07 : on
 ne règle plus les règles locales au cas par cas sur la dernière manche (la règle écrite pour un panneau russe a
 cassé un panneau danois vingt minutes plus tard), mais sur l'ensemble. À chaque « C'était où ? », le coach garde
-dans `engine/dataset/rounds/<id>.json` le texte de tes marques et ce qu'il avait conclu ; si tu colles le lien
+dans `~/.local/share/geonesclick/dataset/rounds/<id>.json` le texte de tes marques et ce qu'il avait conclu ; si tu colles le lien
 Google Maps du vrai lieu (écran de fin du jeu), il en lit les coordonnées (sans jamais l'ouvrir) et en déduit pays
 et région. Le banc rejoue toutes ces manches dans les règles ACTUELLES (même code que le moteur, index local, aucun
 réseau) et compte : pays certain juste / faux, très probable, région juste / fausse, erreur de position en km, et
@@ -589,8 +591,11 @@ venv avec `uv.lock` et le front avec `pnpm-lock.yaml`). Pour le banc PLONK, rela
 | `~/.local/share/geonesclick/plonkit/` | guides Plonk It, astuces, vecteurs, traductions | reconstruit au démarrage (~3 min, traductions refaites à la demande) |
 | `~/.local/share/geonesclick/places/` | répertoire des lieux GeoNames (CC BY 4.0), indexé | retéléchargé au démarrage s'il manque (~11 Mo) |
 | `~/.cache/huggingface/hub/` | poids StreetCLIP et PLONK | retéléchargés au prochain lancement (réseau requis) |
-| `engine/dataset/` | jeu de test (images + `labels.toml`) | perdu : à sauvegarder, c'est la base de toutes les mesures |
-| `engine/captures/` | captures des manches ; en mode débogage, le journal `capture-<id>.json` de chaque analyse | sans conséquence |
+| `~/.local/share/geonesclick/dataset/` | jeu de test (images, `labels.toml`, `rounds/` du banc) | perdu : à sauvegarder, c'est la base de toutes les mesures |
+| `~/.local/share/geonesclick/captures/` | captures des manches ; en mode débogage, le journal `capture-<id>.json` de chaque analyse | sans conséquence |
+
+Ces deux dossiers vivaient dans `engine/` jusqu'au 2026-11-07 (en lecture seule dans une AppImage) : au premier
+lancement, les captures y sont déplacées et le jeu de test copié (l'exemplaire suivi par git reste dans le dépôt).
 | `engine/spikes/.vendor/` | code et dépendances du banc PLONK | `scripts/setup-plonk-spike.sh` le refait |
 
 **Réglages › Stockage** affiche la taille de chaque élément et un bouton **Vider** (en deux temps : Vider, puis
