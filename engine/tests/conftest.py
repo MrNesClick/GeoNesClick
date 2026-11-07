@@ -1,8 +1,23 @@
 """Garde-fous communs à tous les tests."""
 
-import pytest
+import os
+import tempfile
 
-from geonesclick import places, plonkit, vision
+# AVANT tout import de l'application : ses dossiers (config, données, socket, modèles) pointent vers un dossier
+# temporaire. Constaté le 2026-11-07 : sans cela, les tests construisaient de faux villages GeoNames par-dessus les
+# vrais (~/.local/share/geonesclick/places), et leur dossier empêchait la migration de l'ancien nom.
+_SANDBOX = tempfile.mkdtemp(prefix="geonesclick-tests-")
+for _var, _sub in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_RUNTIME_DIR", "run"),
+                   ("HF_HOME", "hf")):
+    os.environ[_var] = os.path.join(_SANDBOX, _sub)
+    os.makedirs(os.environ[_var], exist_ok=True)
+os.environ.pop("HF_HUB_CACHE", None)
+
+import pytest  # noqa: E402
+
+from geonesclick import paths, places, plonkit, vision  # noqa: E402
+
+assert str(paths.DATA_DIR).startswith(_SANDBOX) and str(paths.CONFIG_DIR).startswith(_SANDBOX)
 
 
 @pytest.fixture(autouse=True)
