@@ -12,10 +12,12 @@ mots-clés (réglables) ; « autre » si rien ne tranche (category_source = "auc
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import re
 import sqlite3
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -33,8 +35,8 @@ TAG_CATEGORY = {
 
 # Mots-clés (anglais, comme les guides), par catégorie ; remplaçables par [plonkit.keywords] dans config.toml.
 DEFAULT_KEYWORDS: dict[str, list[str]] = {
-    "langue": ["language", "alphabet", "script", "cyrillic", "latin", "letter", "letters", "diacritic", "spelling",
-               "word", "words", "spoken"],
+    "langue": ["language", "languages", "alphabet", "alphabets", "script", "scripts", "cyrillic", "latin", "letter",
+               "letters", "diacritic", "diacritics", "spelling", "word", "words", "spoken", "dialect", "dialects"],
     "conduite": ["drive on the left", "drive on the right", "driving side", "left-hand traffic", "right-hand traffic"],
     "marquage": ["road line", "road lines", "roadline", "roadlines", "centre line", "center line", "middle line",
                  "edge line", "dashed", "markings"],
@@ -55,6 +57,7 @@ DOMAIN = re.compile(r"(?:^|\s)\.[a-z]{2}\b")
 
 @dataclass
 class IndexedTip:
+    hash: str
     rowid: int
     country: str
     slug: str
@@ -106,10 +109,23 @@ CREATE VIRTUAL TABLE IF NOT EXISTS tip_fts USING fts5(text, content='tip', conte
 CREATE TABLE IF NOT EXISTS embedding(hash TEXT NOT NULL, model TEXT NOT NULL, vector BLOB NOT NULL,
     PRIMARY KEY(hash, model));
 CREATE TABLE IF NOT EXISTS ai_category(hash TEXT PRIMARY KEY, category TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS translation(hash TEXT NOT NULL, lang TEXT NOT NULL, text TEXT NOT NULL,
+    PRIMARY KEY(hash, lang));
 """
 # Catégories déjà attribuées par l'IA, réappliquées à chaque reconstruction (une seule fois par texte).
 APPLY_AI = """UPDATE tip SET category = (SELECT category FROM ai_category a WHERE a.hash = tip.hash),
     category_source = 'ia' WHERE category_source = 'aucune' AND hash IN (SELECT hash FROM ai_category)"""
+
+
+def _locked(method):
+    """Exécute la méthode sous le verrou de l'index (connexion SQLite partagée entre threads)."""
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self.lock:
+            return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class TipIndex:
@@ -118,11 +134,14 @@ class TipIndex:
         self.path = path
         self.con = sqlite3.connect(path, check_same_thread=False)
         self.con.executescript(SCHEMA)
+        # Une connexion partagée entre la mise à jour de fond et les traductions : un accès à la fois.
+        self.lock = threading.Lock()
 
     def close(self) -> None:
         self.con.close()
 
     # --- construction ----------------------------------------------------------------------------
+    @_locked
     def rebuild(self, tips: Iterable[Tip], keywords: dict[str, list[str]] | None = None) -> int:
         """Remplace toutes les astuces (le cache des vecteurs est conservé) ; renvoie leur nombre."""
         patterns = _keyword_patterns(DEFAULT_KEYWORDS | (keywords or {}))
@@ -142,24 +161,28 @@ class TipIndex:
             self.con.execute("INSERT INTO tip_fts(tip_fts) VALUES ('rebuild')")
         return len(rows)
 
+    @_locked
     def unclassified(self) -> list[tuple[str, str]]:
         """(empreinte, texte) des astuces que ni les étiquettes ni les mots-clés ni l'IA n'ont classées."""
         return list(self.con.execute(
             "SELECT DISTINCT hash, text FROM tip WHERE category_source = 'aucune'"
             " AND hash NOT IN (SELECT hash FROM ai_category)"))
 
+    @_locked
     def store_ai_categories(self, categories: dict[str, str]) -> None:
         with self.con:
             self.con.executemany("INSERT OR REPLACE INTO ai_category(hash, category) VALUES (?, ?)",
                                  list(categories.items()))
             self.con.execute(APPLY_AI)
 
+    @_locked
     def missing_embeddings(self, model: str) -> list[tuple[str, str]]:
         """(empreinte, texte) des astuces sans vecteur pour ce modèle."""
         return list(self.con.execute(
             "SELECT DISTINCT t.hash, t.text FROM tip t LEFT JOIN embedding e ON e.hash = t.hash AND e.model = ?"
             " WHERE e.hash IS NULL", (model,)))
 
+    @_locked
     def store_embeddings(self, model: str, items: Iterable[tuple[str, np.ndarray]]) -> None:
         with self.con:
             self.con.executemany(
@@ -167,25 +190,45 @@ class TipIndex:
                 [(h, model, np.asarray(v, dtype=np.float16).tobytes()) for h, v in items])
 
     # --- lecture ---------------------------------------------------------------------------------
+    @_locked
+    def translations(self, hashes: list[str], lang: str) -> dict[str, str]:
+        """Traductions déjà en cache, {empreinte: texte traduit}."""
+        if not hashes:
+            return {}
+        rows = self.con.execute(
+            f"SELECT hash, text FROM translation WHERE lang = ? AND hash IN ({','.join('?' * len(hashes))})",
+            [lang, *hashes])
+        return dict(rows)
+
+    @_locked
+    def store_translations(self, lang: str, texts: dict[str, str]) -> None:
+        with self.con:
+            self.con.executemany("INSERT OR REPLACE INTO translation(hash, lang, text) VALUES (?, ?, ?)",
+                                 [(h, lang, t) for h, t in texts.items()])
+
+    @_locked
     def count(self) -> int:
         return self.con.execute("SELECT COUNT(*) FROM tip").fetchone()[0]
 
+    @_locked
     def load(self, model: str) -> tuple[list[IndexedTip], np.ndarray]:
         """Toutes les astuces qui ont un vecteur, et la matrice (n, d) de leurs vecteurs normalisés."""
         rows = self.con.execute(
-            "SELECT t.id, t.country, t.slug, t.section, t.text, t.category, t.image_url, t.street_view, e.vector"
+            "SELECT t.hash, t.id, t.country, t.slug, t.section, t.text, t.category, t.image_url, t.street_view,"
+            " e.vector"
             " FROM tip t JOIN embedding e ON e.hash = t.hash AND e.model = ? ORDER BY t.id", (model,)).fetchall()
-        tips = [IndexedTip(*r[:8]) for r in rows]
+        tips = [IndexedTip(*r[:9]) for r in rows]
         if not rows:
             return tips, np.zeros((0, 0), dtype=np.float32)
-        return tips, np.stack([np.frombuffer(r[8], dtype=np.float16) for r in rows]).astype(np.float32)
+        return tips, np.stack([np.frombuffer(r[9], dtype=np.float16) for r in rows]).astype(np.float32)
 
+    @_locked
     def search(self, query: str, limit: int = 20, countries: Iterable[str] | None = None) -> list[IndexedTip]:
         """Recherche plein texte (BM25) ; chaque mot est cité, donc aucune syntaxe FTS5 ne passe de la requête."""
         words = re.findall(r"\w{2,}", query.lower())[:20]
         if not words:
             return []
-        sql = ("SELECT t.id, t.country, t.slug, t.section, t.text, t.category, t.image_url, t.street_view"
+        sql = ("SELECT t.hash, t.id, t.country, t.slug, t.section, t.text, t.category, t.image_url, t.street_view"
                " FROM tip_fts f JOIN tip t ON t.id = f.rowid WHERE tip_fts MATCH ?")
         params: list = [" OR ".join(f'"{w}"' for w in words)]
         if countries:

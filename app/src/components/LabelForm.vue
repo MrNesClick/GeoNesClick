@@ -41,10 +41,9 @@ const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 
 </script>
 
 <template>
-  <section aria-labelledby="label-titre" class="border-t border-courbe-fonce pt-5">
-    <h2 id="label-titre" class="font-bold text-papier">Après la manche : c'était où ?</h2>
+  <div>
 
-    <p v-if="analysis.labelled" class="mt-2 text-papier" role="status">
+    <p v-if="analysis.labelled" class="text-papier" role="status">
       Ajouté au jeu de test :
       <span aria-hidden="true">{{ flag(analysis.labelled.country) }}</span>
       {{ countryName(analysis.labelled.country) }}.
@@ -57,7 +56,7 @@ const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 
       </button>
     </p>
 
-    <form v-else class="mt-3 space-y-3" @submit.prevent="save">
+    <form v-else class="space-y-3" @submit.prevent="save">
       <label class="block">
         <span class="text-[0.85rem] text-courbe">Pays de la bonne réponse</span>
         <select v-model="country" :class="field">
@@ -137,5 +136,5 @@ const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 
         </li>
       </ul>
     </div>
-  </section>
+  </div>
 </template>

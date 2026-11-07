@@ -173,3 +173,46 @@ def test_unreadable_ai_answer_is_not_cached(engine):
     engine.vision.client = FakeLLM("désolé, je ne peux pas")
     asyncio.run(engine.refresh_plonkit(check=False))
     assert len(engine.plonkit_index.unclassified()) == 1  # sera reproposée à la prochaine mise à jour
+
+
+def test_displayed_tips_are_translated_once_and_cached(engine):
+    asyncio.run(engine.refresh_plonkit(check=False))
+    engine.cfg.plonkit.ai_classify = False
+    engine.vision.client = FakeLLM('{"0": "Une ligne centrale **jaune**."}')
+    sent = []
+
+    async def broadcast(message):
+        sent.append(message)
+
+    engine.broadcast = broadcast
+    similar = engine.similar(YELLOW, [("NO", 1.0)])
+    yellow = next(t for t in similar["NO"] if t["text"] == "A yellow centre line.")
+    assert yellow["translated"] is None
+    asyncio.run(engine._translate_tips("cap", [(yellow["id"], yellow["text"])], "fr"))
+    assert sent[-1]["translations"] == {yellow["id"]: "Une ligne centrale **jaune**."}
+    again = next(t for t in engine.similar(YELLOW, [("NO", 1.0)])["NO"] if t["id"] == yellow["id"])
+    assert again["translated"] == "Une ligne centrale **jaune**."  # servie depuis le cache
+
+
+def test_translation_failure_keeps_english(engine):
+    asyncio.run(engine.refresh_plonkit(check=False))
+    engine.vision.client = FakeLLM(error=TimeoutError("lent"))
+    sent = []
+
+    async def broadcast(message):
+        sent.append(message)
+
+    engine.broadcast = broadcast
+    asyncio.run(engine._translate_tips("cap", [("h", "Poles.")], "fr"))
+    assert sent[-1]["translations"] == {} and "indisponible" in sent[-1]["error"]
+
+
+def test_no_translation_in_english_or_when_disabled(engine):
+    engine.vision.client = FakeLLM("{}")
+    engine.cfg.coach.language = "en"
+    assert engine.translation_lang is None
+    engine.cfg.coach.language = "fr"
+    engine.cfg.plonkit.translate = False
+    assert engine.translation_lang is None
+    engine.cfg.plonkit.translate = True
+    assert engine.translation_lang == "fr"

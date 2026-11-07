@@ -10,6 +10,7 @@ Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
   labelled       capture ajoutée au jeu de test (« C'était où ? »), avec la progression à jour
   lookfor        « où regarder » recalculé pour une capture, après un verdict « Juste » / « Faux »
   (streetclip.similar : astuces Plonk It qui ressemblent à la vue, pour chaque pays candidat)
+  tips_translated traductions des astuces affichées, arrivées après coup ({empreinte: texte})
   error          capture impossible
 Déclencheurs : POST /capture (bouton de l'interface) ou socket Unix (raccourci GNOME, voir trigger.py).
 """
@@ -44,6 +45,7 @@ from .settings import SettingsError, current, save
 from .notify import Notifier
 from .plonkit import CHECKED_FILE, PlonkitError, collect, load_tips
 from .plonkit_ai import classify as classify_tips
+from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .streetclip import StreetClip
@@ -51,6 +53,7 @@ from .vision import VisionClient, VisionError
 
 THUMB_SIDE = 720
 RECENT_FRAMES = 10  # captures brutes gardées en mémoire pour « C'était où ? »
+TRANSLATE_BATCH = 3  # astuces par appel de traduction (les appels partent en parallèle)
 
 
 class ModelTestRequest(BaseModel):
@@ -104,8 +107,9 @@ class Engine:
         self.settings_lock = asyncio.Lock()
         # Références vers les tâches du niveau 2 : sans elles, asyncio peut les libérer en cours de route.
         self.background: set[asyncio.Task] = set()
-        self.plonkit_tips: list = []
-        self.plonkit_matrix = None
+        # (astuces, matrice de leurs vecteurs) : remplacé d'un seul bloc et lu en une fois, car la recherche
+        # tourne dans un thread pendant que la mise à jour de fond peut changer la base.
+        self.plonkit_base: tuple[list, Any] = ([], None)
         self.plonkit_status = "off" if not cfg.plonkit.enabled else "absent"  # absent, busy, ready, error, off
         self.plonkit_message = ""
         self.plonkit_task: asyncio.Task | None = None
@@ -158,8 +162,8 @@ class Engine:
                 "ready": self.vision.ready,
                 "model": self.cfg.vision.model,
             },
-            "level": self.cfg.coach.default_level,
-            "reveal_countries": self.cfg.coach.reveal_countries,
+            "help_level": self.cfg.coach.help_level,
+            "trust_proof": self.cfg.coach.trust_proof,
             "metas": {
                 "count": len(self.metas), "message": self.metas_message, "judge": self.cfg.metas.judge_buttons,
             },
@@ -209,6 +213,10 @@ class Engine:
         await asyncio.to_thread(self.capture.stop)
 
     # --- Plonk It ------------------------------------------------------------------------------
+    @property
+    def plonkit_tips(self) -> list:
+        return self.plonkit_base[0]
+
     def plonkit_due(self) -> bool:
         """Le dernier contrôle de la liste des guides date-t-il de plus de refresh_days jours ?"""
         try:
@@ -243,7 +251,7 @@ class Engine:
                 fetched = stats["fetched"]
             await self._plonkit_status("busy", "indexation des astuces…")
             tips, matrix = await self._index_plonkit()
-            self.plonkit_tips, self.plonkit_matrix = tips, matrix
+            self.plonkit_base = (tips, matrix)
             countries = len({t.country for t in tips})
             done = f", {fetched} guides mis à jour" if fetched else ""
             summary = f"{len(tips)} astuces, {countries} pays{done}"
@@ -282,7 +290,7 @@ class Engine:
                 await asyncio.sleep(pc.ai_pause_s)
         else:
             await self._plonkit_status("ready", f"{summary} ; {done} astuces classées par l'IA")
-        self.plonkit_tips, self.plonkit_matrix = await asyncio.to_thread(index.load, self.cfg.streetclip.model)
+        self.plonkit_base = await asyncio.to_thread(index.load, self.cfg.streetclip.model)
 
     async def _index_plonkit(self):
         pc, model = self.cfg.plonkit, self.cfg.streetclip.model
@@ -298,18 +306,43 @@ class Engine:
             await asyncio.to_thread(index.store_embeddings, model, zip([h for h, _ in missing], vectors, strict=True))
         return await asyncio.to_thread(index.load, model)
 
+    @property
+    def translation_lang(self) -> str | None:
+        """Langue cible des astuces, ou None si on les garde en anglais."""
+        pc, lang = self.cfg.plonkit, self.cfg.coach.language
+        return lang if pc.translate and lang != "en" and self.vision.client else None
+
     def similar(self, emb, pairs: list[tuple[str, float]]) -> dict[str, list[dict[str, Any]]]:
-        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (vide si désactivé)."""
+        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (vide si désactivé),
+        avec leur traduction si elle est déjà en cache. Appelée hors de la boucle : elle lit la base."""
         pc, m = self.cfg.plonkit, self.cfg.metas
-        if not (pc.enabled and pc.similar_tips and self.plonkit_tips and emb is not None):
+        tips, matrix = self.plonkit_base  # une seule lecture : astuces et matrice vont ensemble
+        if not (pc.enabled and pc.similar_tips and tips and emb is not None):
             return {}
         codes = [c for c, _ in select_candidates(pairs, m.min_probability, m.max_candidates)]
-        found = similar_tips(emb, self.plonkit_tips, self.plonkit_matrix, codes, pc.similar_per_country)
+        found = similar_tips(emb, tips, matrix, codes, pc.similar_per_country)
+        lang = self.translation_lang
+        cached = {}
+        if lang and self.plonkit_index:
+            cached = self.plonkit_index.translations([t.hash for items in found.values() for t, _ in items], lang)
         return {
-            code: [{"text": t.text, "section": t.section, "category": t.category, "url": t.url,
-                    "score": round(score, 3)} for t, score in items]
+            code: [{"id": t.hash, "text": t.text, "translated": cached.get(t.hash), "section": t.section,
+                    "category": t.category, "url": t.url, "score": round(score, 3)} for t, score in items]
             for code, items in found.items() if items
         }
+
+    async def _translate_tips(self, capture_id: str, items: list[tuple[str, str]], lang: str) -> None:
+        """Traduit les astuces affichées sans traduction en cache, puis pousse le résultat à l'interface."""
+        model = self.cfg.plonkit.ai_model or self.cfg.vision.model
+        try:
+            found = await translate_tips(self.vision.client, model, items, lang)
+            if found and self.plonkit_index:
+                await asyncio.to_thread(self.plonkit_index.store_translations, lang, found)
+            message = {"type": "tips_translated", "id": capture_id, "translations": found}
+        except Exception as exc:  # délai, 429… : les astuces restent en anglais pour cette capture
+            message = {"type": "tips_translated", "id": capture_id, "translations": {},
+                       "error": f"traduction indisponible ({type(exc).__name__})"}
+        await self.broadcast(message)
 
     # --- analyse ---------------------------------------------------------------------------
     async def analyse(self) -> dict[str, Any]:
@@ -353,12 +386,23 @@ class Engine:
             pairs = [(s.code, s.probability) for s in scores]
             if capture_id in self.recent and scores:
                 self.recent[capture_id].update(predicted=scores[0].code, scores=pairs)
+            similar = await asyncio.to_thread(self.similar, emb, pairs)
+            missing = list({tip["id"]: tip["text"] for tips in similar.values() for tip in tips
+                            if tip["translated"] is None}.items())
+            lang = self.translation_lang
             await self.broadcast({
                 "type": "streetclip", "id": capture_id, "ms": round(ms),
                 "scores": [s.__dict__ for s in scores],
                 "lookfor": [asdict(lf) for lf in self.look_for(pairs)],
-                "similar": self.similar(emb, pairs),
+                "similar": similar, "translating": bool(lang and missing),
             })
+            if lang and missing:  # en parallèle, comme le niveau 2 : l'anglais s'affiche d'abord
+                # Petits lots simultanés (~10 s chacun) : chaque traduction s'affiche dès qu'elle arrive.
+                for start in range(0, len(missing), TRANSLATE_BATCH):
+                    task = asyncio.create_task(
+                        self._translate_tips(capture_id, missing[start:start + TRANSLATE_BATCH], lang))
+                    self.background.add(task)
+                    task.add_done_callback(self.background.discard)
         return {"ok": True, "id": capture_id}
 
     def look_for(self, scores: list[tuple[str, float]]):

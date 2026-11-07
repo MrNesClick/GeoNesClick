@@ -62,8 +62,13 @@ class CaptureConfig(BaseModel):
 
 
 class CoachConfig(BaseModel):
-    default_level: int = Field(ge=1, le=2)
-    reveal_countries: bool
+    # Ce qui s'affiche sans clic : 1 où regarder, 2 + ce que voit l'IA, 3 + pays probables et indices,
+    # 4 + synthèse de la réponse (pays, région si un texte la nomme, preuve).
+    help_level: int = Field(ge=1, le=4)
+    # Une preuve lue par l'IA avec une certitude forte (texte nommant un lieu…) met ce pays en tête et
+    # écarte les autres, au lieu des seuls pourcentages de StreetCLIP.
+    trust_proof: bool
+    language: Literal["fr", "en", "es", "de", "it", "pt"]  # langue des traductions (l'interface suivra)
 
 
 class DatasetConfig(BaseModel):
@@ -121,6 +126,7 @@ class PlonkitConfig(BaseModel):
     ai_model: str  # vide = le modèle du niveau 2
     ai_batch: int = Field(ge=5, le=50)  # astuces par appel
     ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause entre deux appels (limites du palier gratuit)
+    translate: bool  # traduire les astuces affichées dans la langue du coach (à la demande, en cache)
 
     @field_validator("keywords")
     @classmethod

@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import Candidates from "./components/Candidates.vue";
+import Activity from "./components/Activity.vue";
+import Countries from "./components/Countries.vue";
+import HelpLevel from "./components/HelpLevel.vue";
 import LabelForm from "./components/LabelForm.vue";
+import LookHere from "./components/LookHere.vue";
+import MetaHints from "./components/MetaHints.vue";
 import Observations from "./components/Observations.vue";
+import PlonkitTips from "./components/PlonkitTips.vue";
+import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
-import { engine, requestCapture, reselectWindow, restartSharing } from "./engine";
+import Summary from "./components/Summary.vue";
+import { engine, requestCapture, reselectWindow, restartSharing, tipsByCountry } from "./engine";
+import * as sum from "./summaries";
 
 const status = computed(() => {
   if (!engine.connected) return { tone: "bg-courbe", text: "Démarrage du moteur…" };
@@ -13,8 +21,8 @@ const status = computed(() => {
   if (!engine.streetclip.ready) return { tone: "bg-courbe", text: "Chargement du modèle local…" };
   return { tone: "bg-foret", text: "Prêt. Capture avec Super+Maj+G." };
 });
-const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
 const showSettings = ref(false);
+const level = computed(() => engine.helpLevel);
 </script>
 
 <template>
@@ -42,6 +50,9 @@ const showSettings = ref(false);
       </button>
     </header>
 
+    <HelpLevel v-if="!showSettings" />
+    <Activity v-if="!showSettings" />
+
     <p v-if="engine.error" class="mt-3 border-l-2 border-alerte pl-3 text-[0.9rem] text-papier" role="alert">
       {{ engine.error }}
     </p>
@@ -52,39 +63,45 @@ const showSettings = ref(false);
 
     <main v-else-if="engine.current" class="flex-1">
       <Transition name="arrivee" appear mode="out-in">
-        <div :key="engine.current.id" class="space-y-6 pt-4">
-          <figure>
-            <img
-              :src="engine.current.thumbnail"
-              alt="Vue analysée"
-              class="w-full rounded-md border border-courbe-fonce"
-            />
-            <figcaption class="mt-1.5 text-[0.8rem] text-courbe">
-              Capture de {{ time(engine.current.at) }}, en {{ engine.current.captureMs }} ms
-            </figcaption>
-          </figure>
+        <div :key="engine.current.id" class="pt-2">
+          <!-- Sections dans l'ordre d'utilité ; le résumé de chacune reste lisible quand elle est repliée. -->
+          <Section v-if="level >= 4" id="reponse" title="Réponse" tone="papier" :summary="sum.answer(engine.current)">
+            <Summary :analysis="engine.current" />
+          </Section>
 
-          <Candidates
-            :scores="engine.current.scores"
-            :lookfor="engine.current.lookfor"
-            :similar="engine.current.similar"
-            :ms="engine.current.clipMs"
-            :countries-shown="engine.current.countriesShown"
-            @show-countries="engine.current.countriesShown = true"
-          />
+          <Section id="capture" title="Capture" :open="false" tone="papier" :summary="sum.capture(engine.current)">
+            <img :src="engine.current.thumbnail" alt="Vue analysée" class="w-full rounded-md border border-courbe-fonce" />
+          </Section>
 
-          <Observations
-            :vision="engine.current.vision"
-            :revealed="engine.revealed"
-            @reveal="engine.revealed = true"
-          />
+          <Section v-if="level < 3" id="regarder" title="Où regarder" :summary="sum.metas(engine.current)">
+            <LookHere :lookfor="engine.current.lookfor" />
+          </Section>
 
-          <LabelForm
-            v-if="engine.dataset.enabled"
-            :analysis="engine.current"
-            :countries="engine.countries"
-            :progress="engine.progress"
-          />
+          <template v-else>
+            <Section id="pays" title="Pays" :summary="sum.countries(engine.current)">
+              <Countries :analysis="engine.current" />
+            </Section>
+            <Section id="departage" title="Ce qui les départage" :summary="sum.metas(engine.current)">
+              <MetaHints :lookfor="engine.current.lookfor" />
+            </Section>
+            <Section
+              v-if="tipsByCountry(engine.current).length"
+              id="astuces"
+              title="Astuces Plonk It"
+              :open="false"
+              :summary="sum.tips(engine.current)"
+            >
+              <PlonkitTips :analysis="engine.current" />
+            </Section>
+          </template>
+
+          <Section v-if="level >= 2" id="ia" title="Ce que voit l'IA" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
+            <Observations :vision="engine.current.vision" />
+          </Section>
+
+          <Section v-if="engine.dataset.enabled" id="manche" title="Après la manche" :open="false" :summary="sum.round(engine.current)">
+            <LabelForm :analysis="engine.current" :countries="engine.countries" :progress="engine.progress" />
+          </Section>
         </div>
       </Transition>
     </main>
@@ -95,7 +112,8 @@ const showSettings = ref(false);
         Pendant une manche, appuie sur <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Super</kbd>
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Maj</kbd>
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">G</kbd>
-        : le coach te montre d'abord où regarder, puis les pays probables et ce qu'il observe dans la vue.
+        : le coach affiche tout seul l'aide du niveau choisi ci-dessus, de « Regarder » (où chercher, sans
+        rien dévoiler) à « Réponse » (le pays et la preuve).
       </p>
     </main>
 

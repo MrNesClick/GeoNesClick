@@ -36,6 +36,12 @@ async function submit() {
   saved.value = error ?? "Réglages enregistrés et appliqués.";
 }
 
+const HELP_LEVELS = [
+  { value: 1, label: "1. Regarder", hint: "Où regarder, sans nommer de pays." },
+  { value: 2, label: "2. Indices", hint: "Plus ce que voit l'IA, dont le texte lu." },
+  { value: 3, label: "3. Pays", hint: "Plus les pays probables, leurs indices et les astuces Plonk It." },
+  { value: 4, label: "4. Réponse", hint: "Plus la synthèse en tête : pays, région si un texte la nomme, et la preuve." },
+];
 const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 py-2 text-papier";
 const check = "size-4 accent-[var(--color-foret)]";
 </script>
@@ -53,18 +59,15 @@ const check = "size-4 accent-[var(--color-foret)]";
 
     <form v-else class="mt-4 space-y-7" @submit.prevent="submit">
       <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Niveaux d'aide</legend>
-        <label class="flex items-start gap-3">
-          <input v-model="s.coach.default_level" type="radio" :value="1" :class="check" class="mt-1" />
-          <span>Commencer par le niveau 1 <span class="block text-[0.85rem] text-courbe">Les observations de l'IA attendent ton clic.</span></span>
+        <legend class="font-bold text-papier">Niveau d'aide</legend>
+        <p class="text-[0.85rem] text-courbe">Ce qui s'affiche tout seul après une capture (modifiable aussi en haut du coach).</p>
+        <label v-for="lvl in HELP_LEVELS" :key="lvl.value" class="flex items-start gap-3">
+          <input v-model="s.coach.help_level" type="radio" :value="lvl.value" :class="check" class="mt-1" />
+          <span>{{ lvl.label }} <span class="block text-[0.85rem] text-courbe">{{ lvl.hint }}</span></span>
         </label>
         <label class="flex items-start gap-3">
-          <input v-model="s.coach.default_level" type="radio" :value="2" :class="check" class="mt-1" />
-          <span>Tout montrer <span class="block text-[0.85rem] text-courbe">Les observations s'affichent dès qu'elles arrivent.</span></span>
-        </label>
-        <label class="flex items-start gap-3">
-          <input v-model="s.coach.reveal_countries" type="checkbox" :class="check" class="mt-1" />
-          <span>Montrer les pays probables d'emblée <span class="block text-[0.85rem] text-courbe">Sinon, le coach montre d'abord où regarder.</span></span>
+          <input v-model="s.coach.trust_proof" type="checkbox" :class="check" class="mt-1" />
+          <span>Une preuve lue tranche <span class="block text-[0.85rem] text-courbe">Texte nommant un lieu, domaine, drapeau, plaque : avec une certitude forte, ce pays passe en tête et les autres sont écartés.</span></span>
         </label>
       </fieldset>
 
@@ -146,6 +149,22 @@ const check = "size-4 accent-[var(--color-foret)]";
       </fieldset>
 
       <fieldset class="space-y-3">
+        <legend class="font-bold text-papier">Langue</legend>
+        <label class="block max-w-64">
+          <span class="text-[0.85rem] text-courbe">Traduire les astuces en</span>
+          <select v-model="s.coach.language" :class="field">
+            <option value="fr">Français</option>
+            <option value="en">Anglais (pas de traduction)</option>
+            <option value="es">Espagnol</option>
+            <option value="de">Allemand</option>
+            <option value="it">Italien</option>
+            <option value="pt">Portugais</option>
+          </select>
+        </label>
+        <p class="text-[0.85rem] text-courbe">L'interface du coach reste en français pour l'instant.</p>
+      </fieldset>
+
+      <fieldset class="space-y-3">
         <legend class="font-bold text-papier">Guides Plonk It</legend>
         <p class="text-[0.85rem]" :class="engine.plonkit.status === 'error' ? 'text-alerte' : 'text-courbe'" role="status">
           {{ engine.plonkit.status === "off" ? "Désactivés." : engine.plonkit.message || "En attente…" }}
@@ -161,6 +180,10 @@ const check = "size-4 accent-[var(--color-foret)]";
         <label class="flex items-start gap-3">
           <input v-model="s.plonkit.ai_classify" type="checkbox" :class="check" class="mt-1" :disabled="!s.plonkit.enabled" />
           <span>Faire classer par l'IA les astuces sans catégorie <span class="block text-[0.85rem] text-courbe">Une seule fois par astuce, avec le modèle NVIDIA ; le résultat est gardé en cache.</span></span>
+        </label>
+        <label class="flex items-start gap-3">
+          <input v-model="s.plonkit.translate" type="checkbox" :class="check" class="mt-1" :disabled="!s.plonkit.enabled" />
+          <span>Traduire les astuces affichées <span class="block text-[0.85rem] text-courbe">À la demande, par le modèle NVIDIA ; chaque traduction est gardée en cache.</span></span>
         </label>
         <div class="grid grid-cols-2 gap-3">
           <label class="block">

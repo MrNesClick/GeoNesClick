@@ -120,3 +120,13 @@ def test_ai_prompt_numbers_and_truncates_tips():
     prompt = build_prompt(["Poles\n\nwith holes.", "x" * 1000])
     assert "0: Poles with holes." in prompt and "x" * (MAX_CHARS + 1) not in prompt
     assert "- poteaux : Poteaux" in prompt
+
+
+def test_translations_are_validated():
+    from geonesclick.plonkit_ai import build_translate_prompt, parse_translations
+
+    originals = ["Poles.", "Bollards."]
+    content = '{"0": "Poteaux.", "1": "' + "x" * 500 + '", "5": "hors lot", "bad": "non"}'
+    assert parse_translations(content, originals) == {0: "Poteaux."}  # démesurée, hors lot, clé invalide : ignorées
+    prompt = build_translate_prompt(originals, "fr")
+    assert "français" in prompt and "bollard → borne" in prompt and "1: Bollards." in prompt

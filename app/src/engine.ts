@@ -30,7 +30,11 @@ export interface LookFor {
 
 /** Une astuce Plonk It dont le texte ressemble à la vue (comparaison CLIP, en local). */
 export interface SimilarTip {
+  /** Empreinte du texte : clé de la traduction. */
+  id: string;
   text: string;
+  /** Traduction dans la langue du coach, si elle est déjà connue. */
+  translated: string | null;
   section: string;
   category: string;
   url: string;
@@ -54,18 +58,61 @@ export interface Progress {
   confusions: Confusion[];
 }
 
-export type Fiche = Record<string, string | string[]>;
+export type Fiche = Record<string, unknown>;
+
+/** Conclusion du modèle de vision, seulement sur preuve explicite (texte lu, domaine, drapeau, plaque). */
+export interface Conclusion {
+  country: string;
+  region: string;
+  proof: string;
+  certainty: string;
+}
+
+/** Lit la clé « conclusion » de la fiche ; null si absente, vide ou pays inconnu de la configuration. */
+export function conclusionOf(fiche: Fiche): Conclusion | null {
+  const c = fiche.conclusion;
+  if (!c || typeof c !== "object") return null;
+  const field = (key: string) => {
+    const v = (c as Record<string, unknown>)[key];
+    return typeof v === "string" ? v.trim() : "";
+  };
+  const country = field("pays").toUpperCase();
+  if (!engine.countries.includes(country)) return null;
+  return { country, region: field("region"), proof: field("preuve"), certainty: field("certitude").toLowerCase() };
+}
+
+/** Preuve lue par l'IA pour cette capture (null tant que l'IA n'a pas répondu, ou sans preuve). */
+export const proofOf = (a: Analysis): Conclusion | null =>
+  a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
+
+/** Preuve de certitude forte, quand le réglage « une preuve lue tranche » est actif. */
+export function certainProof(a: Analysis): Conclusion | null {
+  const proof = proofOf(a);
+  return engine.trustProof && proof?.certainty === "forte" ? proof : null;
+}
+
+/** Astuces Plonk It à afficher, dans l'ordre des pays probables (seul le pays prouvé si la preuve est forte). */
+export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
+  const certain = certainProof(a);
+  return (a.scores ?? [])
+    .filter((s) => !certain || s.code === certain.country)
+    .map((s) => ({ code: s.code, tips: a.similar?.[s.code] ?? [] }))
+    .filter((c) => c.tips.length);
+}
 
 export interface Analysis {
   id: string;
   at: string;
+  /** Instant de réception de la capture (horloge locale), pour afficher le temps écoulé. */
+  receivedAt: number;
   thumbnail: string;
   captureMs: number;
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
   similar: Record<string, SimilarTip[]> | null;
+  /** Traduction des astuces en cours (null : rien à traduire), ou message d'erreur. */
+  translation: "pending" | "done" | string | null;
   clipMs: number | null;
-  countriesShown: boolean;
   labelled: { country: string; guessed: string; found: boolean | null } | null;
   vision:
     | { status: "off" }
@@ -83,9 +130,10 @@ export const engine = reactive({
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
   countries: [] as string[],
-  level: 1,
-  revealCountries: false,
-  revealed: false,
+  /** Niveau d'aide : 1 où regarder, 2 + ce que voit l'IA, 3 + pays et indices, 4 + synthèse de la réponse. */
+  helpLevel: 4,
+  /** Une preuve lue avec certitude forte met son pays en tête et écarte les autres. */
+  trustProof: true,
   busy: false,
   error: null as string | null,
   current: null as Analysis | null,
@@ -102,11 +150,20 @@ type Message =
       dataset: typeof engine.dataset;
       plonkit: typeof engine.plonkit;
       countries: string[];
-      level: number;
-      reveal_countries: boolean;
+      help_level: number;
+      trust_proof: boolean;
     }
   | { type: "capture"; id: string; at: string; thumbnail: string; ms: number }
-  | { type: "streetclip"; id: string; ms: number; scores: CountryScore[]; lookfor: LookFor[]; similar: Record<string, SimilarTip[]> }
+  | {
+      type: "streetclip";
+      id: string;
+      ms: number;
+      scores: CountryScore[];
+      lookfor: LookFor[];
+      similar: Record<string, SimilarTip[]>;
+      translating: boolean;
+    }
+  | { type: "tips_translated"; id: string; translations: Record<string, string>; error?: string }
   | { type: "vision_pending"; id: string; model: string }
   | { type: "vision"; id: string; model: string; seconds: number; fiche: Fiche }
   | { type: "vision_error"; id: string; error: string }
@@ -125,22 +182,22 @@ function handle(msg: Message) {
       engine.dataset = msg.dataset;
       engine.plonkit = msg.plonkit;
       engine.countries = msg.countries;
-      engine.level = msg.level;
-      engine.revealCountries = msg.reveal_countries;
+      engine.helpLevel = msg.help_level;
+      engine.trustProof = msg.trust_proof;
       break;
     case "capture":
       engine.error = null;
-      engine.revealed = engine.level >= 2;
       engine.current = {
         id: msg.id,
         at: msg.at,
+        receivedAt: Date.now(),
         thumbnail: msg.thumbnail,
         captureMs: msg.ms,
         scores: null,
         lookfor: null,
         similar: null,
+        translation: null,
         clipMs: null,
-        countriesShown: engine.revealCountries,
         labelled: null,
         vision: engine.vision.enabled ? { status: "pending", model: engine.vision.model } : { status: "off" },
       };
@@ -150,7 +207,17 @@ function handle(msg: Message) {
         cur.scores = msg.scores;
         cur.lookfor = msg.lookfor;
         cur.similar = msg.similar;
+        cur.translation = msg.translating ? "pending" : null;
         cur.clipMs = msg.ms;
+      }
+      break;
+    case "tips_translated":
+      if (cur?.id === msg.id && cur.similar) {
+        const all = Object.values(cur.similar).flat();
+        for (const tip of all) tip.translated = msg.translations[tip.id] ?? tip.translated;
+        // Les lots arrivent un par un : « en cours » tant qu'il reste une astuce sans traduction.
+        if (msg.error) cur.translation = msg.error;
+        else if (all.every((tip) => tip.translated)) cur.translation = "done";
       }
       break;
     case "lookfor": // recalculé après un verdict « Juste » / « Faux »
@@ -225,6 +292,12 @@ export const reselectWindow = () => request("/capture/reselect");
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null) =>
   request("/label", { id, country, guessed, found });
 export const refreshPlonkit = () => request("/plonkit/refresh");
+
+/** Change le niveau d'aide tout de suite, puis l'enregistre dans config.toml. */
+export async function setHelpLevel(level: number) {
+  engine.helpLevel = level;
+  await saveSettings({ coach: { help_level: level } });
+}
 
 /** Libellés des catégories de metas (mêmes clés que metas.py). */
 export const CATEGORY_LABELS: Record<string, string> = {

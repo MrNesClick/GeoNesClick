@@ -26,10 +26,15 @@ crop = []
 masks = []
 
 [coach]
-default_level = 1        # niveau d'aide affiché au départ : 1 = où regarder (local), 2 = ce qu'on voit
-# Pays probables visibles d'emblée ? false = le coach montre d'abord OÙ regarder, les pays restent
-# cachés derrière « Voir les pays probables » (pour chercher par toi-même).
-reveal_countries = false
+# Niveau d'aide : ce qui s'affiche tout seul après une capture (modifiable aussi en haut du coach).
+#   1 = où regarder          2 = + ce que voit l'IA (dont le texte lu)
+#   3 = + pays probables, indices et astuces Plonk It
+#   4 = + synthèse en tête : pays, région si un texte la nomme, et la preuve
+help_level = 4
+# Preuve lue avec certitude forte (ex. panneau « Provincia de Albacete ») : ce pays passe en tête,
+# « certain », et les autres sont écartés ; false = garder les seuls pourcentages de StreetCLIP.
+trust_proof = true
+language = "fr"          # langue des traductions : fr, en, es, de, it, pt (l'interface suivra)
 
 [dataset]
 # Jeu de test : « C'était où ? » après la manche enregistre la capture brute et le pays réel.
@@ -73,6 +78,9 @@ ai_classify = true
 ai_model = ""            # vide = le modèle du niveau 2 ([vision] model)
 ai_batch = 25
 ai_pause_s = 2.0
+# Les astuces sont en anglais : celles qui s'affichent sont traduites à la demande dans la langue du coach
+# ([coach] language), par le même modèle, puis gardées en cache (une seule traduction par texte et langue).
+translate = true
 
 [streetclip]
 enabled = true
@@ -182,8 +190,9 @@ max_tokens = 2000
 temperature = 0.2
 max_side_px = 1280       # l'image est réduite à cette taille avant l'envoi
 prompt = '''
-Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue Street View,
-sans deviner de pays ni de région. Réponds par un objet JSON valide, en français, avec ces clés :
+Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue Street View.
+Ne devine jamais un pays d'après le paysage : seule la clé "conclusion" peut nommer un lieu, et seulement
+sur une preuve explicite. Réponds par un objet JSON valide, en français, avec ces clés :
 - "sens_circulation": "droite" | "gauche" | "indéterminé" ; ne conclus que sur une preuve forte
   (véhicules EN MOUVEMENT, panneaux orientés, marquage), jamais sur des voitures garées
 - "preuve_circulation": la preuve utilisée
@@ -198,6 +207,11 @@ sans deviner de pays ni de région. Réponds par un objet JSON valide, en franç
 - "camera_et_voiture_google": génération de caméra, partie visible du véhicule, antenne
 - "autres_indices": tout autre détail discriminant
 - "confiance": "faible" | "moyenne" | "élevée"
+- "conclusion": objet {"pays": code ISO 3166-1 à 2 lettres, "region": région, province ou ville,
+  "preuve": l'élément exact qui le prouve, "certitude": "forte" | "moyenne"} ; remplis-le UNIQUEMENT si
+  un élément explicite désigne le lieu (texte lu nommant un lieu ou une administration, nom de domaine,
+  indicatif téléphonique, drapeau, plaque nationale) ; sinon mets "pays": "", "region": "", "preuve": "".
+  Un nom de région ne vaut que s'il est lu ; laisse "region" vide s'il n'est pas écrit.
 Si un élément n'est pas visible, écris "non visible". N'invente rien.
 Ignore l'interface du jeu (boutons, boussole, carte, logos).
 '''

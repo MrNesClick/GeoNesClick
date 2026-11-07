@@ -13,8 +13,8 @@ ORIGIN = {"Origin": "http://localhost:1420"}
 def test_save_merges_into_existing_user_file(tmp_path):
     user = tmp_path / "config.toml"
     user.write_text('[vision]\nmodel = "a/b"\n\n[capture]\ncrop = [0.0, 0.1, 1.0, 1.0]\n')
-    cfg = save({"coach": {"default_level": 2}}, user)
-    assert cfg.coach.default_level == 2
+    cfg = save({"coach": {"help_level": 2}}, user)
+    assert cfg.coach.help_level == 2
     written = tomllib.loads(user.read_text())
     assert written["vision"]["model"] == "a/b"  # clé existante conservée
     assert written["capture"]["crop"] == [0.0, 0.1, 1.0, 1.0]  # même hors de l'écran Réglages
@@ -39,10 +39,10 @@ def test_non_editable_settings_are_refused(tmp_path, changes):
 
 def test_invalid_value_is_refused_without_writing(tmp_path):
     user = tmp_path / "config.toml"
-    user.write_text('[coach]\ndefault_level = 1\n')
-    with pytest.raises(SettingsError, match="default_level"):
-        save({"coach": {"default_level": 7}}, user)
-    assert tomllib.loads(user.read_text())["coach"]["default_level"] == 1
+    user.write_text('[coach]\nhelp_level = 1\n')
+    with pytest.raises(SettingsError, match="help_level"):
+        save({"coach": {"help_level": 7}}, user)
+    assert tomllib.loads(user.read_text())["coach"]["help_level"] == 1
 
 
 def test_current_exposes_only_editable_settings(tmp_path):
@@ -60,11 +60,11 @@ def client(tmp_path):
 
 def test_settings_route_applies_live(client):
     http, engine, user = client
-    res = http.post("/settings", json={"coach": {"reveal_countries": True}, "metas": {"max_categories": 2}},
+    res = http.post("/settings", json={"coach": {"help_level": 3}, "metas": {"max_categories": 2}},
                     headers=ORIGIN)
     assert res.status_code == 200
-    assert engine.cfg.coach.reveal_countries is True and engine.cfg.metas.max_categories == 2
-    assert tomllib.loads(user.read_text())["coach"]["reveal_countries"] is True
+    assert engine.cfg.coach.help_level == 3 and engine.cfg.metas.max_categories == 2
+    assert tomllib.loads(user.read_text())["coach"]["help_level"] == 3
 
 
 def test_settings_route_rejects_base_url(client):
@@ -76,7 +76,7 @@ def test_settings_route_rejects_base_url(client):
 
 def test_foreign_origin_cannot_change_settings(client):
     http, *_ = client
-    res = http.post("/settings", json={"coach": {"default_level": 2}}, headers={"Origin": "https://x.example"})
+    res = http.post("/settings", json={"coach": {"help_level": 2}}, headers={"Origin": "https://x.example"})
     assert res.status_code == 403
 
 
@@ -88,24 +88,24 @@ def test_model_test_rejects_malformed_ids(client, model):
 
 def test_save_keeps_comments_and_layout(tmp_path):
     user = tmp_path / "config.toml"
-    user.write_text('# mon commentaire\n[coach]\ndefault_level = 1  # je préfère chercher\n')
-    save({"coach": {"default_level": 2}}, user)
+    user.write_text('# mon commentaire\n[coach]\nhelp_level = 1  # je préfère chercher\n')
+    save({"coach": {"help_level": 2}}, user)
     text = user.read_text()
     assert text.startswith("# mon commentaire\n")
-    assert "default_level = 2  # je préfère chercher" in text
+    assert "help_level = 2  # je préfère chercher" in text
 
 
 def test_save_only_writes_values_that_change(tmp_path):
     user = tmp_path / "config.toml"
     defaults = current(load_config(tmp_path / "absent.toml"))
-    save(defaults | {"coach": {"default_level": 2, "reveal_countries": False}}, user)
+    save(defaults | {"coach": {"help_level": 2, "language": "fr"}}, user)
     written = tomllib.loads(user.read_text())
-    assert written == {"coach": {"default_level": 2}}  # le reste suit toujours les valeurs par défaut
+    assert written == {"coach": {"help_level": 2}}  # le reste suit toujours les valeurs par défaut
 
 
 def test_unreadable_user_file_is_refused_without_writing(tmp_path):
     user = tmp_path / "config.toml"
     user.write_text("coach = 3\n")
     with pytest.raises(SettingsError):
-        save({"coach": {"default_level": 2}}, user)
+        save({"coach": {"help_level": 2}}, user)
     assert user.read_text() == "coach = 3\n"

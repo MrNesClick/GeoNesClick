@@ -8,7 +8,7 @@ def test_defaults_load_without_user_file(tmp_path):
     cfg = config.load_config(tmp_path / "absent.toml")
     assert cfg.server.host == "127.0.0.1"
     assert cfg.capture.source == "window"
-    assert cfg.coach.default_level == 1
+    assert cfg.coach.help_level == 4
     assert cfg.streetclip.countries["Hungary"] == "HU"
 
 

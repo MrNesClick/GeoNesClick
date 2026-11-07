@@ -22,11 +22,10 @@ affichés dans la fenêtre du coach.
 | Niveau 2 : Nemotron 3.5 Super VL (NVIDIA), sans raisonnement | de 3 à 5 s en général, jusqu'à 15 s selon la charge |
 
 Fonctionnalités :
-- **Niveau 1 « Où regarder »**, sans spoiler : le coach montre d'abord les catégories d'indices qui
-  départagent les pays probables et quoi y observer (« Regarde la couleur de la ligne centrale. »),
-  puis, sur demande, les pays et l'indice propre à chacun.
+- **Quatre niveaux d'aide**, affichés sans clic et réglables en pleine partie : où regarder (« Regarde
+  la couleur de la ligne centrale. »), ce que voit l'IA, les pays probables, la réponse avec sa preuve.
 - **Vérifier l'amorce en jouant** : « Juste » / « Faux » sur chaque indice non vérifié.
-- **Niveau 2 « Ce que voit l'IA »**, révélable : la fiche d'indices du modèle de vision.
+- **Ce que voit l'IA** : la fiche d'indices du modèle de vision, dont le texte lu mot pour mot.
 - **« C'était où ? »** après la manche : tu donnes le pays réel et celui que tu avais répondu ; la
   capture rejoint le jeu de test, et le coach suit ta progression (pays trouvés, pays à retravailler,
   justesse de StreetCLIP) et **tes confusions**, avec les metas qui séparent les deux pays.
@@ -109,10 +108,23 @@ quelle fenêtre partager : choisis la fenêtre du navigateur où tu joues. L'aut
 (`~/.config/geonesclick/screencast.token`). Pour en changer (autre navigateur, écran ou résolution),
 clique sur **Changer de fenêtre** en bas du coach : le sélecteur de GNOME se rouvre.
 
-Pendant une manche, appuie sur **Super+Maj+G** (ou sur « Capturer »). Le coach affiche :
-1. les **pays probables**, calculés en local et instantanément ;
-2. **ce que voit l'IA**, quelques secondes plus tard, masqué derrière « Révéler les observations » au
-   niveau d'aide 1 pour que tu cherches d'abord par toi-même.
+Pendant une manche, appuie sur **Super+Maj+G** (ou sur « Capturer »). Le coach affiche **tout seul,
+sans clic**, l'aide du niveau choisi en haut de sa fenêtre :
+
+| Niveau | Ce qui s'affiche |
+|---|---|
+| 1. Regarder | où regarder (catégories d'indices et quoi y observer), sans nommer de pays |
+| 2. Indices | + ce que voit l'IA, dont le texte lu mot pour mot |
+| 3. Pays | + pays probables, indices de chacun, astuces Plonk It traduites |
+| 4. Réponse (défaut) | + synthèse en tête : pays, région si un texte la nomme, et la preuve |
+
+Au niveau 4, une **preuve explicite** lue par l'IA (texte nommant un lieu, nom de domaine, indicatif,
+drapeau, plaque) l'emporte, par exemple « Espagne, Albacete : panneau "PROVINCIA DE ALBACETE" ». Sans
+preuve, le coach donne le pays le plus probable d'après l'allure de la vue (StreetCLIP), présenté comme
+tel. Avec une certitude forte, la preuve tranche aussi dans la liste des pays (niveau 3 et plus) : le
+pays prouvé passe en tête, « certain », les autres sont écartés et leurs astuces masquées ; le pourcentage
+de StreetCLIP reste affiché pour comparer (`[coach] trust_proof`, désactivable). Vérifié le 2026-11-07 : aucune fausse conclusion sur les 5 captures du jeu de test, y compris une
+enseigne finlandaise en Norvège.
 
 Pour lancer le moteur seul (sans interface) : `cd engine && .venv/bin/python -m geonesclick`.
 
@@ -134,7 +146,7 @@ Exemple :
 
 ```toml
 [coach]
-default_level = 2          # observations de l'IA affichées sans clic
+help_level = 2             # où regarder + ce que voit l'IA, sans nommer de pays
 
 [capture]
 source = "window"               # "window" (défaut), "monitor" ou "both" : ce que GNOME propose de partager
@@ -214,6 +226,13 @@ ce que le coach ne fait pas.
   lots de 25, une seule fois par texte (cache), et seules les 12 catégories connues sont acceptées.
   Mesuré le 2026-11-07 : 1 009 astuces classées en 2 min 40 ; 92 % des astuces ont une catégorie ;
   environ 8 sur 10 sont justes sur un échantillon, les erreurs touchant surtout la caméra Google.
+
+- **Traduction** : les guides sont en anglais. Les astuces affichées sont traduites à la demande dans la
+  langue du coach (`[coach] language`, `fr` par défaut ; `en` = pas de traduction), par le modèle NVIDIA,
+  avec un glossaire GeoGuessr (bollard → borne, road line → marquage…). L'anglais s'affiche d'abord ; les
+  traductions arrivent par lots de 3 envoyés en parallèle (~10 s par lot mesuré avec Nemotron Super VL),
+  puis sont gardées en cache : une astuce déjà lue s'affiche traduite immédiatement. « Voir l'original »
+  permet de comparer. Désactivable (`[plonkit] translate`) ; modèle réglable (`[plonkit] ai_model`).
 
 Commande manuelle : `cd engine && .venv/bin/python -m geonesclick.plonkit collect`.
 

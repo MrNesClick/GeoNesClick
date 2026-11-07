@@ -38,6 +38,7 @@ class FakeClip:
 
 class FakeVision:
     ready = True
+    client = None  # pas de client OpenAI : ni traduction ni classement
 
     async def describe(self, _img):
         return {"confiance": "faible"}, 0.1

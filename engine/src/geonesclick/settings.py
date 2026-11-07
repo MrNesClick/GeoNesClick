@@ -20,14 +20,14 @@ from tomlkit.exceptions import TOMLKitError
 from .config import USER_CONFIG, Config, merge
 
 EDITABLE: dict[str, tuple[str, ...]] = {
-    "coach": ("default_level", "reveal_countries"),
+    "coach": ("help_level", "trust_proof", "language"),
     "capture": ("notify", "sound", "save_to_disk", "keep_last"),
     "dataset": ("ask_guessed", "max_confusions"),
     "metas": (
         "include_seed", "min_probability", "max_candidates", "max_categories", "show_looks", "max_looks",
         "judge_buttons",
     ),
-    "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country", "ai_classify"),
+    "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country", "ai_classify", "translate"),
     "streetclip": ("top_k",),
     "vision": ("enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px"),
 }
