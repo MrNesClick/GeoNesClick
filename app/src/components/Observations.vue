@@ -2,6 +2,7 @@
 // Niveau 2 : fiche d'indices du modèle de vision distant, masquée tant que tu ne la révèles pas.
 import { computed } from "vue";
 import type { Analysis, Fiche } from "../engine";
+import { fr } from "../engine";
 
 const props = defineProps<{ vision: Analysis["vision"]; revealed: boolean }>();
 const emit = defineEmits<{ reveal: [] }>();
@@ -45,7 +46,7 @@ const confidence = computed(() => (props.vision.status === "done" ? asText(props
         <span class="grid size-6 place-items-center rounded-full border border-lac text-[0.8rem] text-lac" aria-label="Niveau">2</span>
         Ce que voit l'IA
       </h2>
-      <span v-if="vision.status === 'done'" class="text-[0.8rem] text-courbe">{{ vision.seconds }} s</span>
+      <span v-if="vision.status === 'done'" class="text-[0.8rem] text-courbe">{{ fr(vision.seconds) }} s</span>
     </header>
 
     <p v-if="vision.status === 'off'" class="mt-3 text-courbe">

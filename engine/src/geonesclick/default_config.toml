@@ -18,6 +18,7 @@ notify = true            # notification GNOME à chaque capture
 sound = true             # son d'obturateur avec la notification
 save_to_disk = true      # garde une copie PNG de chaque capture
 directory = ""           # vide = engine/captures/
+keep_last = 200          # nombre de captures conservées sur le disque (0 = illimité)
 # Zone analysée, en fractions de l'image capturée : [gauche, haut, droite, bas].
 # Vide = image entière. (La détection automatique de la vue Street View viendra plus tard.)
 crop = []
@@ -26,6 +27,32 @@ masks = []
 
 [coach]
 default_level = 1        # niveau d'aide affiché au départ : 1 = où regarder (local), 2 = ce qu'on voit
+# Pays probables visibles d'emblée ? false = le coach montre d'abord OÙ regarder, les pays restent
+# cachés derrière « Voir les pays probables » (pour chercher par toi-même).
+reveal_countries = false
+
+[dataset]
+# Jeu de test : « C'était où ? » après la manche enregistre la capture brute et le pays réel.
+enabled = true
+directory = ""           # vide = engine/dataset/
+ask_guessed = true       # demander aussi le pays que tu avais répondu (false = simple « trouvé ? » Oui/Non)
+max_confusions = 3       # confusions affichées avec les metas qui les séparent (0 = masquées)
+
+[metas]
+enabled = true
+include_seed = true      # amorce de faits très établis (alphabets, conduite, lignes), non vérifiée
+user_file = ""           # vide = ~/.config/geonesclick/mes-metas.toml (tes metas, prioritaires)
+min_probability = 0.05   # pays candidats retenus pour le départage : au-dessus de ce seuil…
+max_candidates = 5       # … et au plus ce nombre
+max_categories = 3       # nombre de catégories « où regarder » affichées
+show_looks = true        # consignes « Regarde la couleur de la ligne centrale. » avant de révéler les pays
+max_looks = 2            # consignes affichées par catégorie
+judge_buttons = true     # boutons « Juste » / « Faux » sur les indices de l'amorce
+# Remplacer la consigne ou le poids d'une catégorie (poids 0 = catégorie ignorée ; « domaine » vaut 0.5) :
+# category_looks = { poteaux = "les trous dans les poteaux" }
+# category_weights = { domaine = 1.0 }
+category_looks = {}
+category_weights = {}
 
 [streetclip]
 enabled = true
@@ -34,7 +61,10 @@ device = "auto"          # "auto", "cuda" ou "cpu"
 prompt = "A Street View photo in {}."
 top_k = 5
 
+exclude_countries = []   # retirer des pays de la liste ci-dessous, par code : ["RU", "UA"]
+
 # Pays candidats : nom anglais (utilisé dans le prompt) = code ISO 3166-1 alpha-2 (drapeau, metas).
+
 [streetclip.countries]
 Albania = "AL"
 Andorra = "AD"

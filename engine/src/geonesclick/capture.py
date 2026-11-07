@@ -249,3 +249,12 @@ def save_png(img: Image.Image, directory: Path, stem: str) -> Path:
     path = directory / f"{stem}.png"
     img.save(path)
     return path
+
+
+def prune_captures(directory: Path, keep: int) -> int:
+    """Ne garde que les `keep` captures les plus récentes (noms horodatés). Renvoie le nombre supprimé."""
+    files = sorted(directory.glob("capture-*.png"))
+    old = files[:-keep] if keep else []
+    for f in old:
+        f.unlink(missing_ok=True)
+    return len(old)

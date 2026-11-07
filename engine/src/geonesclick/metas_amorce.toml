@@ -1,0 +1,280 @@
+# Amorce de metas : uniquement des faits très établis (alphabets, sens de circulation, couleur des
+# lignes centrales, domaines). Rédigée par l'assistant, NON vérifiée sur une source : verified = false.
+# Elle sera complétée ou remplacée par une vraie source de metas, et tes propres metas
+# (~/.config/geonesclick/mes-metas.toml) passent toujours en premier.
+#
+# Format : [[meta]] category = <catégorie>, countries = [codes ISO à 2 lettres], hint = "<indice>"
+#          look = "<quoi observer, sans nommer de pays>" (facultatif : sinon, consigne de la catégorie)
+# Catégories : langue, conduite, marquage, poteaux, bornes, plaques, panneaux, domaine, voiture,
+#              vegetation, architecture, autre
+
+# --- Langue et alphabet --------------------------------------------------------------------------
+
+[[meta]]
+category = "langue"
+countries = ["SE"]
+hint = "Suédois : å, ä, ö ; « väg », « gatan »"
+
+[[meta]]
+category = "langue"
+countries = ["NO"]
+hint = "Norvégien : æ, ø, å ; « vei » ou « veg », « gate »"
+
+[[meta]]
+category = "langue"
+countries = ["DK"]
+hint = "Danois : æ, ø, å ; « vej », « gade »"
+
+[[meta]]
+category = "langue"
+countries = ["FI"]
+hint = "Finnois : ä, ö, lettres doublées (« katu », « tie ») ; parfois bilingue avec le suédois"
+
+[[meta]]
+category = "langue"
+countries = ["EE"]
+hint = "Estonien : õ (propre à l'estonien dans la région), ä, ö, ü ; « tee », « tänav »"
+
+[[meta]]
+category = "langue"
+countries = ["LV"]
+hint = "Letton : voyelles longues à macron (ā, ē, ī, ū), ļ, ņ, ķ, ģ ; « iela »"
+
+[[meta]]
+category = "langue"
+countries = ["LT"]
+hint = "Lituanien : ą, ę, ė, į, ų, ū ; « gatvė »"
+
+[[meta]]
+category = "langue"
+countries = ["PL"]
+hint = "Polonais : ł, ą, ę, ś, ź, ż, ń ; « ulica » (ul.)"
+
+[[meta]]
+category = "langue"
+countries = ["CZ"]
+hint = "Tchèque : ř, ů, ě ; « ulice »"
+
+[[meta]]
+category = "langue"
+countries = ["SK"]
+hint = "Slovaque : ä, ľ, ĺ, ŕ, ô ; « ulica »"
+
+[[meta]]
+category = "langue"
+countries = ["HU"]
+hint = "Hongrois : ő, ű (doubles accents aigus) ; « utca »"
+
+[[meta]]
+category = "langue"
+countries = ["SI"]
+hint = "Slovène : č, š, ž mais ni ć ni đ ; « cesta », « ulica »"
+
+[[meta]]
+category = "langue"
+countries = ["HR"]
+hint = "Croate : alphabet latin seul, avec č, ć, đ, š, ž"
+
+[[meta]]
+category = "langue"
+countries = ["RS"]
+hint = "Serbe : cyrillique, souvent accompagné du latin (đ, ć, č)"
+
+[[meta]]
+category = "langue"
+countries = ["ME", "MK"]
+hint = "Cyrillique et latin possibles (comme en Serbie)"
+
+[[meta]]
+category = "langue"
+countries = ["BG"]
+hint = "Bulgare : cyrillique, avec un ъ très fréquent"
+
+[[meta]]
+category = "langue"
+countries = ["UA"]
+hint = "Ukrainien : cyrillique avec і, ї, є"
+
+[[meta]]
+category = "langue"
+countries = ["RU"]
+hint = "Russe : cyrillique avec ы, э"
+
+[[meta]]
+category = "langue"
+countries = ["RO"]
+hint = "Roumain : ă, â, î, ș, ț ; « strada »"
+
+[[meta]]
+category = "langue"
+countries = ["DE", "AT"]
+hint = "Allemand avec ß ; « Straße »"
+
+[[meta]]
+category = "langue"
+countries = ["CH"]
+hint = "Allemand sans ß, français ou italien selon la région"
+
+[[meta]]
+category = "langue"
+countries = ["NL"]
+hint = "Néerlandais : « ij », « straat », « weg »"
+
+[[meta]]
+category = "langue"
+countries = ["FR"]
+hint = "Français : « rue », « avenue », é, è, à"
+
+[[meta]]
+category = "langue"
+countries = ["BE"]
+hint = "Français ou néerlandais selon la région"
+
+[[meta]]
+category = "langue"
+countries = ["ES"]
+hint = "Espagnol : ñ ; « calle » (parfois catalan, basque ou galicien)"
+
+[[meta]]
+category = "langue"
+countries = ["PT"]
+hint = "Portugais : ã, õ, ç ; « rua »"
+
+[[meta]]
+category = "langue"
+countries = ["IT"]
+hint = "Italien : « via », « strada »"
+
+[[meta]]
+category = "langue"
+countries = ["GR"]
+hint = "Alphabet grec"
+
+[[meta]]
+category = "langue"
+countries = ["TR"]
+hint = "Turc : ı (i sans point), ğ, ş, ç ; « cadde », « sokak »"
+
+# --- Sens de circulation -------------------------------------------------------------------------
+
+[[meta]]
+category = "conduite"
+countries = ["GB", "IE", "MT", "JP", "AU", "NZ", "ZA", "IN", "TH", "ID", "MY", "SG", "KE", "UG",
+             "BD", "LK", "BT", "BW", "LS", "SZ"]
+hint = "Circulation à gauche"
+
+[[meta]]
+category = "conduite"
+countries = ["AL", "AD", "AR", "AT", "BE", "BO", "BR", "BG", "KH", "CA", "CL", "CO", "HR", "CZ",
+             "DK", "DO", "EC", "EE", "FI", "FR", "DE", "GH", "GR", "GT", "HU", "IS", "IL", "IT",
+             "JO", "KG", "LV", "LT", "LU", "MX", "MN", "ME", "NL", "NG", "MK", "NO", "PA", "PE",
+             "PH", "PL", "PT", "RO", "RU", "RW", "SN", "RS", "SK", "SI", "KR", "ES", "SE", "CH",
+             "TW", "TN", "TR", "UA", "AE", "US", "UY", "VN"]
+hint = "Circulation à droite"
+
+# --- Marquage au sol -----------------------------------------------------------------------------
+
+[[meta]]
+category = "marquage"
+countries = ["NO", "FI", "US", "CA"]
+hint = "Ligne centrale jaune"
+look = "la couleur de la ligne centrale"
+
+[[meta]]
+category = "marquage"
+countries = ["SE", "DK", "DE", "AT", "CH", "FR", "BE", "NL", "LU", "GB", "IE", "ES", "PT", "IT",
+             "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "RO", "BG", "EE", "LV", "LT", "UA", "RU"]
+hint = "Ligne centrale blanche"
+look = "la couleur de la ligne centrale"
+
+# --- Noms de domaine (enseignes, véhicules, panneaux publicitaires) --------------------------------
+
+[[meta]]
+category = "domaine"
+countries = ["SE"]
+hint = ".se"
+
+[[meta]]
+category = "domaine"
+countries = ["NO"]
+hint = ".no"
+
+[[meta]]
+category = "domaine"
+countries = ["FI"]
+hint = ".fi"
+
+[[meta]]
+category = "domaine"
+countries = ["EE"]
+hint = ".ee"
+
+[[meta]]
+category = "domaine"
+countries = ["LV"]
+hint = ".lv"
+
+[[meta]]
+category = "domaine"
+countries = ["LT"]
+hint = ".lt"
+
+[[meta]]
+category = "domaine"
+countries = ["PL"]
+hint = ".pl"
+
+[[meta]]
+category = "domaine"
+countries = ["CZ"]
+hint = ".cz"
+
+[[meta]]
+category = "domaine"
+countries = ["SK"]
+hint = ".sk"
+
+[[meta]]
+category = "domaine"
+countries = ["HU"]
+hint = ".hu"
+
+[[meta]]
+category = "domaine"
+countries = ["SI"]
+hint = ".si"
+
+[[meta]]
+category = "domaine"
+countries = ["HR"]
+hint = ".hr"
+
+[[meta]]
+category = "domaine"
+countries = ["RS"]
+hint = ".rs"
+
+[[meta]]
+category = "domaine"
+countries = ["DE"]
+hint = ".de"
+
+[[meta]]
+category = "domaine"
+countries = ["AT"]
+hint = ".at"
+
+[[meta]]
+category = "domaine"
+countries = ["DK"]
+hint = ".dk"
+
+[[meta]]
+category = "domaine"
+countries = ["RO"]
+hint = ".ro"
+
+[[meta]]
+category = "domaine"
+countries = ["BG"]
+hint = ".bg"

@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import Candidates from "./components/Candidates.vue";
+import LabelForm from "./components/LabelForm.vue";
 import Observations from "./components/Observations.vue";
+import SettingsPanel from "./components/SettingsPanel.vue";
 import { engine, requestCapture, reselectWindow, restartSharing } from "./engine";
 
 const status = computed(() => {
@@ -12,6 +14,7 @@ const status = computed(() => {
   return { tone: "bg-foret", text: "Prêt. Capture avec Super+Maj+G." };
 });
 const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
+const showSettings = ref(false);
 </script>
 
 <template>
@@ -43,7 +46,11 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
       {{ engine.error }}
     </p>
 
-    <main v-if="engine.current" class="flex-1">
+    <main v-if="showSettings" class="flex-1">
+      <SettingsPanel @close="showSettings = false" />
+    </main>
+
+    <main v-else-if="engine.current" class="flex-1">
       <Transition name="arrivee" appear mode="out-in">
         <div :key="engine.current.id" class="space-y-6 pt-4">
           <figure>
@@ -57,12 +64,25 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
             </figcaption>
           </figure>
 
-          <Candidates :scores="engine.current.scores" :ms="engine.current.clipMs" />
+          <Candidates
+            :scores="engine.current.scores"
+            :lookfor="engine.current.lookfor"
+            :ms="engine.current.clipMs"
+            :countries-shown="engine.current.countriesShown"
+            @show-countries="engine.current.countriesShown = true"
+          />
 
           <Observations
             :vision="engine.current.vision"
             :revealed="engine.revealed"
             @reveal="engine.revealed = true"
+          />
+
+          <LabelForm
+            v-if="engine.dataset.enabled"
+            :analysis="engine.current"
+            :countries="engine.countries"
+            :progress="engine.progress"
           />
         </div>
       </Transition>
@@ -74,13 +94,20 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
         Pendant une manche, appuie sur <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Super</kbd>
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Maj</kbd>
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">G</kbd>
-        : le coach te montre d'abord les pays probables, puis ce qu'il observe dans la vue.
+        : le coach te montre d'abord où regarder, puis les pays probables et ce qu'il observe dans la vue.
       </p>
     </main>
 
     <footer class="mt-6 flex items-center justify-between gap-3 border-t border-courbe-fonce pt-3 text-[0.85rem] text-courbe">
-      <span>Autre navigateur, écran ou résolution ?</span>
       <button
+        type="button"
+        class="rounded-md px-2 py-1 text-papier underline decoration-courbe underline-offset-4 hover:decoration-papier"
+        @click="showSettings = !showSettings"
+      >
+        {{ showSettings ? "Retour au coach" : "Réglages" }}
+      </button>
+      <button
+        title="Autre navigateur, écran ou résolution"
         type="button"
         class="shrink-0 rounded-md px-2 py-1 text-papier underline decoration-courbe underline-offset-4 hover:decoration-papier disabled:opacity-50"
         :disabled="!engine.connected || engine.busy || engine.capture.starting"

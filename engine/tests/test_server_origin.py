@@ -57,3 +57,11 @@ def test_websocket_sends_state_to_app(client):
 def test_foreign_host_is_rejected(client):
     """Défense contre le DNS rebinding : la requête arrive sur 127.0.0.1 mais avec le Host du domaine piégé."""
     assert client.get("/health", headers={"Host": "piege.example:47615"}).status_code == 400
+
+
+def test_cors_preflight_allowed_for_app_only(client):
+    pre = {"Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"}
+    ok = client.options("/label", headers={"Origin": APP_ORIGIN, **pre})
+    assert ok.status_code == 200
+    assert ok.headers["access-control-allow-origin"] == APP_ORIGIN
+    assert client.options("/label", headers={"Origin": EVIL_ORIGIN, **pre}).status_code == 403

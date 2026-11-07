@@ -16,10 +16,10 @@ class Notifier:
         self.sound = sound
         self._last_id = 0
         self._lock = threading.Lock()
-        self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None) if enabled else None
+        self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)  # ouvert même désactivé : réactivable à chaud
 
     def send(self, summary: str, body: str = "", image: Path | None = None, error: bool = False) -> None:
-        if not self._bus:
+        if not self.enabled:
             return
         hints = {"transient": GLib.Variant("b", True), "urgency": GLib.Variant("y", 2 if error else 1)}
         if image is not None:

@@ -61,3 +61,10 @@ def test_read_secret_falls_back_to_dotenv(monkeypatch, tmp_path):
     assert config.read_secret("CLE") == "nvapi-123"
     assert config.read_secret("VIDE") is None
     assert config.read_secret("ABSENTE") is None
+
+
+def test_countries_can_be_excluded(tmp_path):
+    user = tmp_path / "config.toml"
+    user.write_text('[streetclip]\nexclude_countries = ["ru", "UA"]\n')
+    codes = set(config.load_config(user).streetclip.countries.values())
+    assert "RU" not in codes and "UA" not in codes and "SE" in codes

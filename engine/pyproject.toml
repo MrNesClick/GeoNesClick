@@ -12,6 +12,7 @@ dependencies = [
     "openai>=3.46.0",
     "pillow>=13.0.0",
     "pygobject>=3.58.1",
+    "tomlkit==0.15.2",
     "torch>=2.15.0",
     "transformers>=5.22.2",
     "uvicorn>=0.54.0",
