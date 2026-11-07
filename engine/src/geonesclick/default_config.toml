@@ -85,6 +85,11 @@ ai_pause_s = 2.0
 # Les astuces sont en anglais : celles qui s'affichent sont traduites à la demande dans la langue du coach
 # ([coach] language), par le même modèle, puis gardées en cache (une seule traduction par texte et langue).
 translate = true
+translate_timeout_s = 30  # un lot plus lent reste en anglais pour cette manche (il sera retraduit d'avance)
+# Traduire d'avance toute la base, en arrière-plan (lots de 10, pause ai_pause_s, après les analyses en cours) :
+# mesuré le 2026-11-07, 31 astuces sur 4 060 en cache, et 50 s à 2 min d'attente par manche sans cela.
+# Une fois pour toutes (reprend où elle s'était arrêtée) ; de l'ordre de quelques heures sur le palier gratuit.
+pretranslate = true
 
 [streetclip]
 enabled = true
@@ -210,7 +215,14 @@ attribution = "© OpenStreetMap"
 attribution_url = "https://www.openstreetmap.org/copyright"
 # Filtre CSS appliqué aux tuiles pour le thème sombre du coach ("" = carte d'origine).
 tile_filter = "invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9)"
-max_zoom = 10            # zoom maximal (2 à 19) : le nuage est précis à ~100 km, inutile de charger les rues
+# De près, l'inversion rend forêts, relief et noms de villages illisibles (constaté le 2026-11-07 au zoom 13, en
+# Béarn) : à partir de close_zoom, tuiles d'origine à peine atténuées pour ne pas éblouir ("" = d'origine).
+tile_filter_close = "brightness(0.9) contrast(0.95)"
+close_zoom = 11
+# Zoom maximal (2 à 19). 13 : on voit les rues et les villages autour d'une position estimée d'après tes marques
+# (panneau directionnel, ~2 km près). Plus haut : plus de tuiles chargées, et le serveur voit des zones plus précises.
+# Les zones PLONK (~100 km) et les pays se cadrent toujours de plus loin (zoom 8 au plus).
+max_zoom = 13
 
 [vision]
 enabled = true
@@ -251,8 +263,63 @@ Si un élément n'est pas visible, écris "non visible". N'invente rien.
 Ignore l'interface du jeu (boutons, boussole, carte, logos).
 '''
 
+[marks]
+# Marques : Super+Maj+Z (ou « Marquer ») fige la vue en plein écran ; tu entoures chaque indice (plaque de rue,
+# panneau, enseigne…) ; chacun est découpé dans l'image BRUTE, agrandi s'il est petit, puis transcrit par le
+# modèle de vision. Les marques complètent l'analyse de la manche : il faut une capture d'abord.
+enabled = true
+max_marks = 9            # marques par image figée (1 à 20)
+# Mesuré (2026-11-07) : panneau roumain de 140×130 px lu déformé tel quel, exact une fois agrandi ×3.
+# Le plus grand côté de la découpe est porté à upscale_to_px, sans dépasser max_upscale fois sa taille.
+upscale_to_px = 420
+max_upscale = 4.0
+parallel = 3             # lectures envoyées en même temps (limites du palier gratuit)
+model = ""               # vide = le modèle du niveau 2 ([vision] model)
+max_tokens = 600
+# Le modèle TRANSCRIT seulement : le coach tire les conclusions (règles locales, à venir).
+prompt = '''
+Cette image est un détail agrandi d'une vue Street View. Recopie mot pour mot tout le texte visible, tel
+qu'il est écrit (accents, alphabet, majuscules), sans traduire ni corriger. Réponds par un objet JSON valide :
+- "texte": liste des lignes lues ; [] s'il n'y a pas de texte
+- "illisible": true si du texte est visible mais pas lisible, sinon false
+- "objet": ce que montre l'image, en quelques mots, en français (plaque de rue, panneau, enseigne, plaque d'immatriculation, borne, poteau…)
+- "alphabet": latin, cyrillique, grec, arabe, hébreu, thaï, hangeul, kana ou kanji, devanagari, autre, ou "aucun"
+N'invente rien et ne nomme aucun pays.
+'''
+
+[rules]
+# Règles locales : ce que le texte des marques prouve. Le modèle transcrit, le coach conclut, chaque règle sourcée :
+# - l'alphabet écarte les pays qui ne l'écrivent pas (du cyrillique exclut la France) ;
+# - une lettre ou un mot de rue propre à une langue (« ъ » devant une consonne, « utca ») : pays très probable ;
+# - un nom de lieu (GeoNames) : pays certain s'il est confirmé par une autre preuve et qu'aucune marque ne le contredit.
+scripts = true
+letters = true
+places = true
+place_min_len = 4        # noms de lieux plus courts ignorés (sigles, mots courants)
+# Répertoire GeoNames des localités de plus de 1 000 habitants (CC BY 4.0, ~11 Mo), téléchargé une fois au
+# démarrage puis indexé en local (~55 Mo, 2,5 s).
+places_url = "https://download.geonames.org/export/dump/cities1000.zip"
+places_dir = ""          # vide = ~/.local/share/geonesclick/places
+# Les lieux lus pendant une manche sont voisins (un panneau annonce rarement plus loin que 300 km) : un homonyme
+# plus éloigné du groupe des autres lieux lus est ignoré. Mesuré : « LAAS », village français absent du
+# répertoire, tombait sur Lasa (Italie, ~950 km d'Orthez lu sur la même manche).
+place_max_spread_km = 400
+# Un lieu SEUL ne conclut pas (mesuré : Gare, Laas, Orion, Manto, quatre fausses pistes en une journée) : il faut
+# un 2ᵉ lieu voisin, une lettre ou un mot de la langue du pays, ou StreetCLIP qui donne ce pays à prior_min au moins.
+prior_min = 0.10
+# Dès qu'un pays mène, son répertoire COMPLET (tous les lieux habités, villages compris) est téléchargé une fois
+# (GeoNames : FR 7,3 Mo, IT 4,4 Mo, BG 0,8 Mo) et ajouté. GeoNames voit alors quel pays est consulté.
+detail = true
+detail_url = "https://download.geonames.org/export/dump/{}.zip"
+
+[storage]
+# Taille maximale des caches qui grossissent tout seuls (villages des pays rencontrés ; plus tard rues par ville
+# et réponses Nominatim) : au-delà, les moins récemment utilisés sont supprimés. Le socle (répertoire GeoNames,
+# guides Plonk It) ne part jamais tout seul ; ton jeu de test, tes metas et ta config ne sont jamais touchés.
+max_cache_mb = 500
+
 [debug]
-# Mode débogage : un journal JSON de chaque analyse (pays StreetCLIP, zones, ce que l'IA a lu, étiquette
-# « C'était où ? ») est écrit à côté de sa capture, capture-<id>.json, pour relire une manche après coup.
-# Local, supprimé avec les anciennes captures.
+# Mode débogage : un journal JSON de chaque analyse (pays StreetCLIP, zones, ce que l'IA a lu, marques et leurs
+# découpes mark-<id>-<n>.png, étiquette « C'était où ? ») est écrit à côté de sa capture, capture-<id>.json,
+# pour relire une manche après coup. Local, supprimé avec les anciennes captures.
 enabled = false

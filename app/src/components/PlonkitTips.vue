@@ -18,7 +18,7 @@ const translation = computed(() => props.analysis.translation);
 <template>
   <p class="text-[0.8rem] text-courbe">Classées par ressemblance avec l'image : une piste à vérifier, pas une certitude.</p>
   <p v-if="translation && translation !== 'pending' && translation !== 'done'" class="text-[0.8rem] text-alerte">
-    Astuces en anglais : {{ translation }}.
+    {{ translation[0].toUpperCase() + translation.slice(1) }}.
   </p>
   <div v-for="c in byCountry" :key="c.code" class="mt-3">
     <h3 class="text-papier"><span aria-hidden="true" class="mr-1.5">{{ flag(c.code) }}</span>{{ countryName(c.code) }}</h3>

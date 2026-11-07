@@ -30,14 +30,17 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     ),
     "plonkit": (
         "enabled", "refresh_days", "delay_s", "similar_tips", "similar_per_country", "keywords", "ai_classify",
-        "ai_model", "ai_batch", "ai_pause_s", "translate",
+        "ai_model", "ai_batch", "ai_pause_s", "translate", "translate_timeout_s", "pretranslate",
     ),
     "streetclip": ("enabled", "device", "prompt", "top_k", "countries", "exclude_countries"),
     "plonk": ("enabled", "steps", "points", "zone_share", "zone_link_km", "zone_min_part"),
-    "map": ("enabled", "attribution", "tile_filter", "max_zoom"),
+    "map": ("enabled", "attribution", "tile_filter", "tile_filter_close", "close_zoom", "max_zoom"),
     "vision": (
         "enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px", "prompt",
     ),
+    "marks": ("enabled", "max_marks", "upscale_to_px", "max_upscale", "parallel", "model", "max_tokens", "prompt"),
+    "rules": ("scripts", "letters", "places", "place_min_len", "place_max_spread_km", "prior_min", "detail"),
+    "storage": ("max_cache_mb",),
     "debug": ("enabled",),
 }
 
@@ -56,6 +59,9 @@ FILE_ONLY: dict[str, dict[str, str]] = {
     "plonk": {"model": _MODEL, "revision": _MODEL},
     "map": {"tile_url": _CSP, "attribution_url": _CSP},
     "vision": {"base_url": _KEY, "api_key_env": _KEY},
+    "rules": {"places_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
+              "detail_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
+              "places_dir": _DISK},
 }
 
 # Pris en compte au prochain démarrage seulement (le reste s'applique tout de suite).

@@ -131,6 +131,8 @@ class PlonkitConfig(BaseModel):
     ai_batch: int = Field(ge=5, le=50)  # astuces par appel
     ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause entre deux appels (limites du palier gratuit)
     translate: bool  # traduire les astuces affichées dans la langue du coach (à la demande, en cache)
+    translate_timeout_s: float = Field(ge=5.0, le=120.0)  # au-delà, le lot reste en anglais (pas de nouvel essai)
+    pretranslate: bool  # traduire d'avance toute la base en arrière-plan, après les analyses en cours
 
     @field_validator("keywords")
     @classmethod
@@ -204,6 +206,9 @@ class MapConfig(BaseModel):
     attribution: str = Field(min_length=1, max_length=200)  # texte simple, affiché en permanence sur la carte
     attribution_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
     tile_filter: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")  # filtre CSS des tuiles (thème sombre)
+    # De près (rues, villages), l'inversion des couleurs devient illisible : autre filtre à partir de close_zoom.
+    tile_filter_close: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")
+    close_zoom: int = Field(ge=2, le=19)
     max_zoom: int = Field(ge=2, le=19)
 
 
@@ -218,6 +223,45 @@ class VisionConfig(BaseModel):
     temperature: float = Field(ge=0, le=2)
     max_side_px: int = Field(ge=256, le=4096)  # au-delà, la requête devient lourde sans gain mesuré
     prompt: str = Field(min_length=20, max_length=20000)
+
+
+class MarksConfig(BaseModel):
+    # Marques : sur la vue figée, le joueur entoure des indices (panneau, plaque…) ; chacun est découpé dans
+    # l'image brute, agrandi s'il est petit, puis transcrit par le modèle de vision.
+    enabled: bool
+    max_marks: int = Field(ge=1, le=20)  # marques par image figée (numérotées ① à ⑳)
+    # Agrandissement : le plus grand côté de la découpe est porté à upscale_to_px, sans dépasser max_upscale.
+    upscale_to_px: int = Field(ge=64, le=2048)
+    max_upscale: float = Field(ge=1.0, le=8.0)
+    parallel: int = Field(ge=1, le=8)  # lectures simultanées (limites de l'API)
+    model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # vide = le modèle du niveau 2
+    max_tokens: int = Field(ge=50, le=4000)
+    prompt: str = Field(min_length=20, max_length=5000)
+
+
+class RulesConfig(BaseModel):
+    # Règles locales appliquées au texte des marques (evidence.py) : elles concluent à la place du modèle.
+    scripts: bool  # l'alphabet écarte les pays qui ne l'écrivent pas
+    letters: bool  # lettres et mots de rue propres à une langue
+    places: bool  # noms de lieux (GeoNames)
+    place_min_len: int = Field(ge=3, le=20)  # noms plus courts ignorés (sigles, mots courants)
+    place_max_spread_km: float = Field(ge=50, le=3000)  # lieux d'une même manche : voisins, sinon homonymes lointains
+    prior_min: float = Field(ge=0, le=1)  # un lieu seul est confirmé si StreetCLIP donne son pays à ce seuil
+    detail: bool  # répertoire complet (villages) du pays en tête, téléchargé une fois par pays
+    places_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
+    detail_url: str = Field(pattern=r"^https://[^\s\"'<>{}]*\{\}[^\s\"'<>{}]*$")  # {} = code du pays
+    places_dir: str
+
+    @property
+    def places_path(self) -> Path:
+        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "geonesclick" / "places"
+        return Path(self.places_dir).expanduser() if self.places_dir else base
+
+
+class StorageConfig(BaseModel):
+    # Taille maximale des caches QUI GROSSISSENT (villages par pays, plus tard rues et Nominatim) ; le socle
+    # (index GeoNames, Plonk It) ne part jamais tout seul. Réglages › Stockage : tailles et boutons « Vider ».
+    max_cache_mb: int = Field(ge=50, le=100000)
 
 
 class DebugConfig(BaseModel):
@@ -236,6 +280,9 @@ class Config(BaseModel):
     plonk: PlonkConfig
     map: MapConfig
     vision: VisionConfig
+    marks: MarksConfig
+    rules: RulesConfig
+    storage: StorageConfig
     debug: DebugConfig
 
 

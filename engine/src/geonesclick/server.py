@@ -12,15 +12,18 @@ Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
   (streetclip.similar : astuces Plonk It qui ressemblent à la vue, pour chaque pays candidat)
   tips_translated traductions des astuces affichées, arrivées après coup ({empreinte: texte})
   cloud          zones probables de la vue pour la carte (nuage PLONK regroupé), toutes et pays par pays
+  freeze         vue figée pour y tracer des marques (la fenêtre plein écran des marques s'ouvre)
+  mark           une marque : découpe agrandie (pending), puis ce que le modèle y a lu (done) ou l'erreur
+  verdict        ce que les marques prouvent ensemble (règles locales : alphabet, lettres, lieux)
+  mark_removed   une marque retirée par le joueur
   error          capture impossible
-Déclencheurs : POST /capture (bouton de l'interface) ou socket Unix (raccourci GNOME, voir trigger.py).
+Déclencheurs : POST /capture et /marks/freeze (boutons de l'interface) ou socket Unix (raccourcis GNOME,
+voir trigger.py).
 """
 
 from __future__ import annotations
 
 import asyncio
-import base64
-import io
 import os
 import sqlite3
 import time
@@ -40,9 +43,12 @@ from pydantic import BaseModel, Field
 
 from .analysis_log import AnalysisLog
 from .borders import Borders
-from .capture import CaptureError, CaptureService, apply_crop_and_masks, prune_captures, save_png
+from .capture import CaptureError, CaptureService, apply_crop_and_masks, data_url, new_id, prune_captures, save_png
+from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, progress
+from .marks import DeleteRequest, FrameRequest, MarksRequest, uses
+from .places import Places
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
 from .settings import RESTART, SettingsError, current, file_only, save
 from .notify import Notifier
@@ -52,12 +58,13 @@ from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .plonk import PlonkCloud, summarise
+from . import storage
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
-THUMB_SIDE = 720
 RECENT_FRAMES = 10  # captures brutes gardées en mémoire pour « C'était où ? »
 TRANSLATE_BATCH = 3  # astuces par appel de traduction (les appels partent en parallèle)
+PRETRANSLATE_BATCH = 10  # astuces par appel de la traduction d'avance (réponse courte : JSON moins fragile)
 
 
 class ModelTestRequest(BaseModel):
@@ -72,6 +79,10 @@ class LabelRequest(BaseModel):
     area: str = Field(default="", max_length=200)
 
 
+class ClearRequest(BaseModel):
+    id: Literal["villages", "lieux", "plonkit", "captures"]
+
+
 class JudgeRequest(BaseModel):
     """Verdict du joueur sur un indice de l'amorce ; id = capture affichée, pour la mettre à jour."""
 
@@ -81,15 +92,7 @@ class JudgeRequest(BaseModel):
     id: str = Field(default="", max_length=32)
 
 
-def data_url(img: Image.Image, side: int = THUMB_SIDE) -> str:
-    img = img.copy()
-    img.thumbnail((side, side))
-    buf = io.BytesIO()
-    img.save(buf, "JPEG", quality=82)
-    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
-
-
-class Engine:
+class Engine(MarksMixin):
     def __init__(self, cfg: Config, settings_path: Path = USER_CONFIG) -> None:
         self.cfg = cfg
         self.settings_path = settings_path  # fichier écrit par l'écran Réglages
@@ -105,6 +108,10 @@ class Engine:
         self.gpu_lock = asyncio.Lock()
         self.dataset = Dataset(cfg.dataset.path) if cfg.dataset.enabled else None
         self.recent: OrderedDict[str, dict[str, Any]] = OrderedDict()  # id → image brute, pays prédits
+        self.last_id: str | None = None  # dernière analyse : les marques la complètent
+        # Vues figées en attente de marques, avec l'analyse qu'elles complètent (fixée au moment de figer).
+        self.frozen: OrderedDict[str, tuple[Image.Image, str]] = OrderedDict()
+        self.mark_slots = asyncio.Semaphore(cfg.marks.parallel)
         self.metas = []
         self.metas_message = "désactivées"
         self.load_metas()
@@ -118,10 +125,17 @@ class Engine:
         self.plonkit_message = ""
         self.plonkit_task: asyncio.Task | None = None
         self.plonkit_index: TipIndex | None = None
+        self.plonkit_summary = ""  # « 4060 astuces, 84 pays » : base des messages de la traduction d'avance
+        self.pretranslate_task: asyncio.Task | None = None
         self.plonk: PlonkCloud | None = None  # nuage de la carte (PLONK), chargé après StreetCLIP
         self.plonk_message = "désactivé" if not cfg.plonk.enabled else "en attente de StreetCLIP"
         self.plonk_task: asyncio.Task | None = None
         self.borders: Borders | None = None  # frontières Natural Earth : pays des points, contours de la carte
+        self.places: Places | None = None  # noms de lieux GeoNames (règles locales des marques)
+        self.places_message = "désactivé" if not cfg.rules.places else "en attente"
+        self.places_task: asyncio.Task | None = None
+        self.detail_tasks: dict[str, asyncio.Task] = {}  # répertoire complet d'un pays, en cours de téléchargement
+        self.detail_failed: set[str] = set()  # pays dont le détail a échoué : pas de nouvel essai avant redémarrage
 
     def load_metas(self) -> None:
         self.metas, self.metas_message = [], "désactivées"
@@ -144,6 +158,8 @@ class Engine:
             old, self.cfg = self.cfg, new
             self.notifier.enabled, self.notifier.sound = new.capture.notify, new.capture.sound
             self.vision = VisionClient(new.vision)
+            if new.marks.parallel != old.marks.parallel:  # les lectures en cours gardent l'ancien
+                self.mark_slots = asyncio.Semaphore(new.marks.parallel)
             if self.streetclip:
                 labels = (new.streetclip.prompt, new.streetclip.countries)
                 if labels != (old.streetclip.prompt, old.streetclip.countries):  # vecteurs texte à recalculer
@@ -165,6 +181,13 @@ class Engine:
                 self.schedule_plonkit(check=self.plonkit_due())
             elif not new.plonkit.enabled:
                 self.plonkit_status, self.plonkit_message = "off", ""
+            # Langue changée, traduction d'avance réactivée… : elle reprend là où le cache s'arrête.
+            if self.plonkit_status == "ready":
+                self.schedule_pretranslate()
+            if new.rules.places and self.places is None:
+                self.schedule_places()
+            if new.storage.max_cache_mb < old.storage.max_cache_mb:
+                await self.evict_caches()
         await self.broadcast(self.state())
         restart = [f"{section}.{key}" for section, values in changes.items() for key in values
                    if key in RESTART.get(section, ())]
@@ -197,10 +220,17 @@ class Engine:
                 "tips": len(self.plonkit_tips),
             },
             "plonk": {"enabled": self.cfg.plonk.enabled, "ready": self.plonk is not None, "message": self.plonk_message},
+            "marks": {"enabled": self.cfg.marks.enabled, "max": self.cfg.marks.max_marks,
+                      **dict(zip(("uses", "not_yet"), uses(self.cfg.rules.scripts, self.cfg.rules.letters,
+                                                           self.cfg.rules.places and self.places is not None),
+                                 strict=True))},
+            "places": {"enabled": self.cfg.rules.places, "ready": self.places is not None,
+                       "message": self.places_message},
             "map": {
                 "enabled": self.cfg.map.enabled, "tile_url": self.cfg.map.tile_url,
                 "attribution": self.cfg.map.attribution, "attribution_url": self.cfg.map.attribution_url,
-                "tile_filter": self.cfg.map.tile_filter, "max_zoom": self.cfg.map.max_zoom,
+                "tile_filter": self.cfg.map.tile_filter, "tile_filter_close": self.cfg.map.tile_filter_close,
+                "close_zoom": self.cfg.map.close_zoom, "max_zoom": self.cfg.map.max_zoom,
             },
             "countries": sorted(self.cfg.streetclip.countries.values()),
         }
@@ -238,12 +268,60 @@ class Engine:
             self.schedule_plonk()
         if self.cfg.plonkit.enabled:
             self.schedule_plonkit(check=self.plonkit_due())
+        if self.cfg.rules.places:
+            self.schedule_places()
 
     async def stop(self) -> None:
-        for task in (self.plonkit_task, self.plonk_task):
+        for task in (self.plonkit_task, self.plonk_task, self.pretranslate_task, self.places_task,
+                     *self.detail_tasks.values()):
             if task:
                 task.cancel()
         await asyncio.to_thread(self.capture.stop)
+
+    # --- stockage : tailles, limite des caches qui grossissent, « Vider » -----------------------------
+    async def evict_caches(self, keep: set[str] = frozenset()) -> list[str]:
+        """Villages des pays au-delà de la limite : les moins récemment utilisés partent (sauf keep)."""
+        removed = await asyncio.to_thread(storage.evict, self.cfg.rules.places_path,
+                                          self.cfg.storage.max_cache_mb * 1024 * 1024, set(keep))
+        for country in removed:
+            if self.places:
+                self.places.remove_detail(country)
+        return removed
+
+    def storage_items(self) -> dict[str, Any]:
+        items = storage.inventory(self.cfg.rules.places_path, self.cfg.plonkit.path, self.cfg.capture.path)
+        return {"items": items, "max_cache_mb": self.cfg.storage.max_cache_mb}
+
+    async def clear_storage(self, what: str) -> dict[str, Any]:
+        """Vide un élément du stockage ; seuls des fichiers connus sont supprimés, jamais un dossier."""
+        rc = self.cfg.rules
+        if what in ("villages", "lieux") and self.places:
+            for country in list(self.places.details):
+                self.places.remove_detail(country)
+        files = storage.village_files(rc.places_path)
+        if what == "lieux":
+            if self.places:
+                self.places.close()
+            self.places = None
+            self.places_message = "vidé : retéléchargé au prochain démarrage"
+            files += storage.base_place_files(rc.places_path)
+        elif what == "plonkit":
+            for task in (self.plonkit_task, self.pretranslate_task):
+                if task and not task.done():
+                    task.cancel()
+            if self.plonkit_index:
+                self.plonkit_index.close()
+            self.plonkit_index, self.plonkit_base = None, ([], None)
+            if self.cfg.plonkit.enabled:
+                self.plonkit_status, self.plonkit_message = "absent", "vidé : recollecté au prochain démarrage"
+            files = storage.plonkit_files(self.cfg.plonkit.path)
+        elif what == "captures":
+            files = storage.capture_files(self.cfg.capture.path)
+        freed = await asyncio.to_thread(storage.remove, files)
+        if what == "villages":
+            self.places_message = self._places_summary()
+        await self.broadcast(self.state())
+        return {"ok": True, "freed": freed, **self.storage_items()}
 
     # --- PLONK : nuage de la carte -----------------------------------------------------------------
     def schedule_plonk(self) -> None:
@@ -332,7 +410,9 @@ class Engine:
             done = f", {fetched} guides mis à jour" if fetched else ""
             summary = f"{len(tips)} astuces, {countries} pays{done}"
             await self._plonkit_status("ready" if tips else "absent", summary)
+            self.plonkit_summary = summary
             await self._classify_plonkit(summary)
+            self.schedule_pretranslate()
         except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # réseau, page changée, disque…
             # On garde la base précédente si elle existe : le coach continue avec les astuces déjà connues.
             await self._plonkit_status("ready" if self.plonkit_tips else "error", f"Plonk It : {exc}")
@@ -408,30 +488,91 @@ class Engine:
         }
 
     async def _translate_tips(self, capture_id: str, items: list[tuple[str, str]], lang: str) -> None:
-        """Traduit les astuces affichées sans traduction en cache, puis pousse le résultat à l'interface."""
-        model = self.cfg.plonkit.ai_model or self.cfg.vision.model
+        """Traduit les astuces affichées sans traduction en cache, puis pousse le résultat à l'interface.
+
+        Un seul message par lot, quoi qu'il arrive : l'interface compte les lots pour savoir quand c'est fini.
+        """
+        pc = self.cfg.plonkit
+        model, t0 = pc.ai_model or self.cfg.vision.model, time.perf_counter()
         try:
-            found = await translate_tips(self.vision.client, model, items, lang)
+            found = await asyncio.wait_for(translate_tips(self.vision.client, model, items, lang),
+                                           pc.translate_timeout_s)
             if found and self.plonkit_index:
                 await asyncio.to_thread(self.plonkit_index.store_translations, lang, found)
             message = {"type": "tips_translated", "id": capture_id, "translations": found}
+            if len(found) < len(items):  # réponse illisible ou incomplète : le reste garde son anglais
+                message["error"] = "réponse du modèle incomplète"
         except Exception as exc:  # délai, 429… : les astuces restent en anglais pour cette capture
             message = {"type": "tips_translated", "id": capture_id, "translations": {},
                        "error": f"traduction indisponible ({type(exc).__name__})"}
+        entry = self.recent.get(capture_id)
+        if entry is not None:  # journal du mode débogage : chaque lot, sa durée, ce qu'il a rendu
+            entry.setdefault("translation", []).append({
+                "tips": len(items), "translated": len(message["translations"]),
+                "seconds": round(time.perf_counter() - t0, 1), "error": message.get("error"),
+            })
+            await self._log(capture_id, translation=list(entry["translation"]))
         await self.broadcast(message)
 
+    # --- traduction d'avance -------------------------------------------------------------------
+    def schedule_pretranslate(self) -> None:
+        if self.pretranslate_task and not self.pretranslate_task.done():
+            return
+        self.pretranslate_task = asyncio.create_task(self.pretranslate())
+
+    async def pretranslate(self) -> None:
+        """Traduit toute la base en arrière-plan, par lots, en laissant passer les analyses en cours.
+
+        Sans elle, chaque manche attend l'API pour ses astuces (mesuré : 50 s à 2 min). Reprend où le cache
+        s'arrête ; un lot raté est retenté au prochain démarrage.
+        """
+        pc, index, lang = self.cfg.plonkit, self.plonkit_index, self.translation_lang
+        if not (pc.enabled and pc.pretranslate and lang and index):
+            return
+        pending = await asyncio.to_thread(index.untranslated, lang)
+        total, done = len(pending), 0
+        for start in range(0, total, PRETRANSLATE_BATCH):
+            while self.background:  # une manche en cours passe d'abord (analyse, marques, traduction affichée)
+                await asyncio.sleep(1)
+            if not self.cfg.plonkit.pretranslate or self.translation_lang != lang:
+                return  # réglages changés entre-temps : la prochaine planification repartira du cache
+            await self._plonkit_status("ready", f"{self.plonkit_summary} ; traduction d'avance : {done}/{total}")
+            batch = pending[start:start + PRETRANSLATE_BATCH]
+            model = self.cfg.plonkit.ai_model or self.cfg.vision.model
+            try:
+                found = await asyncio.wait_for(translate_tips(self.vision.client, model, batch, lang),
+                                               max(self.cfg.plonkit.translate_timeout_s, 60))
+            except Exception as exc:  # 429, délai : on s'arrête là, reprise au prochain démarrage
+                await self._plonkit_status(
+                    "ready", f"{self.plonkit_summary} ; traduction d'avance interrompue ({type(exc).__name__})")
+                return
+            if found:
+                await asyncio.to_thread(index.store_translations, lang, found)
+            done += len(found)
+            await asyncio.sleep(self.cfg.plonkit.ai_pause_s)
+        await self._plonkit_status("ready", f"{self.plonkit_summary} ; {done} astuces traduites d'avance"
+                                   if total else self.plonkit_summary)
+
     # --- analyse ---------------------------------------------------------------------------
-    async def analyse(self) -> dict[str, Any]:
-        capture_id = f"{datetime.now():%Y%m%d-%H%M%S}-{time.time_ns() % 1000:03d}"
-        t0 = time.perf_counter()
+    async def _grab(self) -> tuple[Image.Image | None, str]:
+        """Image brute de la fenêtre partagée, ou None et l'erreur (déjà signalée) si le partage ne répond pas."""
         try:
-            frame = await asyncio.to_thread(self.capture.grab)
+            return await asyncio.to_thread(self.capture.grab), ""
         except CaptureError as exc:
             await asyncio.to_thread(self.notifier.send, "Capture impossible", str(exc), error=True)
             await self.broadcast({"type": "error", "message": str(exc)})
-            return {"ok": False, "error": str(exc)}
+            return None, str(exc)
 
-        self.recent[capture_id] = {"frame": frame, "predicted": "", "scores": [], "log": None}
+    async def analyse(self) -> dict[str, Any]:
+        capture_id = new_id()
+        t0 = time.perf_counter()
+        frame, error = await self._grab()
+        if frame is None:
+            return {"ok": False, "error": error}
+
+        self.recent[capture_id] = {"frame": frame, "predicted": "", "scores": [], "log": None, "marks": [],
+                                   "at": datetime.now().isoformat(timespec="seconds")}
+        self.last_id = capture_id
         while len(self.recent) > RECENT_FRAMES:
             self.recent.popitem(last=False)
         view = apply_crop_and_masks(frame, self.cfg.capture.crop, self.cfg.capture.masks)
@@ -461,7 +602,7 @@ class Engine:
                     scores, ms, emb, cls = await asyncio.to_thread(self.streetclip.analyse, view)
             except Exception as exc:  # mémoire GPU saturée, pilote…
                 await self.broadcast({"type": "error", "message": f"Niveau 1 indisponible : {exc}"})
-                return {"ok": False, "error": str(exc)}
+                return {"ok": False, "id": capture_id, "error": str(exc)}
             pairs = [(s.code, s.probability) for s in scores]
             if capture_id in self.recent and scores:
                 self.recent[capture_id].update(predicted=scores[0].code, scores=pairs)
@@ -479,6 +620,8 @@ class Engine:
                 "scores": [s.__dict__ for s in scores],
                 "lookfor": [asdict(lf) for lf in self.look_for(pairs)],
                 "similar": similar, "translating": bool(lang and missing),
+                # Nombre de lots de traduction : un message « tips_translated » arrivera pour chacun.
+                "batches": -(-len(missing) // TRANSLATE_BATCH) if lang else 0,
                 "cloud": self.plonk is not None and cls is not None,  # nuage annoncé : la carte l'attend
             })
             if self.plonk is not None and cls is not None:
@@ -608,8 +751,8 @@ async def _unix_trigger(engine: Engine) -> asyncio.AbstractServer:
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
             cmd = (await asyncio.wait_for(reader.readline(), 2)).decode(errors="replace").strip()
-            if cmd == "capture":
-                result = await engine.analyse()
+            if cmd in ("capture", "mark"):
+                result = await (engine.analyse() if cmd == "capture" else engine.freeze())
                 writer.write((f"OK {result['id']}" if result["ok"] else f"ERR {result['error']}").encode() + b"\n")
             else:
                 writer.write(b"ERR commande inconnue\n")
@@ -668,6 +811,26 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     @app.post("/capture")
     async def capture() -> dict[str, Any]:
         return await engine.analyse()
+
+    @app.post("/marks/freeze")
+    async def freeze() -> dict[str, Any]:
+        """Bouton « Marquer » : fige la vue pour y entourer des indices."""
+        return await engine.freeze()
+
+    @app.post("/marks/frame")
+    async def frozen_frame(req: FrameRequest) -> dict[str, Any]:
+        """Image de la vue figée, pour la fenêtre des marques. POST : l'origine est toujours contrôlée."""
+        return await asyncio.to_thread(engine.frozen_image, req)
+
+    @app.post("/marks/remove")
+    async def remove_mark(req: DeleteRequest) -> dict[str, Any]:
+        """Retirer une marque dont la lecture est fausse : la conclusion est recalculée sans elle."""
+        return await engine.remove_mark(req)
+
+    @app.post("/marks")
+    async def marks(req: MarksRequest) -> dict[str, Any]:
+        """Marques tracées sur la vue figée : découpées, agrandies, puis transcrites par le modèle de vision."""
+        return await engine.add_marks(req)
 
     restart_lock = asyncio.Lock()  # deux relances simultanées se disputeraient le thread GLib et le portail
 
@@ -741,6 +904,15 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
             return {"ok": True, "seconds": round(await engine.vision.probe(req.model), 1)}
         except VisionError as exc:
             return {"ok": False, "error": str(exc)[:300]}
+
+    @app.get("/storage")
+    async def get_storage() -> dict[str, Any]:
+        """Ce que le coach garde sur le disque, et la taille de chaque élément."""
+        return await asyncio.to_thread(engine.storage_items)
+
+    @app.post("/storage/clear")
+    async def clear_storage(req: ClearRequest) -> dict[str, Any]:
+        return await engine.clear_storage(req.id)
 
     @app.get("/progress")
     async def get_progress() -> dict[str, Any]:

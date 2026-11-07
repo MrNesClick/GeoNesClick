@@ -10,6 +10,7 @@ import type { Field, Group } from "../settingsSchema";
 import { FILE_ONLY_LABELS, GROUPS } from "../settingsSchema";
 import Section from "./Section.vue";
 import SettingField from "./SettingField.vue";
+import StoragePanel from "./StoragePanel.vue";
 
 const s = ref<Settings | null>(null);
 const fileOnly = ref<FileOnly | null>(null);
@@ -82,6 +83,8 @@ function summary(g: Group): string {
       const copies = v.capture.save_to_disk ? (keep ? `${keep} gardées` : "toutes gardées") : "sans copie";
       return `${notify} · ${copies}`;
     }
+    case "stockage":
+      return `caches limités à ${v.storage.max_cache_mb} Mo`;
     case "jeu-de-test":
       return v.dataset.enabled ? (v.dataset.ask_guessed ? "pays répondu demandé" : "trouvé ? oui / non") : "désactivé";
     case "moteur": {
@@ -156,6 +159,8 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
               PLONK : {{ engine.plonk.message }}
             </p>
           </template>
+
+          <StoragePanel v-if="g.id === 'stockage'" :max-mb="Number(s.storage.max_cache_mb)" />
 
           <details v-if="advanced(g).length" class="rounded-md border border-courbe-fonce/70 px-3 py-2">
             <summary class="cursor-pointer text-[0.9rem] text-courbe hover:text-papier">Avancé ({{ advanced(g).length }})</summary>

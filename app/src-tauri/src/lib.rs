@@ -1,4 +1,4 @@
-//! Fenêtre du coach. Au démarrage, lance le moteur Python (engine/) et l'arrête à la fermeture.
+//! Fenêtres du coach et des marques. Au démarrage, lance le moteur Python (engine/) et l'arrête à la fermeture.
 //!
 //! Le dossier du moteur se règle avec la variable GNC_ENGINE_DIR (par défaut : ../../engine
 //! relativement à ce crate). Si un moteur tourne déjà (lancé à la main), le nouveau échoue à
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
-use tauri::{Manager, RunEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 
 struct Engine(Mutex<Option<Child>>);
 
@@ -67,6 +67,12 @@ pub fn run() {
         .setup(|app| {
             app.manage(Engine(Mutex::new(spawn_engine())));
             Ok(())
+        })
+        // La fenêtre des marques reste ouverte (cachée) : fermer le coach doit quitter l'application.
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
+                window.app_handle().exit(0);
+            }
         })
         .build(tauri::generate_context!())
         .expect("échec du démarrage de l'application");

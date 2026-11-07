@@ -2,8 +2,8 @@
 import { reactive } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
-const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
-const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
+export const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
+export const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
 
 export interface CountryScore {
   name: string;
@@ -60,8 +60,10 @@ export interface Progress {
 
 export type Fiche = Record<string, unknown>;
 
-/** Conclusion du modèle de vision, seulement sur preuve explicite (texte lu, domaine, drapeau, plaque). */
+/** Conclusion : celle des règles locales sur tes marques, sinon celle du modèle de vision (vue entière). */
 export interface Conclusion {
+  /** marks : règles locales sur le texte de tes marques ; vision : lecture de la vue entière par l'IA. */
+  source: "marks" | "vision";
   country: string;
   region: string;
   proof: string;
@@ -82,18 +84,95 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
   const country = field("pays").toUpperCase();
   if (!engine.countries.includes(country)) return null;
   return {
-    country, region: field("region"), proof: field("preuve"), certainty: field("certitude").toLowerCase(),
-    confirmed: false, // la confirmation locale arrive avec la chaîne « texte d'abord »
+    source: "vision", country, region: field("region"), proof: field("preuve"),
+    certainty: field("certitude").toLowerCase(),
+    confirmed: false, // l'IA seule n'est jamais « certaine » : seules les règles locales confirment
   };
 }
 
-/** Preuve lue par l'IA pour cette capture (null tant que l'IA n'a pas répondu, ou sans preuve). */
-export const proofOf = (a: Analysis): Conclusion | null =>
-  a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
+/** Une preuve tirée d'une marque par une règle locale. */
+export interface Evidence {
+  kind: "alphabet" | "lettres" | "mot" | "lieu" | "rue";
+  value: string;
+  label: string;
+  countries: string[];
+  source: string;
+  /** Pourquoi elle ne compte pas (« hors de tes pays candidats ») ; vide sinon. */
+  note?: string;
+}
 
-/** Libellé d'une lecture de l'IA selon sa confirmation et la certitude annoncée par le modèle. */
-export const proofLabel = (c: Conclusion): string =>
-  c.confirmed ? "Certain" : c.certainty === "forte" ? "Très probable : lu par l'IA, à confirmer" : "Probable : lu par l'IA, à confirmer";
+/** Ce que les marques prouvent ensemble (règles locales du moteur, evidence.py). */
+export interface Verdict {
+  country: string;
+  /** certain (lieu + autre preuve, aucune marque contraire), probable (très probable), ou "" */
+  level: "certain" | "probable" | "";
+  /** Pays que l'alphabet laisse possibles ; null : aucun écarté. */
+  allowed: string[] | null;
+  scripts: string[];
+  cites: { n: number; items: string[] }[];
+  against: { n: number; country: string; items: string[] }[];
+  conflict: string;
+  /** Position estimée d'après les lieux lus (et les distances d'un panneau), null sans lieu. */
+  location: Location | null;
+  /** Homonymes lointains écartés (« LAAS » → Lasa, Italie, loin des autres lieux lus) : ne comptent pas. */
+  ignored: { n: number; value: string; label: string; countries: string[] }[];
+  /** Lieux seuls, sans confirmation (2ᵉ lieu, lettre ou mot, StreetCLIP) : de simples indices. */
+  unconfirmed: { n: number; value: string; country: string }[];
+}
+
+/** Un lieu lu sur une marque, placé sur la carte (GeoNames). */
+export interface PlaceRead {
+  n: number;
+  name: string;
+  label: string;
+  km: number | null;
+  lat: number;
+  lon: number;
+}
+
+/** point : triangulée (plusieurs distances) ; ring : à une distance d'un lieu ; places : dans les parages des lieux. */
+export type Location =
+  | { kind: "point"; lat: number; lon: number; radius_km: number; places: PlaceRead[] }
+  | { kind: "ring"; lat: number; lon: number; radius_km: number; spread_km: number; places: PlaceRead[] }
+  | { kind: "places"; places: PlaceRead[] }
+  /** Distances incohérentes (chiffre mal lu) : au plus radius_km du lieu le plus proche, toujours vrai. */
+  | { kind: "rough"; lat: number; lon: number; radius_km: number; doubtful: { n: number; name: string; km: number }[];
+      places: PlaceRead[] };
+
+/** Pays écarté par l'alphabet de tes marques (« cyrillique » exclut la France). */
+export const excluded = (a: Analysis, code: string): boolean =>
+  !!a.verdict?.allowed && !a.verdict.allowed.includes(code);
+
+/** Conclusion des règles locales sur tes marques, citant les marques qui la prouvent. */
+export function marksConclusion(a: Analysis): Conclusion | null {
+  const v = a.verdict;
+  if (!v?.country || !v.level) return null;
+  return {
+    source: "marks", country: v.country, region: "",
+    proof: v.cites.map((c) => `${circled(c.n)} ${c.items.join(", ")}`).join(" · "),
+    certainty: v.level === "certain" ? "forte" : "moyenne", confirmed: v.level === "certain",
+  };
+}
+
+/** Conclusion de l'IA sur la vue entière que l'alphabet de tes marques contredit (France sur du cyrillique). */
+export function rejectedVision(a: Analysis): Conclusion | null {
+  const c = a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
+  return c && excluded(a, c.country) ? c : null;
+}
+
+/** La preuve qui compte : tes marques d'abord ; sinon la lecture de l'IA, si l'alphabet ne l'exclut pas. */
+export function proofOf(a: Analysis): Conclusion | null {
+  const marks = marksConclusion(a);
+  if (marks) return marks;
+  const vision = a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
+  return vision && !excluded(a, vision.country) ? vision : null;
+}
+
+/** Libellé d'une preuve selon sa source et sa confirmation. */
+export function proofLabel(c: Conclusion): string {
+  if (c.source === "marks") return c.confirmed ? "Certain : lu dans tes marques" : "Très probable : lu dans tes marques";
+  return c.certainty === "forte" ? "Très probable : lu par l'IA, à confirmer" : "Probable : lu par l'IA, à confirmer";
+}
 
 /** Preuve CERTAINE : forte, confirmée par une règle locale, et réglage « une preuve lue tranche » actif. */
 export function certainProof(a: Analysis): Conclusion | null {
@@ -102,8 +181,11 @@ export function certainProof(a: Analysis): Conclusion | null {
 }
 
 /** Pays qui se détache nettement d'après StreetCLIP, ou null : le coach parle alors d'hésitation. */
+/** Pays de StreetCLIP que l'alphabet de tes marques n'écarte pas. */
+export const viable = (a: Analysis): CountryScore[] => (a.scores ?? []).filter((s) => !excluded(a, s.code));
+
 export function clearLeader(a: Analysis): CountryScore | null {
-  const [first, second] = a.scores ?? [];
+  const [first, second] = viable(a);
   if (!first) return null;
   const ok = first.probability >= engine.leader.min && first.probability - (second?.probability ?? 0) >= engine.leader.margin;
   return ok ? first : null;
@@ -111,7 +193,7 @@ export function clearLeader(a: Analysis): CountryScore | null {
 
 /** Pays entre lesquels StreetCLIP hésite : les premiers, au moins 10 % chacun (quatre au plus). */
 export const contenders = (a: Analysis): CountryScore[] =>
-  (a.scores ?? []).filter((s, i) => i === 0 || s.probability >= 0.1).slice(0, 4);
+  viable(a).filter((s, i) => i === 0 || s.probability >= 0.1).slice(0, 4);
 
 /** Le modèle de vision a vu du texte sans pouvoir le lire (trop petit ou flou). */
 export function unreadableText(a: Analysis): boolean {
@@ -122,17 +204,17 @@ export function unreadableText(a: Analysis): boolean {
 }
 
 /** Pays en tête : prouvé (certain, les autres écartés) ou lu par l'IA (très probable, les autres restent). */
-export function headCountry(a: Analysis): { code: string; certain: boolean } | null {
+export function headCountry(a: Analysis): { code: string; certain: boolean; source: Conclusion["source"] } | null {
   const certain = certainProof(a);
-  if (certain) return { code: certain.country, certain: true };
+  if (certain) return { code: certain.country, certain: true, source: certain.source };
   const proof = proofOf(a);
-  return proof ? { code: proof.country, certain: false } : null;
+  return proof ? { code: proof.country, certain: false, source: proof.source } : null;
 }
 
 /** Astuces Plonk It à afficher : le pays en tête d'abord (seul lui s'il est certain), puis les probables. */
 export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
   const head = headCountry(a);
-  return (a.scores ?? [])
+  return viable(a)
     .filter((s) => !head?.certain || s.code === head.code)
     .sort((x, y) => Number(y.code === head?.code) - Number(x.code === head?.code))
     .map((s) => ({ code: s.code, tips: a.similar?.[s.code] ?? [] }))
@@ -164,9 +246,40 @@ export interface Cloud {
 export function visibleZones(a: Analysis): Zone[] {
   if (a.cloud.status !== "done") return [];
   const head = headCountry(a);
-  if (!head) return a.cloud.data.zones;
+  if (!head) {
+    // L'alphabet de tes marques écarte des pays : seulement les zones des pays qui restent possibles.
+    const allowed = a.verdict?.allowed;
+    const kept = allowed ? allowed.flatMap((c) => a.cloud.status === "done" ? a.cloud.data.zones_by_country[c] ?? [] : []) : [];
+    return kept.length ? kept : a.cloud.data.zones;
+  }
   return a.cloud.data.zones_by_country[head.code] ?? (head.certain ? [] : a.cloud.data.zones);
 }
+
+/** Une marque : un indice entouré sur la vue figée, découpé dans l'image brute et transcrit par l'IA. */
+export interface Mark {
+  /** Numéro affiché (①, ②…), continu sur toute l'analyse. */
+  n: number;
+  status: "pending" | "done" | "error";
+  /** Découpe telle qu'envoyée au modèle (agrandie si elle était petite). */
+  thumbnail: string;
+  /** Facteur d'agrandissement appliqué (1 = taille d'origine). */
+  scale: number;
+  /** Ce que les règles locales tirent de son texte (alphabet, lettres, mots, lieux). */
+  evidence?: Evidence[];
+  /** Lignes lues mot pour mot (vide : pas de texte). */
+  text: string[];
+  unreadable: boolean;
+  /** Ce que montre la marque (plaque de rue, enseigne…), selon l'IA. */
+  object: string;
+  script: string;
+  seconds?: number;
+  error?: string;
+  /** Début de la lecture (horloge locale) : le bandeau d'activité compte depuis là, pas depuis la capture. */
+  startedAt?: number;
+}
+
+/** Numéro de marque en chiffre cerclé (① à ⑳). */
+export const circled = (n: number) => (n >= 1 && n <= 20 ? String.fromCodePoint(0x245f + n) : `(${n})`);
 
 export interface Analysis {
   id: string;
@@ -178,8 +291,11 @@ export interface Analysis {
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
   similar: Record<string, SimilarTip[]> | null;
-  /** Traduction des astuces en cours (null : rien à traduire), ou message d'erreur. */
+  /** Traduction des astuces en cours (null : rien à traduire), terminée, ou ce qui est resté en anglais. */
   translation: "pending" | "done" | string | null;
+  /** Lots de traduction pas encore revenus : à 0, la traduction est finie, réussie ou non. */
+  translationLeft: number;
+  translationError: string | null;
   clipMs: number | null;
   labelled: { country: string; guessed: string; found: boolean | null } | null;
   /** Nuage de la carte : off (PLONK désactivé ou absent), en cours, prêt, ou en échec. */
@@ -189,6 +305,10 @@ export interface Analysis {
     | { status: "pending"; model: string }
     | { status: "done"; model: string; seconds: number; fiche: Fiche }
     | { status: "error"; error: string };
+  /** Indices entourés par le joueur, dans l'ordre de leur numéro. */
+  marks: Mark[];
+  /** Ce que les marques lues prouvent ensemble (null : aucune marque lue). */
+  verdict: Verdict | null;
 }
 
 export const engine = reactive({
@@ -200,7 +320,11 @@ export const engine = reactive({
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
   plonk: { enabled: false, ready: false, message: "" },
-  map: { enabled: false, tile_url: "", attribution: "", attribution_url: "", tile_filter: "", max_zoom: 10 },
+  /** uses / not_yet : ce que le coach tire d'une marque, rappelé sur l'écran des marques. */
+  marks: { enabled: false, max: 9, uses: [] as string[], not_yet: [] as string[] },
+  places: { enabled: false, ready: false, message: "" },
+  map: { enabled: false, tile_url: "", attribution: "", attribution_url: "", tile_filter: "", tile_filter_close: "",
+         close_zoom: 11, max_zoom: 13 },
   countries: [] as string[],
   /** Niveau d'aide : 1 où regarder, 2 + ce que voit l'IA, 3 + pays et indices, 4 + synthèse de la réponse. */
   helpLevel: 4,
@@ -224,6 +348,8 @@ type Message =
       dataset: typeof engine.dataset;
       plonkit: typeof engine.plonkit;
       plonk: typeof engine.plonk;
+      marks: typeof engine.marks;
+      places: typeof engine.places;
       map: typeof engine.map;
       countries: string[];
       help_level: number;
@@ -239,6 +365,7 @@ type Message =
       lookfor: LookFor[];
       similar: Record<string, SimilarTip[]>;
       translating: boolean;
+      batches: number;
       cloud: boolean;
     }
   | ({ type: "cloud"; id: string } & (Cloud | { error: string }))
@@ -248,6 +375,10 @@ type Message =
   | { type: "vision_error"; id: string; error: string }
   | { type: "labelled"; id: string; country: string; guessed: string; found: boolean | null; progress: Progress }
   | { type: "lookfor"; id: string; lookfor: LookFor[] }
+  | ({ type: "mark"; id: string } & Partial<Mark> & Pick<Mark, "n" | "status">)
+  | { type: "freeze"; id: string }
+  | ({ type: "verdict"; id: string } & Verdict)
+  | { type: "mark_removed"; id: string; n: number }
   | { type: "error"; message: string };
 
 function handle(msg: Message) {
@@ -261,6 +392,8 @@ function handle(msg: Message) {
       engine.dataset = msg.dataset;
       engine.plonkit = msg.plonkit;
       engine.plonk = msg.plonk;
+      engine.marks = msg.marks;
+      engine.places = msg.places;
       engine.map = msg.map;
       engine.countries = msg.countries;
       engine.helpLevel = msg.help_level;
@@ -279,10 +412,14 @@ function handle(msg: Message) {
         lookfor: null,
         similar: null,
         translation: null,
+        translationLeft: 0,
+        translationError: null,
         clipMs: null,
         labelled: null,
         cloud: { status: "off" },
         vision: engine.vision.enabled ? { status: "pending", model: engine.vision.model } : { status: "off" },
+        marks: [],
+        verdict: null,
       };
       break;
     case "streetclip":
@@ -291,6 +428,7 @@ function handle(msg: Message) {
         cur.lookfor = msg.lookfor;
         cur.similar = msg.similar;
         cur.translation = msg.translating ? "pending" : null;
+        cur.translationLeft = msg.batches;
         cur.clipMs = msg.ms;
         cur.cloud = msg.cloud ? { status: "pending" } : { status: "off" };
       }
@@ -304,9 +442,13 @@ function handle(msg: Message) {
       if (cur?.id === msg.id && cur.similar) {
         const all = Object.values(cur.similar).flat();
         for (const tip of all) tip.translated = msg.translations[tip.id] ?? tip.translated;
-        // Les lots arrivent un par un : « en cours » tant qu'il reste une astuce sans traduction.
-        if (msg.error) cur.translation = msg.error;
-        else if (all.every((tip) => tip.translated)) cur.translation = "done";
+        // Un message par lot, réussi ou non : « en cours » jusqu'au dernier, jamais au-delà.
+        cur.translationLeft = Math.max(0, cur.translationLeft - 1);
+        if (msg.error) cur.translationError = msg.error;
+        if (cur.translationLeft === 0 || all.every((tip) => tip.translated)) {
+          cur.translation = all.every((tip) => tip.translated) ? "done"
+            : `certaines astuces sont restées en anglais (${cur.translationError ?? "pas de réponse"})`;
+        }
       }
       break;
     case "lookfor": // recalculé après un verdict « Juste » / « Faux »
@@ -320,6 +462,26 @@ function handle(msg: Message) {
       break;
     case "vision_error":
       if (cur?.id === msg.id) cur.vision = { status: "error", error: msg.error };
+      break;
+    case "mark": {
+      if (cur?.id !== msg.id) break;
+      const { type: _type, id: _id, ...fields } = msg;
+      const known = cur.marks.find((m) => m.n === msg.n);
+      if (known) Object.assign(known, fields);
+      else {
+        cur.marks.push({ thumbnail: "", scale: 1, text: [], unreadable: false, object: "", script: "", startedAt: Date.now(), ...fields });
+        cur.marks.sort((a, b) => a.n - b.n);
+      }
+      break;
+    }
+    case "verdict": {
+      if (cur?.id !== msg.id) break;
+      const { type: _type, id: _id, ...verdict } = msg;
+      cur.verdict = verdict;
+      break;
+    }
+    case "mark_removed":
+      if (cur?.id === msg.id) cur.marks = cur.marks.filter((m) => m.n !== msg.n);
       break;
     case "labelled":
       if (cur?.id === msg.id) cur.labelled = { country: msg.country, guessed: msg.guessed, found: msg.found };
@@ -375,12 +537,21 @@ async function loadProgress() {
 }
 
 export const requestCapture = () => request("/capture");
+/** « Marquer » : fige la vue ; la fenêtre des marques s'ouvre en plein écran. */
+export const requestFreeze = () => request("/marks/freeze");
+/** Retire une marque dont la lecture est fausse : la conclusion est recalculée sans elle. */
+export const removeMark = (id: string, n: number) => request("/marks/remove", { id, n });
 export const restartSharing = () => request("/capture/restart");
 export const reselectWindow = () => request("/capture/reselect");
 /** « C'était où ? » : pays réel, et pays répondu (vide si tu ne sais plus) ou simple « trouvé ? ». */
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null) =>
   request("/label", { id, country, guessed, found });
 export const refreshPlonkit = () => request("/plonkit/refresh");
+/** Vide un élément du stockage (Réglages › Stockage) ; renvoie l'inventaire à jour et la place libérée. */
+export async function clearStorage(id: string): Promise<{ freed: number; items: unknown[] } | null> {
+  const res = await request("/storage/clear", { id });
+  return res?.ok ? ((await res.json()) as { freed: number; items: unknown[] }) : null;
+}
 
 /** Change le niveau d'aide tout de suite, puis l'enregistre dans config.toml. */
 export async function setHelpLevel(level: number) {

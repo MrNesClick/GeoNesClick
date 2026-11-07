@@ -216,3 +216,93 @@ def test_no_translation_in_english_or_when_disabled(engine):
     assert engine.translation_lang is None
     engine.cfg.plonkit.translate = True
     assert engine.translation_lang == "fr"
+
+
+def test_incomplete_translation_batch_is_reported(engine):
+    """Le modèle oublie une astuce : le lot se termine quand même, avec une erreur (sinon « en cours » à vie)."""
+    asyncio.run(engine.refresh_plonkit(check=False))
+    engine.vision.client = FakeLLM('{"0": "Poteaux."}')
+    sent = []
+
+    async def broadcast(message):
+        sent.append(message)
+
+    engine.broadcast = broadcast
+    asyncio.run(engine._translate_tips("cap", [("a", "Poles."), ("b", "White lines.")], "fr"))
+    assert sent[-1]["translations"] == {"a": "Poteaux."} and "incomplète" in sent[-1]["error"]
+
+
+def test_slow_translation_batch_times_out(engine):
+    asyncio.run(engine.refresh_plonkit(check=False))
+    engine.cfg.plonkit.translate_timeout_s = 0.05
+
+    class Slow(FakeLLM):
+        async def create(self, **kwargs):
+            await asyncio.sleep(1)
+
+    engine.vision.client = Slow()
+    sent = []
+
+    async def broadcast(message):
+        sent.append(message)
+
+    engine.broadcast = broadcast
+    asyncio.run(engine._translate_tips("cap", [("a", "Poles.")], "fr"))
+    assert "TimeoutError" in sent[-1]["error"]
+
+
+class EchoLLM(FakeLLM):
+    """Traduit chaque astuce numérotée du prompt par « FR <n> »."""
+
+    async def create(self, **kwargs):
+        self.calls += 1
+        prompt = kwargs["messages"][0]["content"]
+        count = len([line for line in prompt.split("Astuces :")[1].splitlines() if line.strip()])
+        message = type("M", (), {"content": json.dumps({str(i): f"FR {i}" for i in range(count)})})
+        return type("R", (), {"choices": [type("C", (), {"message": message})]})
+
+
+def test_whole_base_is_translated_ahead_once(engine):
+    engine.cfg.plonkit.ai_classify = False
+    engine.cfg.plonkit.ai_pause_s = 0
+    engine.vision.client = EchoLLM()
+
+    async def go():
+        await engine.refresh_plonkit(check=False)
+        await engine.pretranslate_task
+
+    asyncio.run(go())
+    assert engine.plonkit_index.untranslated("fr") == []
+    assert "3 astuces traduites d'avance" in engine.plonkit_message
+    calls = engine.vision.client.calls
+    asyncio.run(engine.pretranslate())
+    assert engine.vision.client.calls == calls  # tout est en cache : aucun nouvel appel
+
+
+def test_translation_ahead_waits_for_the_round_in_progress(engine):
+    engine.cfg.plonkit.ai_classify = False
+    engine.cfg.plonkit.pretranslate = False
+    asyncio.run(engine.refresh_plonkit(check=False))
+    engine.cfg.plonkit.pretranslate, engine.cfg.plonkit.ai_pause_s = True, 0
+    engine.vision.client = EchoLLM()
+
+    async def go():
+        busy = asyncio.create_task(asyncio.sleep(0.3))  # une analyse en cours
+        engine.background.add(busy)
+        busy.add_done_callback(engine.background.discard)
+        task = asyncio.create_task(engine.pretranslate())
+        await asyncio.sleep(0.1)
+        assert engine.vision.client.calls == 0  # elle attend la fin de la manche
+        await task
+        assert engine.vision.client.calls == 1
+
+    asyncio.run(go())
+
+
+def test_translation_ahead_can_be_disabled(engine):
+    engine.cfg.plonkit.ai_classify = False
+    engine.cfg.plonkit.pretranslate = False
+    engine.vision.client = EchoLLM()
+    asyncio.run(engine.refresh_plonkit(check=False))
+    asyncio.run(engine.pretranslate())
+    assert engine.vision.client.calls == 0

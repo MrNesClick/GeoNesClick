@@ -4,8 +4,9 @@
 # Usage :
 #   scripts/install.sh                  vérifie les prérequis et installe les dépendances du projet
 #   scripts/install.sh --with-apt       installe aussi les paquets système manquants (sudo apt)
-#   scripts/install.sh --setup-shortcut ajoute le raccourci GNOME de capture (défaut : Super+Maj+G,
-#                                       modifiable avec GNC_SHORTCUT="<Super><Shift>g")
+#   scripts/install.sh --setup-shortcut ajoute les raccourcis GNOME : capture (défaut : Super+Maj+G,
+#                                       modifiable avec GNC_SHORTCUT="<Super><Shift>g") et marques
+#                                       (défaut : Super+Maj+Z, modifiable avec GNC_MARK_SHORTCUT)
 #
 # Le script est idempotent : on peut le relancer sans risque après chaque mise à jour du dépôt.
 set -euo pipefail
@@ -17,7 +18,7 @@ for arg in "$@"; do
   case "$arg" in
     --with-apt) WITH_APT=1 ;;
     --setup-shortcut) SETUP_SHORTCUT=1 ;;
-    -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,11p' "$0"; exit 0 ;;
     *) echo "Option inconnue : $arg" >&2; exit 2 ;;
   esac
 done
@@ -82,6 +83,15 @@ ok "venv isolé à jour"
 .venv/bin/python -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" \
   && ok "PyTorch voit le GPU" || warn "PyTorch ne voit pas de GPU CUDA : StreetCLIP tournera sur CPU (lent)"
 
+# Répertoire des lieux (GeoNames, CC BY 4.0, ~11 Mo) pour les règles des marques ; sinon, le coach le
+# télécharge à son premier démarrage. Un échec (hors ligne) n'empêche pas l'installation.
+if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/places/places-v3.sqlite" ]]; then
+  ok "répertoire des lieux GeoNames présent"
+else
+  .venv/bin/python -m geonesclick.places && ok "répertoire des lieux GeoNames construit" \
+    || warn "répertoire des lieux non téléchargé : le coach réessaiera à son démarrage"
+fi
+
 # ---------------------------------------------------------------------------
 step "4. Application Tauri (app/)"
 cd "$ROOT/app"
@@ -100,23 +110,26 @@ fi
 
 # ---------------------------------------------------------------------------
 if ((SETUP_SHORTCUT)); then
-  step "6. Raccourci GNOME de capture"
+  step "6. Raccourcis GNOME"
   # Toujours le gsettings du système : un gsettings tiers (Linuxbrew, conda…) peut ne pas avoir le
   # module dconf et écrire dans un fichier que GNOME ne lit jamais.
   gsettings() { /usr/bin/gsettings "$@"; }
-  BINDING="${GNC_SHORTCUT:-<Super><Shift>g}"
-  KEY_PATH="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/"
   SCHEMA="org.gnome.settings-daemon.plugins.media-keys"
-  CURRENT="$(gsettings get "$SCHEMA" custom-keybindings)"
-  if [[ "$CURRENT" != *"$KEY_PATH"* ]]; then
-    if [[ "$CURRENT" == "@as []" || "$CURRENT" == "[]" ]]; then NEW="['$KEY_PATH']"; else NEW="${CURRENT%]}, '$KEY_PATH']"; fi
-    gsettings set "$SCHEMA" custom-keybindings "$NEW"
-  fi
-  REL="$SCHEMA.custom-keybinding:$KEY_PATH"
-  gsettings set "$REL" name "GeoNesClick – capture"
-  gsettings set "$REL" command "$ROOT/engine/.venv/bin/python -m geonesclick.trigger"
-  gsettings set "$REL" binding "$BINDING"
-  ok "raccourci $BINDING → capture"
+  add_shortcut() {  # identifiant, nom, commande du déclencheur, combinaison
+    local key_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$1/" current new
+    current="$(gsettings get "$SCHEMA" custom-keybindings)"
+    if [[ "$current" != *"$key_path"* ]]; then
+      if [[ "$current" == "@as []" || "$current" == "[]" ]]; then new="['$key_path']"; else new="${current%]}, '$key_path']"; fi
+      gsettings set "$SCHEMA" custom-keybindings "$new"
+    fi
+    local rel="$SCHEMA.custom-keybinding:$key_path"
+    gsettings set "$rel" name "$2"
+    gsettings set "$rel" command "$ROOT/engine/.venv/bin/python -m geonesclick.trigger $3"
+    gsettings set "$rel" binding "$4"
+    ok "raccourci $4 → $3"
+  }
+  add_shortcut geonesclick "GeoNesClick – capture" capture "${GNC_SHORTCUT:-<Super><Shift>g}"
+  add_shortcut geonesclick-mark "GeoNesClick – marques" mark "${GNC_MARK_SHORTCUT:-<Super><Shift>z}"
 fi
 
 step "Installation terminée ✔  (voir README.md, section « Lancer »)"

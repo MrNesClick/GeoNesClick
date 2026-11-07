@@ -1,4 +1,7 @@
-"""Déclenche une capture (commande du raccourci GNOME) : python -m geonesclick.trigger"""
+"""Commandes des raccourcis GNOME : python -m geonesclick.trigger [capture|mark]
+
+capture (par défaut) analyse la vue ; mark la fige en plein écran pour y entourer des indices (marques).
+"""
 
 from __future__ import annotations
 
@@ -8,12 +11,20 @@ import sys
 from .paths import SOCKET_PATH
 
 
-def main() -> int:
+COMMANDS = ("capture", "mark")
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = sys.argv[1:] if argv is None else argv
+    cmd = args[0] if args else "capture"
+    if cmd not in COMMANDS:
+        print(f"Commande inconnue : {cmd} (attendu : {', '.join(COMMANDS)})", file=sys.stderr)
+        return 2
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
             s.settimeout(10)
             s.connect(str(SOCKET_PATH))
-            s.sendall(b"capture\n")
+            s.sendall(cmd.encode() + b"\n")
             print(s.recv(4096).decode().strip())
         return 0
     except (FileNotFoundError, ConnectionRefusedError):

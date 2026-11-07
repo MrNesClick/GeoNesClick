@@ -17,6 +17,8 @@
   --color-foret: #7db38a;
   --color-lac: #7fb6d6;
   --color-alerte: #e29a7e;
+  /* Marques : le surligneur du joueur sur la vue figée, lisible sur n'importe quelle photo. */
+  --color-marque: #f2c14e;
 
   --font-atlas: "Spectral", "Iowan Old Style", Georgia, serif;
   --font-ui: "Atkinson Hyperlegible", "Noto Sans", system-ui, sans-serif;
@@ -92,5 +94,12 @@
   padding: 1px 6px;
 }
 .leaflet-tooltip.ggc-zone::before {
+  display: none;
+}
+/* Lieux lus sur tes marques : nom au contour couleur marque ; masqué de loin, où les noms se chevauchent. */
+.leaflet-tooltip.ggc-place {
+  border-color: var(--color-marque);
+}
+.ggc-far .leaflet-tooltip.ggc-place {
   display: none;
 }

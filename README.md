@@ -27,6 +27,9 @@ Fonctionnalités :
   la couleur de la ligne centrale. »), ce que voit l'IA, les pays probables, la réponse avec sa preuve.
 - **Vérifier l'amorce en jouant** : « Juste » / « Faux » sur chaque indice non vérifié.
 - **Ce que voit l'IA** : la fiche d'indices du modèle de vision, dont le texte lu mot pour mot.
+- **Marques** : Super+Maj+Z fige la vue en plein écran ; tu entoures chaque indice (plaque de rue, panneau,
+  enseigne…), numéroté ①, ②… Chaque marque est découpée dans l'image brute, agrandie si elle est petite, puis
+  transcrite mot pour mot par l'IA. Ce sont tes éléments de preuve : les conclusions du coach les citeront.
 - **« C'était où ? »** après la manche : tu donnes le pays réel et celui que tu avais répondu ; la
   capture rejoint le jeu de test, et le coach suit ta progression (pays trouvés, pays à retravailler,
   justesse de StreetCLIP) et **tes confusions**, avec les metas qui séparent les deux pays.
@@ -128,7 +131,7 @@ PyGObject) sont vérifiés par le script d'installation.
 ```bash
 scripts/install.sh                  # vérifie tout et installe les dépendances du projet
 scripts/install.sh --with-apt       # installe aussi les paquets système manquants (demande sudo)
-scripts/install.sh --setup-shortcut # ajoute le raccourci GNOME de capture (Super+Maj+G par défaut)
+scripts/install.sh --setup-shortcut # ajoute les raccourcis GNOME : capture (Super+Maj+G), marques (Super+Maj+Z)
 ```
 
 Le script peut être relancé sans risque, par exemple après chaque `git pull`. Ensuite, renseigne ta clé
@@ -138,7 +141,8 @@ dans `.env` (le script le crée à partir de `.env.example`) :
 NVAPI=nvapi-...
 ```
 
-Pour changer le raccourci : `GNC_SHORTCUT="<Super><Shift>h" scripts/install.sh --setup-shortcut`.
+Pour changer les raccourcis : `GNC_SHORTCUT="<Super><Shift>h" GNC_MARK_SHORTCUT="<Super><Shift>m"
+scripts/install.sh --setup-shortcut`.
 
 Le moteur utilise un **Python 3.12 géré par uv**, dans un environnement virtuel **isolé** des paquets
 système. Les liaisons GStreamer (PyGObject) sont compilées depuis PyPI à l'installation, d'où les paquets
@@ -179,7 +183,81 @@ Au niveau 4, la carte Réponse dit honnêtement ce que le coach sait :
   entre les premiers (ex. Bulgarie 22 %, Hongrie 21 %, Slovaquie 16 %, Roumanie 14 %), sans faux gagnant ;
 - si l'IA signale un **texte illisible**, le coach conseille de zoomer dessus dans le jeu puis de recapturer :
   sur une capture roumaine, le panneau « Monumentul Eroilor Neamului » était illisible dans la vue entière, et
-  lu exactement (Roumanie) une fois la zone découpée et agrandie trois fois. D'où la capture de zone, à venir.
+  lu exactement (Roumanie) une fois la zone découpée et agrandie trois fois. D'où les marques, ci-dessous.
+
+### Marques
+
+Un détail compte (plaque de rue, panneau, enseigne, plaque d'immatriculation) ? Appuie sur **Super+Maj+Z**
+(ou sur « Marquer ») : la vue est figée et s'ouvre en plein écran. Entoure chaque indice d'un rectangle ;
+ils sont numérotés ①, ②… **Entrée** les fait lire, **Échap** annule, **Retour arrière** (ou clic droit)
+retire la dernière. Des boutons font la même chose, au cas où GNOME ne donne pas le clavier à la fenêtre.
+
+- Chaque marque est découpée dans l'image **brute**, en pleine résolution, puis **agrandie** si elle est
+  petite (le plus grand côté porté à 420 px, ×4 au plus : `[marks] upscale_to_px`, `max_upscale`).
+- L'IA la **transcrit seulement**, mot pour mot, avec ce qu'elle montre et l'alphabet ; elle ne nomme aucun
+  pays. C'est le coach qui conclura, avec des règles locales sourcées (prochaine étape), en citant les marques.
+- Les marques **complètent l'analyse de la manche** : capture d'abord (Super+Maj+G ouvre la manche), marque
+  ensuite. La fenêtre des marques rappelle l'heure de la capture complétée, et la numérotation continue d'une
+  vue figée à l'autre. Sans capture, le raccourci le signale et ne fige rien.
+- En mode débogage, chaque découpe est gardée (`mark-<id>-<n>.png`) avec sa lecture dans le journal.
+- L'écran des marques rappelle **ce qui est pris en compte**, et ce qui ne l'est pas encore (poteaux, bornes…).
+- **Retirer** une marque (lecture fausse, découpe ratée) : elle ne compte plus, la réponse est recalculée.
+
+### Ce que le coach conclut de tes marques
+
+L'IA transcrit ; le coach conclut **en local**, avec des règles sourcées (`engine/src/geonesclick/evidence.py`),
+et la réponse cite les marques qui la prouvent :
+
+| Règle | Exemple | Effet |
+|---|---|---|
+| **Alphabet** | du cyrillique | écarte les pays qui ne l'écrivent pas (la France, même si l'IA a « lu » du français sur la vue entière) |
+| **Lettres propres** | « ъ » devant une consonne, « ő », « ș » | langue → pays **très probable** |
+| **Mots de rue** | « utca », « iela », « -katu », « вулиця » | langue → pays **très probable** |
+| **Noms de lieux** (GeoNames) | Благоевград, София | pays **certain**, s'il est confirmé par une autre preuve et qu'**aucune marque ne le contredit** |
+| **Lieu seul** | « MANTO » | simple **indice** : il faut un 2ᵉ lieu voisin, une lettre ou un mot de la langue, ou StreetCLIP à 10 % au moins (`prior_min`) |
+| **Nom de rue** | « Via Paolo Lo Manto », « Main Street » | ne situe pas la vue : ses mots ne sont pas des lieux (affiché « Rue ») |
+| **Pays hors candidats** | Manto → 🇭🇳 | affiché, ne compte pas |
+
+Mesuré le 2026-11-07 : en une journée, les lieux **seuls** se sont trompés quatre fois (Gare → 🇫🇷🇱🇺, Laas → 🇮🇹,
+Orion → 🇵🇭🇺🇸, et « Lo Manto », tiré du nom de rue « Via Paolo Lo Manto », → 🇭🇳, qui renversait l'Italie de
+StreetCLIP à 96 %), alors que les conclusions justes venaient de lieux **groupés**.
+
+Pourquoi si prudent ? Mesuré le 2026-11-07 sur une manche bulgare : la marque ① (« Гърмен 3, Гоце Делчев 10,
+Благоевград 109, София 219 ») a été lue parfaitement, mais la ②, floue, a été **inventée** en russe plausible
+(« Домой, Город, Казань »), et l'analyse de la vue entière avait inventé du français (« Gare, Centre-ville,
+Mairie »). Avec les deux marques, le coach répond « Bulgarie, très probable » et signale ② ; une fois ② retirée,
+« Bulgarie, certain ». Un mot courant peut aussi nommer un lieu (« Gare » : quartiers en France et au
+Luxembourg), d'où la concordance exigée. Seuls comptent les pays candidats (la Moldavie n'empêche pas « ș » de
+désigner la Roumanie).
+
+**Position sur la carte.** Les lieux lus sont placés sur la carte. Les distances d'un panneau directionnel
+(« Гърмен 3, Гоце Делчев 10, Благоевград 109, София 219 ») donnent une **position estimée** par triangulation
+(`locate.py`) : ce sont des distances par la route, converties à vol d'oiseau (détour ×1,15 à ×1,45), en erreur
+relative, si bien que les lieux proches fixent le point. Mesuré sur ce panneau : 41,58° N, 23,83° E, à 2-3 km de
+Гърмен, annoncé à 2 km près (pas encore de vérité terrain pour le confirmer). L'IA lit parfois mal un chiffre
+(« 6 » puis « 8 » sur une même marque) : si les distances ne concordent pas, **pas de point**. Le coach désigne la
+distance à vérifier et ne garde que ce qui reste vrai (la vue est à moins de *d* km du lieu le plus proche).
+Limite : un chiffre faux mais géométriquement plausible (« 8 » pour « 3 » entre deux villages voisins) passe ce
+contrôle, avec quelques km d'erreur.
+
+**Homonymes et petits villages.** Mesuré le 2026-11-07 sur une manche du Béarn : « LAAS » (village de 108
+habitants, absent du répertoire général) tombait sur Lasa, en Italie (« Laas » en allemand), et contredisait à
+tort la France ; « ORION » (de L'Hôpital-d'Orion) tombait aux Philippines. D'où :
+- **la proximité** : les lieux d'une même manche sont voisins. Le coach garde le groupe de lieux le plus fourni
+  (à moins de 400 km les uns des autres, `[rules] place_max_spread_km`) et ignore les homonymes lointains,
+  affichés barrés ; sans groupe d'au moins deux lieux, rien n'est écarté. Parmi les homonymes du groupe, il
+  retient le plus proche (Laàs du Béarn, à 13 km d'Orthez, et non Laas du Gers, à 87 km) ;
+- **les villages du pays en tête** : dès qu'un pays mène, son répertoire GeoNames complet (lieux habités
+  seulement ; France 7,3 Mo, 1,8 s d'indexation) est téléchargé une fois, puis les marques sont relues
+  (`[rules] detail`). Sur cette manche : L'Hôpital-d'Orion, Sauveterre-de-Béarn, Orthez et Laàs trouvés,
+  « France, certain ». GeoNames voit alors quel pays est consulté ;
+- la comparaison ignore les accents latins, les traits d'union et l'article en tête (« SAUVETERRE DE BEARN »
+  = Sauveterre-de-Béarn, « HOPITAL D'ORION » = L'Hôpital-d'Orion).
+
+Le répertoire des lieux est celui des localités de plus de 1 000 habitants de [GeoNames](https://www.geonames.org)
+(licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)), téléchargé une fois (~11 Mo) par
+`scripts/install.sh` ou au premier démarrage, puis indexé en local (~55 Mo, 918 000 noms dans toutes les langues).
+Chaque règle se coupe dans Réglages › Marques (`[rules]`).
 
 Pour lancer le moteur seul (sans interface) : `cd engine && .venv/bin/python -m geonesclick`.
 
@@ -190,7 +268,7 @@ cd engine && .venv/bin/python -m pytest -q
 ```
 
 Ils couvrent la configuration, le recadrage et les masques, la réponse du modèle de vision, les metas et
-le départage, le jeu de test et la progression, les réglages (liste blanche, écriture atomique), et les
+le départage, le jeu de test et la progression, les marques (découpe, agrandissement, numérotation), les réglages (liste blanche, écriture atomique), et les
 règles d'accès du serveur (origines, Host, pré-vérification CORS, traversée de chemin).
 
 ## Configuration
@@ -310,6 +388,13 @@ ce que le coach ne fait pas.
   traductions arrivent par lots de 3 envoyés en parallèle (~10 s par lot mesuré avec Nemotron Super VL),
   puis sont gardées en cache : une astuce déjà lue s'affiche traduite immédiatement. « Voir l'original »
   permet de comparer. Désactivable (`[plonkit] translate`) ; modèle réglable (`[plonkit] ai_model`).
+  En pratique, à la demande ne suffit pas : le 2026-11-07, 31 astuces sur 4 060 étaient en cache, et une manche
+  a attendu plus de 2 min un lot qui ne revenait pas. D'où :
+  - **la traduction d'avance** de toute la base, en arrière-plan, par lots de 10, toujours après les manches en
+    cours ; elle reprend où le cache s'arrête (`[plonkit] pretranslate`, progression dans Réglages › Indices) ;
+  - **un délai court** par lot affiché (`[plonkit] translate_timeout_s`, 30 s, sans nouvel essai) : passé ce
+    délai, ou si le modèle oublie une astuce, elle reste en anglais et le coach le dit, au lieu d'attendre.
+  En mode débogage, chaque lot (durée, astuces rendues, erreur) est noté dans le journal de la manche.
 
 Commande manuelle : `cd engine && .venv/bin/python -m geonesclick.plonkit collect`.
 
@@ -353,7 +438,13 @@ filtre CSS pour le thème du coach. Le serveur de tuiles voit donc ton adresse I
 près le lieu de la manche. Le coach suit les [règles d'usage](https://operations.osmfoundation.org/policies/tiles/)
 d'OpenStreetMap : User-Agent propre à l'application (`GeoNesClick/0.1`), attribution toujours visible,
 seules les tuiles affichées sont chargées (cache normal du navigateur, aucun téléchargement à l'avance),
-zoom limité à 10 par défaut. Sans réseau, la carte garde les pays et le nuage, sans fond.
+zoom limité à 13 par défaut (`[map] max_zoom`, réglable : 13 montre les rues autour d'une position estimée par
+tes marques ; les zones et les pays se cadrent toujours au zoom 8 au plus). Le fond assombri (couleurs inversées)
+devient illisible de près (forêts et relief en taches, noms de villages noyés, constaté au zoom 13) : à partir du
+zoom 11 (`close_zoom`), les tuiles d'origine reviennent, à peine atténuées (`tile_filter_close`). Dès que tes
+marques situent la vue, les zones PLONK sont masquées : elles ne viennent que de l'allure de la vue et
+contrediraient la preuve (Nord-Est et Aquitaine affichés pour une manche en Béarn). Sans réseau, la carte garde les pays,
+le nuage et les lieux lus, sans fond.
 
 **Données locales.** Contours des pays : Natural Earth 1:50m v5.1.2 (domaine public), dans
 `engine/src/geonesclick/data/`, servis par le moteur (`GET /map/countries`) et utilisés pour savoir dans quel
@@ -438,10 +529,18 @@ venv avec `uv.lock` et le front avec `pnpm-lock.yaml`). Pour le banc PLONK, rela
 | `~/.config/geonesclick/mes-metas.toml` | tes metas et verdicts sur l'amorce | perdus : à sauvegarder |
 | `~/.config/geonesclick/screencast.token` | autorisation de partage de GNOME | GNOME redemande la fenêtre |
 | `~/.local/share/geonesclick/plonkit/` | guides Plonk It, astuces, vecteurs, traductions | reconstruit au démarrage (~3 min, traductions refaites à la demande) |
+| `~/.local/share/geonesclick/places/` | répertoire des lieux GeoNames (CC BY 4.0), indexé | retéléchargé au démarrage s'il manque (~11 Mo) |
 | `~/.cache/huggingface/hub/` | poids StreetCLIP et PLONK | retéléchargés au prochain lancement (réseau requis) |
 | `engine/dataset/` | jeu de test (images + `labels.toml`) | perdu : à sauvegarder, c'est la base de toutes les mesures |
 | `engine/captures/` | captures des manches ; en mode débogage, le journal `capture-<id>.json` de chaque analyse | sans conséquence |
 | `engine/spikes/.vendor/` | code et dépendances du banc PLONK | `scripts/setup-plonk-spike.sh` le refait |
+
+**Réglages › Stockage** affiche la taille de chaque élément et un bouton **Vider** (en deux temps : Vider, puis
+Confirmer, avec ce que ça coûte ; Plonk It prévient que les traductions d'avance sont à refaire). La taille
+maximale (`[storage] max_cache_mb`, 500 Mo) ne s'applique qu'aux caches **qui grossissent** tout seuls (villages
+des pays rencontrés) : les moins récemment utilisés partent d'abord. Le socle (répertoire GeoNames, guides
+Plonk It) ne part jamais tout seul, et ton jeu de test, tes metas et ta config ne sont jamais vidés. Par
+sécurité, seuls des fichiers connus du coach sont supprimés, jamais un dossier entier.
 
 **Hors ligne** : une fois StreetCLIP et PLONK (s'il est activé) en cache, le moteur passe Hugging Face en
 mode hors ligne au démarrage. Pour récupérer une nouvelle version d'un modèle, supprime son dossier

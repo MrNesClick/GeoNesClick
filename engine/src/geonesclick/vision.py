@@ -38,18 +38,23 @@ class VisionClient:
         return base64.b64encode(buf.getvalue()).decode()
 
     async def describe(self, img: Image.Image) -> tuple[dict[str, Any], float]:
+        """Fiche d'indices de la vue entière."""
+        return await self.ask(img, self.cfg.prompt, self.cfg.model, self.cfg.max_tokens)
+
+    async def ask(self, img: Image.Image, prompt: str, model: str, max_tokens: int) -> tuple[dict[str, Any], float]:
+        """Une image, une consigne : renvoie l'objet JSON de la réponse et la durée de l'appel."""
         if not self.client:
             raise VisionError(f"clé API absente : renseigne {self.cfg.api_key_env} dans .env")
         t0 = time.perf_counter()
         try:
             resp = await self.client.chat.completions.create(
-                model=self.cfg.model,
+                model=model,
                 temperature=self.cfg.temperature,
-                max_tokens=self.cfg.max_tokens,
+                max_tokens=max_tokens,
                 messages=[{
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": self.cfg.prompt.strip()},
+                        {"type": "text", "text": prompt.strip()},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self._encode(img)}"}},
                     ],
                 }],

@@ -4,7 +4,7 @@
 // Sans preuve, le premier n'est mis en avant que s'il se détache (même règle que la carte Réponse).
 import { computed } from "vue";
 import type { Analysis } from "../engine";
-import { certainProof, clearLeader, countryName, flag, proofLabel, proofOf } from "../engine";
+import { certainProof, clearLeader, countryName, excluded, flag, proofLabel, proofOf } from "../engine";
 
 const props = defineProps<{ analysis: Analysis }>();
 
@@ -22,8 +22,10 @@ const likely = computed(() => (!certain.value && proof.value ? proof.value : nul
 const others = computed(() => {
   const top = certain.value?.country ?? likely.value?.country;
   if (top) return scores.value.filter((s) => s.code !== top);
-  return leader.value ? scores.value.slice(1) : scores.value; // hésitation : tous au même rang
+  return leader.value ? scores.value.filter((s) => s.code !== leader.value!.code) : scores.value; // hésitation : même rang
 });
+// Écarté : par une preuve certaine, ou par l'alphabet de tes marques (« cyrillique » exclut la France).
+const out = (code: string) => !!certain.value || excluded(props.analysis, code);
 </script>
 
 <template>
@@ -39,7 +41,7 @@ const others = computed(() => {
         <span class="shrink-0 text-papier">Certain</span>
       </div>
       <p class="mt-1.5 text-[0.85rem] text-courbe">
-        Mis à jour après la lecture de l'IA : {{ certain.proof || "texte de la vue" }}.
+        {{ certain.source === "marks" ? "Prouvé par tes marques" : "Mis à jour après la lecture de l'IA" }} : {{ certain.proof || "texte de la vue" }}.
         <template v-if="clipOf(certain.country)">D'après la seule allure de la vue, StreetCLIP donnait {{ pct(clipOf(certain.country)!.probability) }}.</template>
         <template v-else>StreetCLIP ne le comptait pas parmi ses pays probables.</template>
       </p>
@@ -85,15 +87,17 @@ const others = computed(() => {
         v-for="s in others"
         :key="s.code"
         class="grid grid-cols-[8.5rem_1fr_3.5rem] items-center gap-3"
-        :class="certain ? 'opacity-50' : ''"
+        :class="out(s.code) ? 'opacity-50' : ''"
       >
-        <span class="atlas truncate text-papier/90" :class="certain ? 'line-through decoration-courbe' : ''">
+        <span class="atlas truncate text-papier/90" :class="out(s.code) ? 'line-through decoration-courbe' : ''">
           <span aria-hidden="true" class="mr-1.5 not-italic">{{ flag(s.code) }}</span>{{ countryName(s.code) }}
         </span>
         <div class="h-1 rounded-full bg-courbe-fonce" aria-hidden="true">
-          <div v-if="!certain" class="jauge h-full rounded-full bg-foret/70" :style="{ width: width(s.probability) }" />
+          <div v-if="!out(s.code)" class="jauge h-full rounded-full bg-foret/70" :style="{ width: width(s.probability) }" />
         </div>
-        <span class="text-right tabular-nums text-courbe">{{ certain ? "écarté" : pct(s.probability) }}</span>
+        <span class="text-right tabular-nums text-courbe" :title="!certain && out(s.code) ? 'Écarté par l\'alphabet de tes marques' : ''">
+          {{ out(s.code) ? "écarté" : pct(s.probability) }}
+        </span>
       </li>
     </ol>
   </template>

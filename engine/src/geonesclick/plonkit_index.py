@@ -201,6 +201,13 @@ class TipIndex:
         return dict(rows)
 
     @_locked
+    def untranslated(self, lang: str) -> list[tuple[str, str]]:
+        """(empreinte, texte) des astuces sans traduction dans cette langue."""
+        return list(self.con.execute(
+            "SELECT DISTINCT hash, text FROM tip WHERE hash NOT IN (SELECT hash FROM translation WHERE lang = ?)"
+            " ORDER BY hash", (lang,)))
+
+    @_locked
     def store_translations(self, lang: str, texts: dict[str, str]) -> None:
         with self.con:
             self.con.executemany("INSERT OR REPLACE INTO translation(hash, lang, text) VALUES (?, ?, ?)",

@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "marks",
+  "description": "Fenêtre plein écran des marques : se montrer, passer en plein écran, prendre le clavier, se cacher",
+  "windows": [
+    "marks"
+  ],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-set-focus"
+  ]
+}

@@ -18,6 +18,16 @@
         "minWidth": 360,
         "minHeight": 520,
         "userAgent": "GeoNesClick/0.1 (desktop app, OpenStreetMap tiles for its coaching map)"
+      },
+      {
+        "label": "marks",
+        "title": "GeoNesClick – marques",
+        "url": "index.html?view=marks",
+        "visible": false,
+        "focus": false,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true
       }
     ],
     "security": {

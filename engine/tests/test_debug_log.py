@@ -91,3 +91,11 @@ def test_logs_are_pruned_even_without_capture_copies(tmp_path):
     asyncio.run(run())
     files = list((tmp_path / "captures").glob("capture-*"))
     assert len(files) <= 3 and all(f.suffix == ".json" for f in files)  # 2 gardés (+ celui en cours d'écriture)
+
+
+def test_mark_crops_are_pruned_with_their_capture(tmp_path):
+    for i in range(2):
+        (tmp_path / f"capture-2026110{i}.png").write_bytes(b"")
+        (tmp_path / f"mark-2026110{i}-1.png").write_bytes(b"")
+    prune_captures(tmp_path, keep=1)
+    assert sorted(f.name for f in tmp_path.iterdir()) == ["capture-20261101.png", "mark-20261101-1.png"]

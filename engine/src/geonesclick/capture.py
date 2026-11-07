@@ -7,10 +7,14 @@ de redemander ensuite.
 
 from __future__ import annotations
 
+import base64
+import io
 import os
 import secrets
 import threading
+import time
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 import gi
@@ -230,6 +234,23 @@ class CaptureService:
         return img.convert("RGB")
 
 
+THUMB_SIDE = 720  # miniature d'une capture envoyée à l'interface
+
+
+def data_url(img: Image.Image, side: int = THUMB_SIDE, quality: int = 82) -> str:
+    img = img.copy()
+    img.thumbnail((side, side))
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=quality)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
+
+
+def new_id() -> str:
+    """Identifiant horodaté d'une capture ou d'une vue figée (sert aussi de nom de fichier)."""
+    return f"{datetime.now():%Y%m%d-%H%M%S}-{time.time_ns() % 1000:03d}"
+
+
+
 def apply_crop_and_masks(img: Image.Image, crop: list[float], masks: list[list[float]]) -> Image.Image:
     """Recadre (fractions [g, h, d, b]) puis noircit les zones masquées (fractions de la zone recadrée)."""
     if len(crop) == 4:
@@ -258,7 +279,15 @@ def prune_captures(directory: Path, keep: int) -> int:
     for f in old:
         f.unlink(missing_ok=True)
         f.with_suffix(".json").unlink(missing_ok=True)  # journal du mode débogage
+        _unlink_marks(directory, f.stem)
     logs = sorted(directory.glob("capture-*.json"))  # journaux sans image (copie des captures coupée)
     for f in logs[:-keep] if keep else []:
         f.unlink(missing_ok=True)
+        _unlink_marks(directory, f.stem)
     return len(old)
+
+
+def _unlink_marks(directory: Path, capture_stem: str) -> None:
+    """Découpes des marques (mode débogage) d'une capture supprimée : mark-<id>-<n>.png."""
+    for f in directory.glob(f"mark-{capture_stem.removeprefix('capture-')}-*.png"):
+        f.unlink(missing_ok=True)

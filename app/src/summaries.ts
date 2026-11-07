@@ -1,6 +1,6 @@
 // Résumés d'une ligne des sections du coach : lisibles même quand la section est repliée.
 import type { Analysis } from "./engine";
-import { certainProof, clearLeader, contenders, countryName, flag, fr, proofOf, tipsByCountry } from "./engine";
+import { certainProof, circled, clearLeader, contenders, countryName, flag, fr, proofOf, tipsByCountry, viable } from "./engine";
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 const EMPTY = /^(non visible|aucun|indéterminé)?\.?$/i;
@@ -10,7 +10,7 @@ export function answer(a: Analysis): string {
   const proof = proofOf(a);
   if (proof) {
     const where = `${flag(proof.country)} ${countryName(proof.country)}${proof.region ? ` · ${proof.region}` : ""}`;
-    return proof.confirmed ? where : `${where} · à confirmer`;
+    return proof.confirmed ? `${where} · certain` : proof.source === "marks" ? `${where} · très probable` : `${where} · à confirmer`;
   }
   if (!a.scores?.length) return analysing;
   const leader = clearLeader(a);
@@ -30,8 +30,9 @@ export function countries(a: Analysis): string {
     return `${flag(certain.country)} certain${ruledOut ? ` · ${ruledOut} écartés` : ""}`;
   }
   const proof = proofOf(a);
+  if (proof?.source === "marks") return `${flag(proof.country)} très probable · tes marques`;
   if (proof) return `${flag(proof.country)} ${proof.certainty === "forte" ? "très probable" : "probable"} · lu par l'IA`;
-  return scores.slice(0, 3).map((s) => `${flag(s.code)} ${pct(s.probability)}`).join(" · ") || analysing;
+  return viable(a).slice(0, 3).map((s) => `${flag(s.code)} ${pct(s.probability)}`).join(" · ") || analysing;
 }
 
 export function metas(a: Analysis): string {
@@ -58,4 +59,16 @@ export function vision(a: Analysis): string {
 
 export function round(a: Analysis): string {
   return a.labelled ? `${flag(a.labelled.country)} enregistré` : "c'était où ?";
+}
+
+/** Marques : le texte lu de chacune, par son numéro (« ① « Repkény utca » · ② illisible »). */
+export function marks(a: Analysis): string {
+  return a.marks
+    .map((m) => {
+      const read = m.text.join(" ");
+      const what = m.status === "pending" ? "lecture…" : m.status === "error" ? "échec"
+        : read ? `« ${read.length > 36 ? `${read.slice(0, 35)}…` : read} »` : m.unreadable ? "illisible" : "pas de texte";
+      return `${circled(m.n)} ${what}`;
+    })
+    .join(" · ");
 }

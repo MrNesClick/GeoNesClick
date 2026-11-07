@@ -6,13 +6,14 @@ import Countries from "./components/Countries.vue";
 import HelpLevel from "./components/HelpLevel.vue";
 import LabelForm from "./components/LabelForm.vue";
 import LookHere from "./components/LookHere.vue";
+import Marks from "./components/Marks.vue";
 import MetaHints from "./components/MetaHints.vue";
 import Observations from "./components/Observations.vue";
 import PlonkitTips from "./components/PlonkitTips.vue";
 import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import Summary from "./components/Summary.vue";
-import { engine, requestCapture, restartSharing, tipsByCountry } from "./engine";
+import { engine, requestCapture, requestFreeze, restartSharing, tipsByCountry } from "./engine";
 import * as sum from "./summaries";
 
 const status = computed(() => {
@@ -20,7 +21,7 @@ const status = computed(() => {
   if (engine.capture.starting) return { tone: "bg-courbe", text: "Choisis la fenêtre du jeu à partager…" };
   if (!engine.capture.alive) return { tone: "bg-alerte", text: engine.capture.message };
   if (!engine.streetclip.ready) return { tone: "bg-courbe", text: "Chargement du modèle local…" };
-  return { tone: "bg-foret", text: "Prêt. Capture avec Super+Maj+G." };
+  return { tone: "bg-foret", text: engine.marks.enabled ? "Prêt. Capture : Super+Maj+G · marques : Super+Maj+Z." : "Prêt. Capture avec Super+Maj+G." };
 });
 // Vues de la fenêtre : le coach, la carte en grand (niveau 3 et plus), les réglages.
 const view = ref<"coach" | "map" | "settings">("coach");
@@ -69,15 +70,27 @@ const tabs = computed(() => [
       >
         Relancer le partage
       </button>
-      <button
-        v-else
-        type="button"
-        class="shrink-0 rounded-md bg-papier px-3 py-1.5 text-[0.9rem] font-bold text-encre hover:bg-white disabled:opacity-40"
-        :disabled="!engine.connected || !engine.capture.alive || engine.busy"
-        @click="requestCapture"
-      >
-        Capturer
-      </button>
+      <template v-else>
+        <button
+          v-if="engine.marks.enabled"
+          type="button"
+          class="shrink-0 rounded-md border border-marque/70 px-3 py-1.5 text-[0.9rem] text-papier hover:bg-marque/10 disabled:opacity-40"
+          :title="engine.current ? 'Fige la vue en plein écran pour y entourer des indices (Super+Maj+Z).'
+            : 'Fais d\'abord une capture : les marques complètent l\'analyse de la manche.'"
+          :disabled="!engine.connected || !engine.capture.alive || engine.busy || !engine.current"
+          @click="requestFreeze"
+        >
+          Marquer
+        </button>
+        <button
+          type="button"
+          class="shrink-0 rounded-md bg-papier px-3 py-1.5 text-[0.9rem] font-bold text-encre hover:bg-white disabled:opacity-40"
+          :disabled="!engine.connected || !engine.capture.alive || engine.busy"
+          @click="requestCapture"
+        >
+          Capturer
+        </button>
+      </template>
     </header>
 
     <HelpLevel v-if="!showSettings" />
@@ -101,6 +114,11 @@ const tabs = computed(() => [
           <!-- Sections dans l'ordre d'utilité ; le résumé de chacune reste lisible quand elle est repliée. -->
           <Section v-if="level >= 4" id="reponse" title="Réponse" tone="papier" :summary="sum.answer(engine.current)">
             <Summary :analysis="engine.current" />
+          </Section>
+
+          <!-- Les marques sont tes preuves : juste après la réponse, à tous les niveaux (elles ne nomment aucun pays). -->
+          <Section v-if="engine.current.marks.length" id="marques" title="Marques" tone="papier" :summary="sum.marks(engine.current)">
+            <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
           </Section>
 
           <Section id="capture" title="Capture" :open="false" tone="papier" :summary="sum.capture(engine.current)">
@@ -148,6 +166,12 @@ const tabs = computed(() => [
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">G</kbd>
         : le coach affiche tout seul l'aide du niveau choisi ci-dessus, de « Regarder » (où chercher, sans
         rien dévoiler) à « Réponse » (le pays et la preuve).
+      </p>
+      <p v-if="engine.marks.enabled" class="mt-3 max-w-[34ch] text-courbe">
+        Ensuite, <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Super</kbd>
+        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Maj</kbd>
+        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Z</kbd>
+        fige la vue pour entourer un détail (plaque, panneau) : l'IA le lit en grand.
       </p>
     </main>
 
