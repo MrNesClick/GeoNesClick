@@ -209,8 +209,11 @@ ce que le coach ne fait pas.
 - **Au niveau 1**, quand les pays sont révélés : pour chaque candidat, les astuces Plonk It classées par
   ressemblance avec l'image, avec un lien vers le guide. C'est **une piste à vérifier** : la comparaison
   capte l'allure générale de la vue, pas forcément un élément précis (voir les mesures ci-dessous).
-- Chaque astuce est rangée dans une catégorie de metas par ses étiquettes Plonk It, puis par mots-clés
-  (`[plonkit] keywords`) ; environ 25 % restent « autres » pour l'instant.
+- Chaque astuce est rangée dans une catégorie de metas par ses étiquettes Plonk It (30 %), puis par
+  mots-clés (`[plonkit] keywords`, 45 %), puis par l'IA pour le reste (`ai_classify`, désactivable) : par
+  lots de 25, une seule fois par texte (cache), et seules les 12 catégories connues sont acceptées.
+  Mesuré le 2026-11-07 : 1 009 astuces classées en 2 min 40 ; 92 % des astuces ont une catégorie ;
+  environ 8 sur 10 sont justes sur un échantillon, les erreurs touchant surtout la caméra Google.
 
 Commande manuelle : `cd engine && .venv/bin/python -m geonesclick.plonkit collect`.
 

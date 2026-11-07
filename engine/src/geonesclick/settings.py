@@ -27,7 +27,7 @@ EDITABLE: dict[str, tuple[str, ...]] = {
         "include_seed", "min_probability", "max_candidates", "max_categories", "show_looks", "max_looks",
         "judge_buttons",
     ),
-    "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country"),
+    "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country", "ai_classify"),
     "streetclip": ("top_k",),
     "vision": ("enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px"),
 }

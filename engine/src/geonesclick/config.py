@@ -117,6 +117,10 @@ class PlonkitConfig(BaseModel):
     similar_tips: bool  # « les astuces qui ressemblent à ta vue », pour chaque pays candidat
     similar_per_country: int = Field(ge=1, le=5)
     keywords: dict[str, list[str]] = {}  # remplace les mots-clés de classement d'une catégorie
+    ai_classify: bool  # faire classer par l'IA les astuces restées sans catégorie (une fois par texte)
+    ai_model: str  # vide = le modèle du niveau 2
+    ai_batch: int = Field(ge=5, le=50)  # astuces par appel
+    ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause entre deux appels (limites du palier gratuit)
 
     @field_validator("keywords")
     @classmethod

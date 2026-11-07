@@ -43,6 +43,7 @@ from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_can
 from .settings import SettingsError, current, save
 from .notify import Notifier
 from .plonkit import CHECKED_FILE, PlonkitError, collect, load_tips
+from .plonkit_ai import classify as classify_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .streetclip import StreetClip
@@ -245,7 +246,9 @@ class Engine:
             self.plonkit_tips, self.plonkit_matrix = tips, matrix
             countries = len({t.country for t in tips})
             done = f", {fetched} guides mis à jour" if fetched else ""
-            await self._plonkit_status("ready" if tips else "absent", f"{len(tips)} astuces, {countries} pays{done}")
+            summary = f"{len(tips)} astuces, {countries} pays{done}"
+            await self._plonkit_status("ready" if tips else "absent", summary)
+            await self._classify_plonkit(summary)
         except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # réseau, page changée, disque…
             # On garde la base précédente si elle existe : le coach continue avec les astuces déjà connues.
             await self._plonkit_status("ready" if self.plonkit_tips else "error", f"Plonk It : {exc}")
@@ -253,6 +256,33 @@ class Engine:
             await self._plonkit_status("ready" if self.plonkit_tips else "error",
                                        f"Plonk It : erreur inattendue ({type(exc).__name__})")
             raise
+
+    async def _classify_plonkit(self, summary: str) -> None:
+        """Classe par l'IA, par lots, les astuces restées sans catégorie ; reprend où il s'était arrêté."""
+        pc, index = self.cfg.plonkit, self.plonkit_index
+        if not (pc.ai_classify and self.vision.client and index):
+            return
+        pending = await asyncio.to_thread(index.unclassified)
+        if not pending:
+            return
+        model, done = pc.ai_model or self.cfg.vision.model, 0
+        for start in range(0, len(pending), pc.ai_batch):
+            batch = pending[start:start + pc.ai_batch]
+            await self._plonkit_status("ready", f"{summary} ; classement par l'IA : {done}/{len(pending)}")
+            try:
+                found = await classify_tips(self.vision.client, model, batch)
+            except Exception as exc:  # 429, délai, modèle indisponible : on reprendra à la prochaine mise à jour
+                await self._plonkit_status("ready", f"{summary} ; classement par l'IA interrompu ({type(exc).__name__})")
+                break
+            if found:  # réponse exploitable : les astuces qu'elle laisse de côté restent « autre » pour de bon
+                await asyncio.to_thread(index.store_ai_categories, {h: found.get(h, "autre") for h, _ in batch})
+                done += len(batch)
+            # Lot sans aucune réponse valide (réponse illisible) : rien n'est mémorisé, il sera reproposé.
+            if start + pc.ai_batch < len(pending):
+                await asyncio.sleep(pc.ai_pause_s)
+        else:
+            await self._plonkit_status("ready", f"{summary} ; {done} astuces classées par l'IA")
+        self.plonkit_tips, self.plonkit_matrix = await asyncio.to_thread(index.load, self.cfg.streetclip.model)
 
     async def _index_plonkit(self):
         pc, model = self.cfg.plonkit, self.cfg.streetclip.model

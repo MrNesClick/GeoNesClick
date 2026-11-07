@@ -67,6 +67,12 @@ similar_per_country = 2
 # Mots-clés de classement des astuces par catégorie (anglais), en remplacement de ceux par défaut :
 # keywords = { poteaux = ["pole", "poles", "pylon"] }
 keywords = {}
+# Les astuces que ni les étiquettes ni les mots-clés ne classent (~25 %) sont confiées à l'IA, par lots,
+# une seule fois par texte (résultat gardé en cache). Seules les catégories connues sont acceptées.
+ai_classify = true
+ai_model = ""            # vide = le modèle du niveau 2 ([vision] model)
+ai_batch = 25
+ai_pause_s = 2.0
 
 [streetclip]
 enabled = true

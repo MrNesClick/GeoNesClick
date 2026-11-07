@@ -158,6 +158,10 @@ const check = "size-4 accent-[var(--color-foret)]";
           <input v-model="s.plonkit.similar_tips" type="checkbox" :class="check" :disabled="!s.plonkit.enabled" />
           Montrer les astuces Plonk It des pays candidats
         </label>
+        <label class="flex items-start gap-3">
+          <input v-model="s.plonkit.ai_classify" type="checkbox" :class="check" class="mt-1" :disabled="!s.plonkit.enabled" />
+          <span>Faire classer par l'IA les astuces sans catégorie <span class="block text-[0.85rem] text-courbe">Une seule fois par astuce, avec le modèle NVIDIA ; le résultat est gardé en cache.</span></span>
+        </label>
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="text-[0.85rem] text-courbe">Astuces par pays</span>

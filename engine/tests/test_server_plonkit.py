@@ -122,3 +122,54 @@ def test_settings_toggle_plonkit_live(engine, tmp_path, monkeypatch):
 
     asyncio.run(toggle())
     assert engine.plonkit_status == "ready"
+
+
+class FakeLLM:
+    """Faux client OpenAI : renvoie une réponse fixée et compte les appels."""
+
+    def __init__(self, content=None, error=None):
+        self.calls, self.content, self.error = 0, content, error
+        self.chat = self
+        self.completions = self
+
+    async def create(self, **kwargs):
+        self.calls += 1
+        if self.error:
+            raise self.error
+        message = type("M", (), {"content": self.content})
+        return type("R", (), {"choices": [type("C", (), {"message": message})]})
+
+
+def test_ai_classifies_leftover_tips_once(engine):
+    engine.cfg.plonkit.ai_pause_s = 0
+    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    asyncio.run(engine.refresh_plonkit(check=False))
+    by_text = {t.text: t.category for t in engine.plonkit_tips}
+    assert by_text["White lines."] == "marquage"  # ni étiquette ni mot-clé : classée par l'IA
+    assert "classées par l'IA" in engine.plonkit_message
+    asyncio.run(engine.refresh_plonkit(check=False))
+    assert engine.vision.client.calls == 1  # en cache : jamais redemandé
+    by_text = {t.text: t.category for t in engine.plonkit_tips}
+    assert by_text["White lines."] == "marquage"  # et réappliqué après la reconstruction de la base
+
+
+def test_ai_failure_is_reported_and_retried_later(engine):
+    engine.vision.client = FakeLLM(error=TimeoutError("lent"))
+    asyncio.run(engine.refresh_plonkit(check=False))
+    assert engine.plonkit_status == "ready" and "interrompu" in engine.plonkit_message
+    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    asyncio.run(engine.refresh_plonkit(check=False))
+    assert {t.text: t.category for t in engine.plonkit_tips}["White lines."] == "marquage"
+
+
+def test_ai_classification_can_be_disabled(engine):
+    engine.cfg.plonkit.ai_classify = False
+    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    asyncio.run(engine.refresh_plonkit(check=False))
+    assert engine.vision.client.calls == 0
+
+
+def test_unreadable_ai_answer_is_not_cached(engine):
+    engine.vision.client = FakeLLM("désolé, je ne peux pas")
+    asyncio.run(engine.refresh_plonkit(check=False))
+    assert len(engine.plonkit_index.unclassified()) == 1  # sera reproposée à la prochaine mise à jour

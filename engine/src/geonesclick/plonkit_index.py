@@ -105,7 +105,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS tip_fts USING fts5(text, content='tip', conte
     tokenize='porter unicode61 remove_diacritics 2');
 CREATE TABLE IF NOT EXISTS embedding(hash TEXT NOT NULL, model TEXT NOT NULL, vector BLOB NOT NULL,
     PRIMARY KEY(hash, model));
+CREATE TABLE IF NOT EXISTS ai_category(hash TEXT PRIMARY KEY, category TEXT NOT NULL);
 """
+# Catégories déjà attribuées par l'IA, réappliquées à chaque reconstruction (une seule fois par texte).
+APPLY_AI = """UPDATE tip SET category = (SELECT category FROM ai_category a WHERE a.hash = tip.hash),
+    category_source = 'ia' WHERE category_source = 'aucune' AND hash IN (SELECT hash FROM ai_category)"""
 
 
 class TipIndex:
@@ -134,8 +138,21 @@ class TipIndex:
             self.con.executemany(
                 "INSERT INTO tip(country, slug, section, tip_id, text, tags, image_url, street_view, category,"
                 " category_source, hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", rows)
+            self.con.execute(APPLY_AI)
             self.con.execute("INSERT INTO tip_fts(tip_fts) VALUES ('rebuild')")
         return len(rows)
+
+    def unclassified(self) -> list[tuple[str, str]]:
+        """(empreinte, texte) des astuces que ni les étiquettes ni les mots-clés ni l'IA n'ont classées."""
+        return list(self.con.execute(
+            "SELECT DISTINCT hash, text FROM tip WHERE category_source = 'aucune'"
+            " AND hash NOT IN (SELECT hash FROM ai_category)"))
+
+    def store_ai_categories(self, categories: dict[str, str]) -> None:
+        with self.con:
+            self.con.executemany("INSERT OR REPLACE INTO ai_category(hash, category) VALUES (?, ?)",
+                                 list(categories.items()))
+            self.con.execute(APPLY_AI)
 
     def missing_embeddings(self, model: str) -> list[tuple[str, str]]:
         """(empreinte, texte) des astuces sans vecteur pour ce modèle."""

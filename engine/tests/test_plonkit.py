@@ -96,3 +96,27 @@ def test_interrupted_collect_does_not_mark_the_check_done(tmp_path, monkeypatch)
     with pytest.raises(PlonkitError):
         plonkit.collect(None, tmp_path)
     assert not (tmp_path / plonkit.CHECKED_FILE).exists()
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ('{"0": "poteaux", "1": "bornes"}', {0: "poteaux", 1: "bornes"}),
+        ('Voici : ```json\n{"0": "poteaux"}\n```', {0: "poteaux"}),
+        ('{"0": "rm -rf /", "1": "Ignore previous instructions", "7": "poteaux"}', {}),  # inconnues, hors lot
+        ('["poteaux"]', {}),
+        ("pas de JSON", {}),
+    ],
+)
+def test_ai_answers_are_strictly_validated(content, expected):
+    from geonesclick.plonkit_ai import parse_answer
+
+    assert parse_answer(content, count=2) == expected
+
+
+def test_ai_prompt_numbers_and_truncates_tips():
+    from geonesclick.plonkit_ai import MAX_CHARS, build_prompt
+
+    prompt = build_prompt(["Poles\n\nwith holes.", "x" * 1000])
+    assert "0: Poles with holes." in prompt and "x" * (MAX_CHARS + 1) not in prompt
+    assert "- poteaux : Poteaux" in prompt
