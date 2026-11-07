@@ -14,7 +14,10 @@ réglables, et un chemin mal configuré (~) ne doit pas pouvoir être effacé.
 from __future__ import annotations
 
 import os
-from collections.abc import Iterable
+import re
+import shutil
+import subprocess
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -128,3 +131,87 @@ def touch(path: Path) -> None:
         os.utime(path)
     except OSError:
         pass
+
+
+# --- « Tout effacer » (droit à l'effacement, RGPD ; décidé avec l'utilisateur le 2026-11-07) -------------------
+# Tout ce qui te concerne part : clé API, réglages, tes metas, captures et journaux, jeu de test, guides Plonk It et
+# traductions, index des lieux, raccourcis GNOME (l'interface efface son propre état). À part, sur demande : les
+# modèles téléchargés (rien de personnel). Toujours des fichiers CONNUS : dans un dossier réglé à la main, seuls les
+# fichiers de l'app partent, jamais le dossier.
+MODEL_ID = re.compile(r"[\w.\-]+/[\w.\-]+")  # « geolocal/StreetCLIP » : jamais de « .. » ni de « / » en trop
+SHORTCUT_PATHS = ("/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/",
+                  "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick-mark/")
+MEDIA_KEYS = "org.gnome.settings-daemon.plugins.media-keys"
+
+
+def account_files(config_dir: Path, settings: Path, metas: Path) -> list[Path]:
+    """Clé API, réglages, tes metas, autorisation de partage d'écran (fichiers connus seulement)."""
+    named = [settings, metas, config_dir / "screencast.token"]
+    return sorted({p for p in named if p.is_file() and not p.is_symlink()} | set(files_of(config_dir, ["*.key", "*.tmp"])))
+
+
+def dataset_files(dataset_dir: Path) -> list[Path]:
+    return (files_of(dataset_dir, ["labels.toml"]) + files_of(dataset_dir / "images", ["capture-*.png"])
+            + files_of(dataset_dir / "rounds", ["*.json"]))
+
+
+def model_dirs(hub_cache: Path, model_ids: Iterable[str]) -> list[Path]:
+    """Dossiers du cache Hugging Face de NOS modèles seulement (ceux d'autres logiciels restent)."""
+    out = []
+    for model in model_ids:
+        if not MODEL_ID.fullmatch(model):
+            continue
+        path = hub_cache / f"models--{model.replace('/', '--')}"
+        if path.is_dir() and not path.is_symlink() and path.parent == hub_cache:
+            out.append(path)
+    return out
+
+
+def dir_size(path: Path) -> int:
+    return size_of(p for p in path.rglob("*") if p.is_file() and not p.is_symlink())
+
+
+def erase_plan(groups: dict[str, list[Path]], models: list[Path]) -> list[dict[str, Any]]:
+    labels = {"compte": "Clé API, réglages, tes metas", "captures": "Captures et journaux",
+              "jeu": "Jeu de test (manches, images, banc)", "plonkit": "Guides Plonk It et traductions",
+              "lieux": "Lieux GeoNames et villages"}
+    out = [{"id": key, "label": labels[key], "files": len(files), "size": size_of(files), "precious": key == "jeu",
+            "optional": False} for key, files in groups.items()]
+    out.append({"id": "modeles", "label": "Modèles téléchargés (StreetCLIP, PLONK)", "files": len(models),
+                "size": sum(dir_size(m) for m in models), "precious": False, "optional": True})
+    return out
+
+
+def _gsettings(args: list[str]) -> str:
+    """gsettings du système (remplacé dans les tests : ils ne touchent jamais tes raccourcis)."""
+    return subprocess.run(["/usr/bin/gsettings", *args], capture_output=True, text=True, timeout=10,
+                          check=False).stdout.strip()
+
+
+def remove_shortcuts(run: Callable[[list[str]], str] | None = None) -> int:
+    """Retire les raccourcis GNOME de l'app. Renvoie le nombre retiré."""
+    run = run or _gsettings
+    current = run(["get", MEDIA_KEYS, "custom-keybindings"])
+    keys = re.findall(r"'([^']+)'", current)
+    kept = [k for k in keys if k not in SHORTCUT_PATHS]
+    if len(kept) == len(keys):
+        return 0
+    run(["set", MEDIA_KEYS, "custom-keybindings", str(kept)])
+    for path in SHORTCUT_PATHS:
+        run(["reset-recursively", f"{MEDIA_KEYS}.custom-keybinding:{path}"])
+    return len(keys) - len(kept)
+
+
+def erase(groups: dict[str, list[Path]], models: list[Path], with_models: bool, empty_dirs: Iterable[Path]) -> int:
+    """Supprime les fichiers listés (et, si demandé, nos dossiers de modèles) ; puis les dossiers de l'app vidés."""
+    freed = sum(remove(files) for files in groups.values())
+    if with_models:
+        for path in models:
+            freed += dir_size(path)
+            shutil.rmtree(path, ignore_errors=True)
+    for folder in sorted(empty_dirs, key=lambda p: -len(p.parts)):  # les plus profonds d'abord
+        try:
+            folder.rmdir()  # seulement s'il est vide : un fichier inconnu le garde
+        except OSError:
+            pass
+    return freed

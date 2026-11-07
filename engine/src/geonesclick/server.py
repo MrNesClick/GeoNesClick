@@ -28,6 +28,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sqlite3
+import subprocess
 import time
 from collections import OrderedDict
 from contextlib import asynccontextmanager, suppress
@@ -61,7 +62,7 @@ from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .plonk import PlonkCloud, summarise
-from . import apikey, storage
+from . import apikey, paths, storage
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
@@ -89,6 +90,11 @@ class ApiKeyRequest(BaseModel):
 
 class TruthRequest(BaseModel):
     link: str = Field(min_length=3, max_length=2000)
+
+
+class EraseRequest(BaseModel):
+    confirm: Literal["EFFACER"]  # tapé par le joueur : rien ne part sur un clic égaré
+    models: bool = False  # aussi les modèles téléchargés (rien de personnel)
 
 
 class ClearRequest(BaseModel):
@@ -148,6 +154,7 @@ class Engine(MarksMixin, LocksMixin):
         self.places_task: asyncio.Task | None = None
         self.detail_tasks: dict[str, asyncio.Task] = {}  # répertoire complet d'un pays, en cours de téléchargement
         self.detail_failed: set[str] = set()  # pays dont le détail a échoué : pas de nouvel essai avant redémarrage
+        self.erased = False  # « Tout effacer » fait : plus rien n'est valide en mémoire, relance attendue
 
     def load_metas(self) -> None:
         self.metas, self.metas_message = [], "désactivées"
@@ -247,6 +254,7 @@ class Engine(MarksMixin, LocksMixin):
                 "close_zoom": self.cfg.map.close_zoom, "max_zoom": self.cfg.map.max_zoom,
             },
             "countries": sorted(self.cfg.streetclip.countries.values()),
+            "erased": self.erased,  # « Tout effacer » fait : le moteur attend d'être relancé
         }
 
     async def broadcast(self, message: dict[str, Any]) -> None:
@@ -305,6 +313,48 @@ class Engine(MarksMixin, LocksMixin):
     def storage_items(self) -> dict[str, Any]:
         items = storage.inventory(self.cfg.rules.places_path, self.cfg.plonkit.path, self.cfg.capture.path)
         return {"items": items, "max_cache_mb": self.cfg.storage.max_cache_mb}
+
+    # --- « Tout effacer » (RGPD) -------------------------------------------------------------------
+    def _erase_targets(self) -> tuple[dict[str, list[Path]], list[Path], list[Path]]:
+        cfg, rc = self.cfg, self.cfg.rules
+        groups = {
+            "compte": storage.account_files(paths.CONFIG_DIR, self.settings_path, cfg.metas.user_path),
+            "captures": storage.capture_files(cfg.capture.path),
+            "jeu": storage.dataset_files(cfg.dataset.path),
+            "plonkit": storage.plonkit_files(cfg.plonkit.path),
+            "lieux": storage.village_files(rc.places_path) + storage.base_place_files(rc.places_path),
+        }
+        models = storage.model_dirs(paths.hf_hub_cache(), [cfg.streetclip.model, cfg.plonk.model])
+        # Dossiers retirés s'ils sont vides après coup (un fichier inconnu les garde).
+        folders = [paths.CONFIG_DIR, paths.DATA_DIR, cfg.capture.path, cfg.dataset.path, cfg.dataset.path / "images",
+                   cfg.dataset.path / "rounds", cfg.plonkit.path, cfg.plonkit.path / "raw", rc.places_path]
+        return groups, models, folders
+
+    def erase_plan(self) -> dict[str, Any]:
+        groups, models, _ = self._erase_targets()
+        return {"groups": storage.erase_plan(groups, models)}
+
+    async def erase_all(self, with_models: bool) -> dict[str, Any]:
+        """Efface tout ce qui te concerne ; le moteur doit ensuite être relancé (l'interface le demande à Tauri)."""
+        for task in (self.plonkit_task, self.pretranslate_task, self.places_task, self.plonk_task,
+                     *self.detail_tasks.values()):
+            if task and not task.done():
+                task.cancel()
+        if self.places:
+            self.places.close()
+        if self.plonkit_index:
+            self.plonkit_index.close()
+        self.places, self.plonkit_index, self.plonkit_base = None, None, ([], None)
+        self.recent.clear()
+        groups, models, folders = self._erase_targets()
+        freed = await asyncio.to_thread(storage.erase, groups, models, with_models, folders)
+        try:
+            shortcuts = await asyncio.to_thread(storage.remove_shortcuts)
+        except (OSError, subprocess.SubprocessError):  # pas de GNOME : rien à retirer
+            shortcuts = 0
+        self.erased = True
+        await self.broadcast(self.state())
+        return {"ok": True, "freed": freed, "shortcuts": shortcuts}
 
     async def clear_storage(self, what: str) -> dict[str, Any]:
         """Vide un élément du stockage ; seuls des fichiers connus sont supprimés, jamais un dossier."""
@@ -1009,6 +1059,16 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def get_storage() -> dict[str, Any]:
         """Ce que le coach garde sur le disque, et la taille de chaque élément."""
         return await asyncio.to_thread(engine.storage_items)
+
+    @app.get("/storage/erase")
+    async def erase_plan() -> dict[str, Any]:
+        """Ce que « Tout effacer » supprimerait, avec les tailles (rien n'est supprimé ici)."""
+        return await asyncio.to_thread(engine.erase_plan)
+
+    @app.post("/storage/erase")
+    async def erase_all(req: EraseRequest) -> dict[str, Any]:
+        """« Tout effacer » (RGPD) : confirmé par le mot EFFACER ; le moteur est ensuite relancé par l'interface."""
+        return await engine.erase_all(req.models)
 
     @app.post("/storage/clear")
     async def clear_storage(req: ClearRequest) -> dict[str, Any]:

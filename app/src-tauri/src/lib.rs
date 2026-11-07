@@ -59,11 +59,24 @@ fn stop_engine(child: &mut Child) {
     let _ = child.wait();
 }
 
+/// Relance le moteur (après « Tout effacer » : plus rien de valide en mémoire). Arrête l'ancien proprement, puis en
+/// démarre un neuf, qui repart des dossiers vides.
+#[tauri::command]
+fn restart_engine(state: tauri::State<'_, Engine>) -> Result<(), String> {
+    let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
+    if let Some(mut child) = slot.take() {
+        stop_engine(&mut child);
+    }
+    *slot = spawn_engine();
+    if slot.is_some() { Ok(()) } else { Err("moteur introuvable".into()) }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
         // Ouvre les pages Plonk It dans le navigateur ; adresses limitées par capabilities/default.json.
         .plugin(tauri_plugin_opener::init())
+        .invoke_handler(tauri::generate_handler![restart_engine])
         .setup(|app| {
             app.manage(Engine(Mutex::new(spawn_engine())));
             Ok(())

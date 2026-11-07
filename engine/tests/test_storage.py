@@ -91,3 +91,61 @@ def test_lowering_the_limit_evicts_now(client, folders):
     places, _, _ = folders
     asyncio.run(engine.apply_settings({"storage": {"max_cache_mb": 50}}))  # 900 octets < 50 Mo : rien ne part
     assert len(storage.village_files(places)) == 3
+
+
+# --- « Tout effacer » (RGPD) -------------------------------------------------------------------------
+def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from geonesclick import apikey, paths
+    from geonesclick.config import load_config
+    from geonesclick.server import create_app
+
+    def touch(path, data=b"x" * 10):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        return path
+
+    d = tmp_path
+    hub = d / "hub"
+    monkeypatch.setenv("HF_HUB_CACHE", str(hub))
+    monkeypatch.setattr(paths, "DATA_DIR", d / "data")
+    settings = paths.CONFIG_DIR / "config.toml"
+    settings.write_text(
+        f'[capture]\nnotify = false\ndirectory = "{d / "shots"}"\n[dataset]\ndirectory = "{d / "ds"}"\n'
+        f'[metas]\nuser_file = "{paths.CONFIG_DIR / "mes-metas.toml"}"\n[plonkit]\ndata_dir = "{d / "pk"}"\n'
+        f'[rules]\nplaces_dir = "{d / "places"}"\n')
+    apikey.save("NVAPI", "nvapi-secret-1234")
+    gone = [settings, touch(paths.CONFIG_DIR / "mes-metas.toml"), touch(paths.CONFIG_DIR / "screencast.token"),
+            touch(d / "shots" / "capture-1.png"), touch(d / "shots" / "capture-1.json"), touch(d / "ds" / "labels.toml"),
+            touch(d / "ds" / "images" / "capture-1.png"), touch(d / "ds" / "rounds" / "1.json"),
+            touch(d / "pk" / "plonkit.sqlite"), touch(d / "places" / "places-v4.sqlite"),
+            touch(d / "places" / "detail-FR-v4.sqlite")]
+    kept = [touch(d / "shots" / "notes.txt"), touch(hub / "models--other--Model" / "w.bin")]
+    ours = touch(hub / "models--geolocal--StreetCLIP" / "w.bin")
+    calls = []
+
+    def gsettings(args):
+        calls.append(args)
+        return "['/a/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/']"
+
+    monkeypatch.setattr(storage, "_gsettings", gsettings)
+    client = TestClient(create_app(load_config(settings), settings), base_url="http://127.0.0.1:47615")
+    origin = {"Origin": "http://localhost:1420"}
+    plan = {g["id"]: g for g in client.get("/storage/erase").json()["groups"]}
+    assert plan["jeu"]["precious"] and plan["jeu"]["files"] == 3 and plan["modeles"]["optional"]
+    assert client.post("/storage/erase", json={"confirm": "oui"}, headers=origin).status_code == 422
+    res = client.post("/storage/erase", json={"confirm": "EFFACER"}, headers=origin).json()
+    assert res["ok"] and res["shortcuts"] == 1
+    assert not any(p.exists() for p in gone) and apikey.read("NVAPI") is None
+    assert all(p.exists() for p in kept) and ours.exists()  # modèles : seulement sur demande
+    assert ["set", storage.MEDIA_KEYS, "custom-keybindings", "['/a/']"] in calls
+    assert client.get("/health").json()["erased"] is True
+    client.post("/storage/erase", json={"confirm": "EFFACER", "models": True}, headers=origin)
+    assert not ours.exists() and kept[1].exists()  # les modèles d'autres logiciels restent
+
+
+def test_model_ids_cannot_escape_the_cache(tmp_path):
+    (tmp_path / "hub").mkdir()
+    (tmp_path / "victim").mkdir()
+    assert storage.model_dirs(tmp_path / "hub", ["../victim", "a/../../victim", "x"]) == []

@@ -605,6 +605,14 @@ des pays rencontrés) : les moins récemment utilisés partent d'abord. Le socle
 Plonk It) ne part jamais tout seul, et ton jeu de test, tes metas et ta config ne sont jamais vidés. Par
 sécurité, seuls des fichiers connus du coach sont supprimés, jamais un dossier entier.
 
+**Tout effacer** (droit à l'effacement, RGPD) : en bas de Réglages › Stockage. La liste de ce qui part s'affiche avec
+les tailles : clé API, réglages, tes metas, autorisation de partage d'écran, captures et journaux, jeu de test (signalé
+comme précieux), guides Plonk It et traductions, lieux GeoNames et villages, état de l'interface, raccourcis GNOME de
+l'application. Une case à part, décochée : aussi les modèles téléchargés (StreetCLIP, PLONK : rien de personnel ;
+les modèles d'autres logiciels restent). Il faut taper « EFFACER » ; puis le moteur et l'interface repartent de
+zéro. Seuls des fichiers connus de l'application sont supprimés, jamais un dossier réglé à la main ni son contenu
+étranger. L'exemplaire du jeu de test versionné dans le dépôt (`engine/dataset/`) n'est pas touché.
+
 **Hors ligne** : une fois StreetCLIP et PLONK (s'il est activé) en cache, le moteur passe Hugging Face en
 mode hors ligne au démarrage. Pour récupérer une nouvelle version d'un modèle, supprime son dossier
 (`~/.cache/huggingface/hub/models--geolocal--StreetCLIP`, `models--nicolas-dufour--PLONK_OSV_5M`) et relance.

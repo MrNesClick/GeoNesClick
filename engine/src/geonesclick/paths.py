@@ -27,6 +27,12 @@ DATA_DIR = data_home() / APP  # places/ (GeoNames), plonkit/ (guides et traducti
 SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / f"{APP}.sock"
 
 
+def hf_hub_cache() -> Path:
+    """Cache des modèles Hugging Face (StreetCLIP, PLONK), sans importer la bibliothèque."""
+    hf_home = Path(os.environ.get("HF_HOME") or Path.home() / ".cache" / "huggingface")
+    return Path(os.environ.get("HF_HUB_CACHE") or hf_home / "hub")
+
+
 def migrate_legacy() -> list[str]:
     """Déplace les dossiers de l'ancien nom vers les nouveaux, s'ils n'existent pas encore ; ne supprime jamais.
 

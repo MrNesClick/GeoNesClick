@@ -49,3 +49,14 @@ def no_real_key_file(monkeypatch, tmp_path_factory):
 
     monkeypatch.setattr(paths, "CONFIG_DIR", tmp_path_factory.mktemp("config"))
     monkeypatch.delenv("NVAPI", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def no_real_shortcuts(monkeypatch):
+    """Aucun test ne lit ni ne modifie tes raccourcis GNOME."""
+    from geonesclick import storage
+
+    def blocked(args):
+        raise AssertionError(f"gsettings interdit pendant les tests : {args}")
+
+    monkeypatch.setattr(storage, "_gsettings", blocked)

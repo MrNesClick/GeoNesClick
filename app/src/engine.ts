@@ -386,6 +386,8 @@ export const engine = reactive({
   trustProof: true,
   /** Sans preuve, un pays n'est donné en réponse que s'il se détache (probabilité et avance sur le 2ᵉ). */
   leader: { min: 0.4, margin: 0.15 },
+  /** « Tout effacer » fait : le moteur attend d'être relancé. */
+  erased: false,
   busy: false,
   error: null as string | null,
   current: null as Analysis | null,
@@ -407,6 +409,7 @@ type Message =
       locks: typeof engine.locks;
       map: typeof engine.map;
       countries: string[];
+      erased: boolean;
       help_level: number;
       trust_proof: boolean;
       leader: { min: number; margin: number };
@@ -454,6 +457,7 @@ function handle(msg: Message) {
       engine.locks = msg.locks;
       engine.map = msg.map;
       engine.countries = msg.countries;
+      engine.erased = msg.erased ?? false;
       engine.helpLevel = msg.help_level;
       engine.trustProof = msg.trust_proof;
       engine.leader = msg.leader;
@@ -634,6 +638,27 @@ export async function previewTruth(link: string): Promise<
   }
 }
 export const refreshPlonkit = () => request("/plonkit/refresh");
+/** « Tout effacer » (RGPD) : ce qui partirait, avec les tailles. */
+export interface EraseGroup { id: string; label: string; files: number; size: number; precious: boolean; optional: boolean }
+export const erasePlan = () => getJSON<{ groups: EraseGroup[] }>("/storage/erase");
+/** Efface tout ce qui te concerne, puis relance le moteur (Tauri) et l'interface, qui repartent de zéro. */
+export async function eraseEverything(models: boolean): Promise<string | null> {
+  const res = await request("/storage/erase", { confirm: "EFFACER", models });
+  if (!res?.ok) return engine.error ?? "Effacement impossible.";
+  try {
+    localStorage.clear(); // l'état de l'interface (sections ouvertes…) part aussi
+  } catch {
+    /* stockage indisponible : rien à effacer */
+  }
+  try {
+    const { invoke } = await import("@tauri-apps/api/core");
+    await invoke("restart_engine");
+  } catch {
+    return "Données effacées. Relance l'application pour repartir de zéro.";
+  }
+  window.location.reload();
+  return null;
+}
 /** Clé API NVIDIA : écrite par le moteur dans un fichier lisible par toi seul ; vide = l'oublier. */
 export async function saveApiKey(key: string): Promise<string | null> {
   const res = await request("/settings/api-key", { key });

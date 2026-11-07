@@ -1,16 +1,13 @@
 import os
-from pathlib import Path
 
 from .apikey import key_file, migrate_env
 from .config import PROJECT_ROOT, load_config
-from .paths import migrate_legacy, migrate_repo_data
+from .paths import hf_hub_cache, migrate_legacy, migrate_repo_data
 
 
 def _hf_model_cached(model_id: str) -> bool:
     """Le modèle est-il déjà dans le cache Hugging Face local ? (sans importer la bibliothèque)"""
-    hf_home = Path(os.environ.get("HF_HOME", Path.home() / ".cache" / "huggingface"))
-    hub_cache = Path(os.environ.get("HF_HUB_CACHE", hf_home / "hub"))
-    snapshots = hub_cache / f"models--{model_id.replace('/', '--')}" / "snapshots"
+    snapshots = hf_hub_cache() / f"models--{model_id.replace('/', '--')}" / "snapshots"
     return snapshots.is_dir() and any(snapshots.iterdir())
 
 
