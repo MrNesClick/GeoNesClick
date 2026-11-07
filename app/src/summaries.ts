@@ -1,6 +1,6 @@
 // Résumés d'une ligne des sections du coach : lisibles même quand la section est repliée.
 import type { Analysis } from "./engine";
-import { certainProof, countryName, flag, fr, proofOf, tipsByCountry } from "./engine";
+import { certainProof, clearLeader, contenders, countryName, flag, fr, proofOf, tipsByCountry } from "./engine";
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 const EMPTY = /^(non visible|aucun|indéterminé)?\.?$/i;
@@ -8,9 +8,14 @@ const analysing = "analyse en cours…";
 
 export function answer(a: Analysis): string {
   const proof = proofOf(a);
-  if (proof) return `${flag(proof.country)} ${countryName(proof.country)}${proof.region ? ` · ${proof.region}` : ""}`;
-  const leader = a.scores?.[0];
-  return leader ? `${flag(leader.code)} ${countryName(leader.code)} ${pct(leader.probability)}` : analysing;
+  if (proof) {
+    const where = `${flag(proof.country)} ${countryName(proof.country)}${proof.region ? ` · ${proof.region}` : ""}`;
+    return proof.confirmed ? where : `${where} · à confirmer`;
+  }
+  if (!a.scores?.length) return analysing;
+  const leader = clearLeader(a);
+  if (leader) return `${flag(leader.code)} ${countryName(leader.code)} ${pct(leader.probability)}`;
+  return `hésitation · ${contenders(a).map((s) => flag(s.code)).join(" ")}`;
 }
 
 export function capture(a: Analysis): string {
@@ -24,6 +29,8 @@ export function countries(a: Analysis): string {
     const ruledOut = scores.filter((s) => s.code !== certain.country).length;
     return `${flag(certain.country)} certain${ruledOut ? ` · ${ruledOut} écartés` : ""}`;
   }
+  const proof = proofOf(a);
+  if (proof) return `${flag(proof.country)} ${proof.certainty === "forte" ? "très probable" : "probable"} · lu par l'IA`;
   return scores.slice(0, 3).map((s) => `${flag(s.code)} ${pct(s.probability)}`).join(" · ") || analysing;
 }
 

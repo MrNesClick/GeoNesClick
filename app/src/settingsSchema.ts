@@ -1,0 +1,247 @@
+// Description de l'écran Réglages : chaque réglage modifiable du moteur (settings.py, EDITABLE) a ici son
+// libellé, son aide, son type et sa section. L'écran se construit à partir de cette table.
+
+export type Kind =
+  | "bool"
+  | "int"
+  | "float"
+  | "text"
+  | "textarea"
+  | "select"
+  | "radio"
+  | "rect" // [gauche, haut, droite, bas] en fractions ; vide = image entière
+  | "rects" // liste de rectangles, un par ligne
+  | "categoryText" // une valeur texte par catégorie de metas
+  | "categoryNumber" // un nombre par catégorie
+  | "categoryList" // une liste de mots par catégorie
+  | "countries"; // pays candidats : cocher, décocher, ajouter
+
+export interface Field {
+  section: string;
+  key: string;
+  label: string;
+  hint?: string;
+  kind: Kind;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: { value: string | number; label: string; hint?: string }[];
+  /** Rangé dans la partie « Avancé » de la section. */
+  advanced?: boolean;
+  /** Grisé tant que ce réglage booléen est faux. */
+  needs?: [string, string];
+}
+
+export interface Group {
+  id: string;
+  title: string;
+  /** Sections du moteur dont la partie « réservé au fichier » s'affiche dans ce groupe. */
+  fileSections: string[];
+  fields: Field[];
+}
+
+const LANGUAGES = [
+  { value: "fr", label: "Français" },
+  { value: "en", label: "Anglais (pas de traduction)" },
+  { value: "es", label: "Espagnol" },
+  { value: "de", label: "Allemand" },
+  { value: "it", label: "Italien" },
+  { value: "pt", label: "Portugais" },
+];
+
+export const GROUPS: Group[] = [
+  {
+    id: "aide",
+    title: "Aide",
+    fileSections: [],
+    fields: [
+      {
+        section: "coach", key: "help_level", label: "Niveau d'aide", kind: "radio",
+        hint: "Ce qui s'affiche tout seul après une capture (modifiable aussi en haut du coach).",
+        options: [
+          { value: 1, label: "1. Regarder", hint: "Où regarder, sans nommer de pays." },
+          { value: 2, label: "2. Indices", hint: "Plus ce que voit l'IA, dont le texte lu." },
+          { value: 3, label: "3. Pays", hint: "Plus les pays probables, la carte, les indices et les astuces." },
+          { value: 4, label: "4. Réponse", hint: "Plus la synthèse en tête : pays, région, preuve." },
+        ],
+      },
+      {
+        section: "coach", key: "trust_proof", label: "Une preuve lue tranche", kind: "bool",
+        hint: "Une preuve confirmée par une règle locale (mot, domaine, indicatif) met ce pays en tête, « certain », et écarte les autres. Une lecture de l'IA seule reste « très probable ».",
+      },
+      { section: "coach", key: "language", label: "Langue des traductions", kind: "select", options: LANGUAGES,
+        hint: "L'interface du coach reste en français pour l'instant." },
+      { section: "coach", key: "leader_min", label: "Probabilité minimale d'un pays donné en réponse", kind: "float",
+        min: 0, max: 1, step: 0.05, advanced: true,
+        hint: "Sans preuve lue : en dessous, le coach parle d'hésitation entre les premiers pays." },
+      { section: "coach", key: "leader_margin", label: "Avance minimale sur le 2ᵉ pays", kind: "float", min: 0, max: 1,
+        step: 0.05, advanced: true },
+    ],
+  },
+  {
+    id: "analyse",
+    title: "Analyse",
+    fileSections: ["streetclip", "vision"],
+    fields: [
+      { section: "streetclip", key: "enabled", label: "Analyse rapide en local (StreetCLIP)", kind: "bool",
+        hint: "Pris en compte au prochain démarrage." },
+      { section: "streetclip", key: "top_k", label: "Pays probables listés", kind: "int", min: 1, max: 20 },
+      { section: "streetclip", key: "countries", label: "Pays candidats", kind: "countries",
+        hint: "Décoche un pays pour l'écarter de l'analyse ; ajoute-en un par son nom anglais et son code ISO." },
+      { section: "vision", key: "enabled", label: "Analyse approfondie (modèle de vision NVIDIA)", kind: "bool" },
+      { section: "vision", key: "model", label: "Modèle de vision", kind: "text", needs: ["vision", "enabled"] },
+      { section: "vision", key: "thinking", label: "Laisser le modèle raisonner (plus lent)", kind: "bool",
+        needs: ["vision", "enabled"] },
+      { section: "vision", key: "timeout_s", label: "Délai maximal (secondes)", kind: "float", min: 5, max: 300,
+        needs: ["vision", "enabled"] },
+      { section: "streetclip", key: "device", label: "Calcul de StreetCLIP", kind: "select", advanced: true,
+        hint: "Pris en compte au prochain démarrage.",
+        options: [{ value: "auto", label: "Automatique" }, { value: "cuda", label: "Carte graphique" },
+                  { value: "cpu", label: "Processeur" }] },
+      { section: "streetclip", key: "prompt", label: "Prompt de StreetCLIP", kind: "text", advanced: true,
+        hint: "{} est remplacé par le nom anglais de chaque pays." },
+      { section: "vision", key: "max_side_px", label: "Taille de l'image envoyée (px)", kind: "int", min: 256,
+        max: 4096, advanced: true, hint: "Plus grand : le texte se lit mieux, la réponse arrive moins vite." },
+      { section: "vision", key: "max_tokens", label: "Longueur maximale de la réponse (jetons)", kind: "int",
+        min: 100, max: 16000, advanced: true },
+      { section: "vision", key: "temperature", label: "Température", kind: "float", min: 0, max: 2, step: 0.1,
+        advanced: true, hint: "0 : réponses les plus constantes." },
+      { section: "vision", key: "prompt", label: "Prompt du modèle de vision", kind: "textarea", advanced: true },
+    ],
+  },
+  {
+    id: "indices",
+    title: "Indices",
+    fileSections: ["metas", "plonkit"],
+    fields: [
+      { section: "metas", key: "enabled", label: "Metas (indices par pays)", kind: "bool" },
+      { section: "metas", key: "include_seed", label: "Utiliser l'amorce de metas (faits établis, non vérifiés)",
+        kind: "bool", needs: ["metas", "enabled"] },
+      { section: "metas", key: "judge_buttons", label: "Boutons « Juste » / « Faux » pour vérifier l'amorce",
+        kind: "bool", needs: ["metas", "include_seed"] },
+      { section: "metas", key: "show_looks", label: "Dire quoi observer avant de révéler les pays", kind: "bool",
+        needs: ["metas", "enabled"] },
+      { section: "metas", key: "max_categories", label: "Catégories « où regarder » affichées", kind: "int",
+        min: 1, max: 12, needs: ["metas", "enabled"] },
+      { section: "plonkit", key: "enabled", label: "Guides Plonk It", kind: "bool",
+        hint: "Collectés sur ta machine pour ton usage, jamais redistribués." },
+      { section: "plonkit", key: "similar_tips", label: "Montrer les astuces des pays candidats", kind: "bool",
+        needs: ["plonkit", "enabled"] },
+      { section: "plonkit", key: "similar_per_country", label: "Astuces par pays", kind: "int", min: 1, max: 5,
+        needs: ["plonkit", "enabled"] },
+      { section: "plonkit", key: "translate", label: "Traduire les astuces affichées", kind: "bool",
+        needs: ["plonkit", "enabled"], hint: "À la demande, par le modèle NVIDIA ; gardées en cache." },
+      { section: "plonkit", key: "ai_classify", label: "Faire classer par l'IA les astuces sans catégorie",
+        kind: "bool", needs: ["plonkit", "enabled"] },
+      { section: "plonkit", key: "refresh_days", label: "Vérifier les mises à jour (jours)", kind: "int", min: 1,
+        max: 365, needs: ["plonkit", "enabled"] },
+      { section: "metas", key: "min_probability", label: "Probabilité minimale d'un pays candidat", kind: "float",
+        min: 0, max: 1, step: 0.01, advanced: true, hint: "Pays retenus pour le départage, au-dessus de ce seuil…" },
+      { section: "metas", key: "max_candidates", label: "… et au plus ce nombre de pays", kind: "int", min: 2,
+        max: 20, advanced: true },
+      { section: "metas", key: "max_looks", label: "Consignes affichées par catégorie", kind: "int", min: 1, max: 5,
+        advanced: true },
+      { section: "metas", key: "category_looks", label: "Consigne « Regarde… » par catégorie", kind: "categoryText",
+        advanced: true, hint: "Vide : consigne par défaut." },
+      { section: "metas", key: "category_weights", label: "Poids de chaque catégorie dans le départage",
+        kind: "categoryNumber", advanced: true, hint: "Vide : poids par défaut ; 0 : catégorie ignorée." },
+      { section: "plonkit", key: "delay_s", label: "Pause entre deux pages collectées (s)", kind: "float", min: 1,
+        max: 60, advanced: true },
+      { section: "plonkit", key: "ai_model", label: "Modèle pour le classement et la traduction", kind: "text",
+        advanced: true, hint: "Vide : le modèle de vision." },
+      { section: "plonkit", key: "ai_batch", label: "Astuces par appel à l'IA", kind: "int", min: 5, max: 50,
+        advanced: true },
+      { section: "plonkit", key: "ai_pause_s", label: "Pause entre deux appels à l'IA (s)", kind: "float", min: 0,
+        max: 60, advanced: true },
+      { section: "plonkit", key: "keywords", label: "Mots-clés de classement des astuces (anglais)",
+        kind: "categoryList", advanced: true, hint: "Séparés par des virgules ; vide : mots-clés par défaut." },
+    ],
+  },
+  {
+    id: "carte",
+    title: "Carte",
+    fileSections: ["map", "plonk"],
+    fields: [
+      { section: "map", key: "enabled", label: "Onglet Carte", kind: "bool",
+        hint: "Fond OpenStreetMap en ligne : le serveur de tuiles voit ton adresse IP et les zones affichées." },
+      { section: "plonk", key: "enabled", label: "Zones probables (PLONK, en local)", kind: "bool",
+        hint: "Environ 120 Mo de mémoire vidéo. Une piste pour la carte, pas un vote sur le pays." },
+      { section: "map", key: "max_zoom", label: "Zoom maximal", kind: "int", min: 2, max: 19,
+        needs: ["map", "enabled"] },
+      { section: "plonk", key: "steps", label: "Pas du calcul", kind: "int", min: 10, max: 250, advanced: true,
+        hint: "50 suffisent (mesuré) ; en dessous de 25, les zones se dégradent." },
+      { section: "plonk", key: "points", label: "Positions tirées", kind: "int", min: 64, max: 2048, advanced: true },
+      { section: "plonk", key: "zone_share", label: "Part des positions englobée par les zones", kind: "float",
+        min: 0.25, max: 1, step: 0.05, advanced: true },
+      { section: "plonk", key: "zone_link_km", label: "Distance de regroupement (km)", kind: "float", min: 20,
+        max: 1000, advanced: true, hint: "Deux positions plus proches vont dans la même zone." },
+      { section: "plonk", key: "zone_min_part", label: "Part minimale d'une zone", kind: "float", min: 0.01,
+        max: 0.5, step: 0.01, advanced: true },
+      { section: "map", key: "attribution", label: "Attribution du fond de carte", kind: "text", advanced: true },
+      { section: "map", key: "tile_filter", label: "Filtre CSS des tuiles", kind: "text", advanced: true,
+        hint: "Vide : carte d'origine, sans assombrissement." },
+    ],
+  },
+  {
+    id: "capture",
+    title: "Capture",
+    fileSections: ["capture"],
+    fields: [
+      { section: "capture", key: "notify", label: "Notification à chaque capture", kind: "bool" },
+      { section: "capture", key: "sound", label: "Avec un son", kind: "bool", needs: ["capture", "notify"] },
+      { section: "capture", key: "save_to_disk", label: "Garder une copie des captures sur le disque", kind: "bool" },
+      { section: "capture", key: "keep_last", label: "Nombre de captures gardées (0 = toutes)", kind: "int", min: 0,
+        needs: ["capture", "save_to_disk"] },
+      { section: "capture", key: "source", label: "Ce que GNOME propose de partager", kind: "select", advanced: true,
+        hint: "Pris en compte au prochain démarrage, ou avec « Changer de fenêtre ».",
+        options: [{ value: "window", label: "Une fenêtre (recommandé)" }, { value: "monitor", label: "Un écran" },
+                  { value: "both", label: "Les deux" }] },
+      { section: "capture", key: "crop", label: "Zone analysée", kind: "rect", advanced: true,
+        hint: "Fractions gauche, haut, droite, bas (ex. 0, 0.13, 1, 0.98) ; vide : image entière." },
+      { section: "capture", key: "masks", label: "Zones masquées", kind: "rects", advanced: true,
+        hint: "Un rectangle par ligne, en fractions de la zone analysée (ex. la mini-carte du jeu)." },
+    ],
+  },
+  {
+    id: "jeu-de-test",
+    title: "Jeu de test",
+    fileSections: ["dataset"],
+    fields: [
+      { section: "dataset", key: "enabled", label: "« C'était où ? » après la manche", kind: "bool",
+        hint: "La capture et le pays réel rejoignent le jeu de test, qui sert à mesurer le coach." },
+      { section: "dataset", key: "ask_guessed", label: "Demander le pays que j'avais répondu", kind: "bool",
+        needs: ["dataset", "enabled"], hint: "Sinon, un simple « Tu l'avais trouvé ? » Oui / Non." },
+      { section: "dataset", key: "max_confusions", label: "Confusions affichées (0 = aucune)", kind: "int", min: 0,
+        max: 10, needs: ["dataset", "ask_guessed"] },
+    ],
+  },
+];
+
+/** Groupe sans réglage modifiable : le serveur du moteur, réservé au fichier. */
+GROUPS.push({
+  id: "moteur",
+  title: "Moteur",
+  fileSections: ["server"],
+  fields: [
+    { section: "debug", key: "enabled", label: "Mode débogage", kind: "bool",
+      hint: "Garde un journal de chaque analyse (pays, zones, ce que l'IA a lu) à côté de sa capture, pour relire une manche après coup." },
+  ],
+});
+
+/** Libellés des réglages réservés au fichier (settings.py, FILE_ONLY). */
+export const FILE_ONLY_LABELS: Record<string, string> = {
+  "server.host": "Adresse d'écoute du moteur",
+  "server.port": "Port du moteur",
+  "server.allowed_origins": "Origines autorisées",
+  "capture.directory": "Dossier des captures",
+  "dataset.directory": "Dossier du jeu de test",
+  "metas.user_file": "Fichier de tes metas",
+  "plonkit.data_dir": "Dossier des guides Plonk It",
+  "streetclip.model": "Modèle StreetCLIP",
+  "plonk.model": "Modèle PLONK",
+  "plonk.revision": "Version des poids PLONK",
+  "map.tile_url": "Serveur de tuiles",
+  "map.attribution_url": "Lien de l'attribution",
+  "vision.base_url": "Adresse de l'API de vision",
+  "vision.api_key_env": "Variable de la clé API",
+};

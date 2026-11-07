@@ -27,13 +27,17 @@ class StreetClip:
         dtype = torch.float16 if self.device == "cuda" else torch.float32
         self.model = CLIPModel.from_pretrained(cfg.model, torch_dtype=dtype).to(self.device).eval()
         self.processor = CLIPProcessor.from_pretrained(cfg.model)  # hors ligne si en cache (__main__)
-        self.names = list(cfg.countries)
+        self.set_labels(cfg)
+
+    def set_labels(self, cfg: StreetClipConfig) -> None:
+        """Pays candidats et prompt : vecteurs texte recalculés (aussi à chaud, depuis les Réglages)."""
+        names = list(cfg.countries)
         with torch.inference_mode():
             text_in = self.processor(
-                text=[cfg.prompt.format(n) for n in self.names], return_tensors="pt", padding=True
+                text=[cfg.prompt.format(n) for n in names], return_tensors="pt", padding=True
             ).to(self.device)
             emb = self.model.get_text_features(**text_in).pooler_output  # Transformers 5 : objet de sortie
-            self.text_emb = emb / emb.norm(dim=-1, keepdim=True)
+        self.cfg, self.names, self.text_emb = cfg, names, emb / emb.norm(dim=-1, keepdim=True)
 
     def predict(self, img: Image.Image) -> tuple[list[CountryScore], float]:
         scores, ms, _, _ = self.analyse(img)

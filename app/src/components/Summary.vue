@@ -1,16 +1,19 @@
 <script setup lang="ts">
 // Niveau d'aide 4 : la synthèse en tête. Une preuve explicite lue par l'IA (texte, domaine, drapeau,
-// plaque) l'emporte ; sinon, le pays le plus probable d'après l'allure de la vue (StreetCLIP), présenté
-// comme tel.
+// plaque) l'emporte ; sinon, le pays le plus probable d'après l'allure de la vue (StreetCLIP), mais
+// SEULEMENT s'il se détache. Sinon : « Hésitation » entre les premiers, sans faux gagnant.
 import { computed } from "vue";
 import type { Analysis } from "../engine";
-import { countryName, flag, proofOf } from "../engine";
+import { clearLeader, contenders, countryName, flag, proofLabel, proofOf, unreadableText } from "../engine";
 
 const props = defineProps<{ analysis: Analysis }>();
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
-const leader = computed(() => props.analysis.scores?.[0] ?? null);
+const first = computed(() => props.analysis.scores?.[0] ?? null);
+const leader = computed(() => clearLeader(props.analysis));
+const close = computed(() => contenders(props.analysis));
 const conclusion = computed(() => proofOf(props.analysis));
+const unreadable = computed(() => unreadableText(props.analysis));
 const clipOn = (code: string) => props.analysis.scores?.find((s) => s.code === code) ?? null;
 </script>
 
@@ -21,17 +24,20 @@ const clipOn = (code: string) => props.analysis.scores?.find((s) => s.code === c
         <span aria-hidden="true" class="mr-2 not-italic">{{ flag(conclusion.country) }}</span>{{ countryName(conclusion.country) }}
       </p>
       <p v-if="conclusion.region" class="text-[1.05rem] text-papier">{{ conclusion.region }}</p>
+      <p class="text-[0.95rem]" :class="conclusion.confirmed ? 'text-lac' : 'text-papier/80'">
+        {{ proofLabel(conclusion) }}
+      </p>
       <p v-if="conclusion.proof" class="mt-2 border-l-2 border-lac/60 pl-3 text-[0.92rem] text-papier/90">
-        <span class="text-lac">Preuve lue par l'IA :</span> {{ conclusion.proof }}
+        <span class="text-lac">{{ conclusion.confirmed ? "Preuve" : "Ce que l'IA a lu" }} :</span> {{ conclusion.proof }}
       </p>
       <p class="mt-2 text-[0.85rem] text-courbe">
         <template v-if="clipOn(conclusion.country)">
           StreetCLIP le voyait aussi ({{ pct(clipOn(conclusion.country)!.probability) }}).
         </template>
-        <template v-else-if="leader">
-          StreetCLIP penchait pour {{ countryName(leader.code) }} ({{ pct(leader.probability) }}) : la preuve lue l'emporte.
+        <template v-else-if="first">
+          StreetCLIP penchait pour {{ countryName(first.code) }} ({{ pct(first.probability) }}) : la preuve lue l'emporte.
         </template>
-        <template v-if="conclusion.certainty"> Certitude : {{ conclusion.certainty }}.</template>
+        <template v-if="!conclusion.confirmed"> Vérifie le texte toi-même : le modèle se trompe parfois en le lisant.</template>
       </p>
     </template>
 
@@ -40,17 +46,36 @@ const clipOn = (code: string) => props.analysis.scores?.find((s) => s.code === c
         <span aria-hidden="true" class="mr-2 not-italic">{{ flag(leader.code) }}</span>{{ countryName(leader.code) }}
         <span class="text-[1.1rem] not-italic text-courbe">{{ pct(leader.probability) }}</span>
       </p>
-      <p class="mt-1 text-[0.9rem] text-courbe">
-        <template v-if="analysis.vision.status === 'pending'">
-          D'après l'allure de la vue (StreetCLIP). Analyse approfondie en cours : si elle trouve une preuve
-          écrite, elle s'affichera ici.
-        </template>
-        <template v-else>
-          D'après l'allure de la vue (StreetCLIP) : aucune preuve écrite n'a été trouvée dans la vue.
-        </template>
+      <p class="mt-1 text-[0.9rem] text-courbe">D'après l'allure de la vue (StreetCLIP), sans preuve écrite.</p>
+    </template>
+
+    <template v-else-if="first">
+      <p class="atlas mt-1 text-[1.6rem] leading-tight font-semibold text-papier">Hésitation</p>
+      <ul class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1" aria-label="Pays entre lesquels StreetCLIP hésite">
+        <li v-for="s in close" :key="s.code" class="text-papier">
+          <span aria-hidden="true" class="mr-1">{{ flag(s.code) }}</span>{{ countryName(s.code) }}
+          <span class="tabular-nums text-courbe">{{ pct(s.probability) }}</span>
+        </li>
+      </ul>
+      <p class="mt-1.5 text-[0.9rem] text-courbe">
+        L'allure de la vue ne suffit pas à trancher : aucun pays ne se détache.
       </p>
     </template>
 
     <p v-else class="mt-1 text-courbe">Analyse de la vue en cours…</p>
+
+    <!-- Que faire maintenant, quand il n'y a pas de preuve -->
+    <template v-if="first && !conclusion">
+      <p v-if="analysis.vision.status === 'pending'" class="mt-2 text-[0.85rem] text-courbe">
+        Analyse approfondie en cours : si elle lit une preuve écrite, elle s'affichera ici.
+      </p>
+      <p v-else-if="unreadable" class="mt-2 border-l-2 border-alerte/70 pl-3 text-[0.9rem] text-papier">
+        Du texte est visible mais <strong>illisible</strong> à cette taille : zoome dessus dans le jeu, puis recapture.
+        C'est souvent lui qui tranche.
+      </p>
+      <p v-else-if="!leader" class="mt-2 text-[0.85rem] text-courbe">
+        Cherche du texte, une plaque ou un domaine ; sinon, « Ce qui les départage » dit quoi observer.
+      </p>
+    </template>
   </div>
 </template>

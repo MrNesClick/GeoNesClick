@@ -1,24 +1,53 @@
 <script setup lang="ts">
-// Écran Réglages : tout ce qui s'applique à chaud. Le reste (adresse de l'API, recadrage, prompts)
-// se règle dans ~/.config/geonesclick/config.toml.
-import { onMounted, ref } from "vue";
-import type { Settings } from "../engine";
-import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveSettings, testModel } from "../engine";
+// Écran Réglages : TOUT est configurable. Sept groupes repliables au format du coach (titre + résumé d'une
+// ligne), décrits dans settingsSchema.ts ; les réglages fins sont rangés dans « Avancé ». Chaque changement
+// s'applique et s'enregistre tout de suite. Les réglages réservés au fichier (sécurité) sont affichés en
+// lecture seule, avec leur raison et l'endroit où les changer.
+import { onMounted, reactive, ref } from "vue";
+import type { FileOnly, Settings } from "../engine";
+import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveSetting, testModel } from "../engine";
+import type { Field, Group } from "../settingsSchema";
+import { FILE_ONLY_LABELS, GROUPS } from "../settingsSchema";
+import Section from "./Section.vue";
+import SettingField from "./SettingField.vue";
 
 const s = ref<Settings | null>(null);
+const fileOnly = ref<FileOnly | null>(null);
 const models = ref<string[]>([]);
-const saved = ref<string | null>(null);
 const test = ref<{ model: string; text: string; ok: boolean } | null>(null);
 const testing = ref(false);
+/** État d'enregistrement de chaque réglage (« section.clé »). */
+const status = reactive<Record<string, { tone: "ok" | "error" | "busy"; text: string }>>({});
+const timers: Record<string, ReturnType<typeof setTimeout>> = {};
 
+async function load() {
+  [s.value, fileOnly.value] = await Promise.all([getJSON<Settings>("/settings"), getJSON<FileOnly>("/settings/file-only")]);
+}
 onMounted(async () => {
-  s.value = await getJSON<Settings>("/settings");
+  await load();
   models.value = (await getJSON<{ models: string[] }>("/models"))?.models ?? [];
 });
 
+const fieldId = (f: Field) => `${f.section}.${f.key}`;
+
+async function save(f: Field, section: string, key: string, value: unknown) {
+  const id = fieldId(f);
+  clearTimeout(timers[id]);
+  status[id] = { tone: "busy", text: "Enregistrement…" };
+  const r = await saveSetting(section, key, value);
+  if (r.error) {
+    status[id] = { tone: "error", text: r.error };
+    await load(); // l'écran revient à la valeur réellement en vigueur
+    return;
+  }
+  if (s.value) s.value[section][key] = value;
+  status[id] = { tone: "ok", text: r.restart ? "Enregistré : pris en compte au prochain démarrage." : "Enregistré." };
+  if (!r.restart) timers[id] = setTimeout(() => delete status[id], 2500);
+}
+const invalid = (f: Field, text: string) => (status[fieldId(f)] = { tone: "error", text });
+
 async function runTest() {
-  if (!s.value) return;
-  const model = String(s.value.vision.model);
+  const model = String(s.value?.vision.model ?? "");
   testing.value = true;
   const r = await testModel(model);
   testing.value = false;
@@ -27,250 +56,129 @@ async function runTest() {
     : { model, ok: false, text: r.error ?? "Échec du test." };
 }
 
-async function submit() {
-  if (!s.value) return;
-  saved.value = null;
-  const error = await saveSettings(s.value);
-  saved.value = error ?? "Réglages enregistrés et appliqués.";
+// --- Résumés d'une ligne, lisibles quand la section est repliée ---------------------------------------
+const LANG: Record<string, string> = {
+  fr: "français", en: "anglais", es: "espagnol", de: "allemand", it: "italien", pt: "portugais",
+};
+function summary(g: Group): string {
+  const v = s.value;
+  if (!v) return "";
+  switch (g.id) {
+    case "aide":
+      return `niveau ${v.coach.help_level} · ${v.coach.trust_proof ? "une preuve tranche" : "pourcentages seuls"} · ${LANG[String(v.coach.language)] ?? v.coach.language}`;
+    case "analyse": {
+      const all = Object.keys((v.streetclip.countries ?? {}) as object).length;
+      const active = all - ((v.streetclip.exclude_countries ?? []) as string[]).length;
+      const vision = v.vision.enabled ? String(v.vision.model).split("/").pop() : "approfondie coupée";
+      return `${vision} · ${active} pays candidats`;
+    }
+    case "indices":
+      return `${v.metas.enabled ? (v.metas.include_seed ? "metas + amorce" : "tes metas") : "metas coupées"} · Plonk It ${v.plonkit.enabled ? "activé" : "coupé"}`;
+    case "carte":
+      return v.map.enabled ? `${v.plonk.enabled ? "zones probables" : "pays seulement"} · zoom ${v.map.max_zoom}` : "désactivée";
+    case "capture": {
+      const notify = v.capture.notify ? (v.capture.sound ? "notification + son" : "notification") : "silencieuse";
+      const keep = Number(v.capture.keep_last);
+      const copies = v.capture.save_to_disk ? (keep ? `${keep} gardées` : "toutes gardées") : "sans copie";
+      return `${notify} · ${copies}`;
+    }
+    case "jeu-de-test":
+      return v.dataset.enabled ? (v.dataset.ask_guessed ? "pays répondu demandé" : "trouvé ? oui / non") : "désactivé";
+    case "moteur": {
+      const server = fileOnly.value?.server;
+      const where = server ? `${server.host.value}:${server.port.value}` : "";
+      return [where, v.debug?.enabled ? "débogage activé" : ""].filter(Boolean).join(" · ");
+    }
+  }
+  return "";
 }
 
-const HELP_LEVELS = [
-  { value: 1, label: "1. Regarder", hint: "Où regarder, sans nommer de pays." },
-  { value: 2, label: "2. Indices", hint: "Plus ce que voit l'IA, dont le texte lu." },
-  { value: 3, label: "3. Pays", hint: "Plus les pays probables, leurs indices et les astuces Plonk It." },
-  { value: 4, label: "4. Réponse", hint: "Plus la synthèse en tête : pays, région si un texte la nomme, et la preuve." },
-];
-const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 py-2 text-papier";
-const check = "size-4 accent-[var(--color-foret)]";
+const basic = (g: Group) => g.fields.filter((f) => !f.advanced);
+const advanced = (g: Group) => g.fields.filter((f) => f.advanced);
+const reserved = (g: Group) =>
+  g.fileSections.flatMap((section) =>
+    Object.entries(fileOnly.value?.[section] ?? {}).map(([key, entry]) => ({ id: `${section}.${key}`, ...entry })),
+  );
+const shown = (v: unknown) => (Array.isArray(v) ? v.join(", ") : v === "" ? "(vide : valeur par défaut)" : String(v));
+const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
 </script>
 
 <template>
   <section aria-labelledby="reglages-titre" class="pt-4">
     <h2 id="reglages-titre" class="atlas text-[1.6rem] text-papier">Réglages</h2>
+    <p class="mt-1 text-[0.85rem] text-courbe">Chaque changement s'applique et s'enregistre tout de suite.</p>
 
     <p v-if="!s" class="mt-4 text-courbe">Chargement des réglages…</p>
 
-    <form v-else class="mt-4 space-y-7" @submit.prevent="submit">
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Niveau d'aide</legend>
-        <p class="text-[0.85rem] text-courbe">Ce qui s'affiche tout seul après une capture (modifiable aussi en haut du coach).</p>
-        <label v-for="lvl in HELP_LEVELS" :key="lvl.value" class="flex items-start gap-3">
-          <input v-model="s.coach.help_level" type="radio" :value="lvl.value" :class="check" class="mt-1" />
-          <span>{{ lvl.label }} <span class="block text-[0.85rem] text-courbe">{{ lvl.hint }}</span></span>
-        </label>
-        <label class="flex items-start gap-3">
-          <input v-model="s.coach.trust_proof" type="checkbox" :class="check" class="mt-1" />
-          <span>Une preuve lue tranche <span class="block text-[0.85rem] text-courbe">Texte nommant un lieu, domaine, drapeau, plaque : avec une certitude forte, ce pays passe en tête et les autres sont écartés.</span></span>
-        </label>
-      </fieldset>
+    <div v-else class="mt-3">
+      <datalist id="modeles-nvidia">
+        <option v-for="m in models" :key="m" :value="m" />
+      </datalist>
 
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Modèle de vision (niveau 2)</legend>
-        <label class="flex items-center gap-3">
-          <input v-model="s.vision.enabled" type="checkbox" :class="check" />
-          Activer le niveau 2
-        </label>
-        <label class="block">
-          <span class="text-[0.85rem] text-courbe">Modèle NVIDIA ({{ models.length || "liste indisponible" }} disponibles)</span>
-          <input v-model="s.vision.model" list="modeles" :class="field" spellcheck="false" />
-          <datalist id="modeles">
-            <option v-for="m in models" :key="m" :value="m" />
-          </datalist>
-        </label>
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="rounded-md border border-lac/50 px-3 py-1.5 text-papier hover:bg-lac/10 disabled:opacity-50"
-            :disabled="testing"
-            @click="runTest"
-          >
-            {{ testing ? "Test en cours…" : "Tester ce modèle" }}
-          </button>
-          <p v-if="test && test.model === s.vision.model" class="text-[0.85rem]" :class="test.ok ? 'text-foret' : 'text-alerte'" role="status">
-            {{ test.text }}
-          </p>
+      <Section v-for="g in GROUPS" :id="`reglage-${g.id}`" :key="g.id" :title="g.title" :summary="summary(g)" :open="false" tone="papier">
+        <div class="space-y-5 py-1">
+          <div v-if="g.id === 'capture'" class="flex flex-wrap items-center gap-3">
+            <button type="button" :class="[button, 'border-courbe hover:bg-papier/10']"
+                    :disabled="!engine.connected || engine.busy || engine.capture.starting" @click="reselectWindow">
+              Changer de fenêtre
+            </button>
+            <span class="text-[0.85rem] text-courbe">Autre navigateur, écran ou résolution : rouvre le sélecteur de GNOME.</span>
+          </div>
+
+          <template v-for="f in basic(g)" :key="fieldId(f)">
+            <SettingField :field="f" :settings="s" :status="status[fieldId(f)]"
+                          @save="(section, key, v) => save(f, section, key, v)" @invalid="(t) => invalid(f, t)" />
+
+            <!-- Compléments propres à certains réglages -->
+            <div v-if="f.section === 'vision' && f.key === 'model'" class="-mt-3 flex flex-wrap items-center gap-3">
+              <span class="text-[0.85rem] text-courbe">{{ models.length ? `${models.length} modèles NVIDIA disponibles` : "liste des modèles indisponible" }}</span>
+              <button type="button" :class="[button, 'border-lac/50 hover:bg-lac/10']" :disabled="testing || !s.vision.enabled" @click="runTest">
+                {{ testing ? "Test en cours…" : "Tester ce modèle" }}
+              </button>
+              <p v-if="test && test.model === s.vision.model" class="text-[0.85rem]" :class="test.ok ? 'text-foret' : 'text-alerte'" role="status">
+                {{ test.text }}
+              </p>
+            </div>
+            <p v-if="f.section === 'metas' && f.key === 'enabled'" class="-mt-3 text-[0.85rem]"
+               :class="engine.metas.message.startsWith('metas indisponibles') ? 'text-alerte' : 'text-courbe'">
+              {{ engine.metas.message }}
+            </p>
+            <div v-if="f.section === 'plonkit' && f.key === 'refresh_days'" class="-mt-2 space-y-2">
+              <p class="text-[0.85rem]" :class="engine.plonkit.status === 'error' ? 'text-alerte' : 'text-courbe'" role="status">
+                {{ engine.plonkit.status === "off" ? "Guides Plonk It désactivés." : engine.plonkit.message || "En attente…" }}
+              </p>
+              <button type="button" :class="[button, 'border-foret/50 hover:bg-foret/10']"
+                      :disabled="!engine.plonkit.enabled || engine.plonkit.status === 'busy' || engine.busy" @click="refreshPlonkit">
+                {{ engine.plonkit.status === "busy" ? "Mise à jour en cours…" : "Mettre à jour maintenant" }}
+              </button>
+            </div>
+            <p v-if="f.section === 'plonk' && f.key === 'enabled'" class="-mt-3 text-[0.85rem] text-courbe" role="status">
+              PLONK : {{ engine.plonk.message }}
+            </p>
+          </template>
+
+          <details v-if="advanced(g).length" class="rounded-md border border-courbe-fonce/70 px-3 py-2">
+            <summary class="cursor-pointer text-[0.9rem] text-courbe hover:text-papier">Avancé ({{ advanced(g).length }})</summary>
+            <div class="mt-3 space-y-5">
+              <SettingField v-for="f in advanced(g)" :key="fieldId(f)" :field="f" :settings="s" :status="status[fieldId(f)]"
+                            @save="(section, key, v) => save(f, section, key, v)" @invalid="(t) => invalid(f, t)" />
+            </div>
+          </details>
+
+          <div v-if="reserved(g).length" class="rounded-md border border-dashed border-courbe-fonce px-3 py-2">
+            <p class="text-[0.9rem] text-courbe">
+              Réservé au fichier <code class="text-papier">~/.config/geonesclick/config.toml</code>, par sécurité :
+            </p>
+            <dl class="mt-2 space-y-2 text-[0.85rem]">
+              <div v-for="r in reserved(g)" :key="r.id">
+                <dt class="text-papier">{{ FILE_ONLY_LABELS[r.id] ?? r.id }} <span class="text-courbe">({{ r.id }})</span></dt>
+                <dd class="break-all text-courbe">{{ shown(r.value) }}</dd>
+                <dd class="text-courbe/80 italic">{{ r.why }}</dd>
+              </div>
+            </dl>
+          </div>
         </div>
-        <label class="flex items-center gap-3">
-          <input v-model="s.vision.thinking" type="checkbox" :class="check" />
-          Laisser le modèle raisonner (plus lent)
-        </label>
-        <label class="block max-w-48">
-          <span class="text-[0.85rem] text-courbe">Délai maximal (secondes)</span>
-          <input v-model.number="s.vision.timeout_s" type="number" min="5" max="300" :class="field" />
-        </label>
-      </fieldset>
-
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Où regarder (niveau 1)</legend>
-        <label class="flex items-center gap-3">
-          <input v-model="s.metas.include_seed" type="checkbox" :class="check" />
-          Utiliser l'amorce de metas (faits établis, non vérifiés)
-        </label>
-        <label class="flex items-center gap-3">
-          <input v-model="s.metas.judge_buttons" type="checkbox" :class="check" :disabled="!s.metas.include_seed" />
-          Boutons « Juste » / « Faux » pour vérifier l'amorce
-        </label>
-        <label class="flex items-center gap-3">
-          <input v-model="s.metas.show_looks" type="checkbox" :class="check" />
-          Dire quoi observer avant de révéler les pays
-        </label>
-        <p class="text-[0.85rem]" :class="engine.metas.message.startsWith('metas indisponibles') ? 'text-alerte' : 'text-courbe'">
-          {{ engine.metas.message }}
-        </p>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Catégories affichées</span>
-            <input v-model.number="s.metas.max_categories" type="number" min="1" max="12" :class="field" />
-          </label>
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Pays probables listés</span>
-            <input v-model.number="s.streetclip.top_k" type="number" min="1" max="20" :class="field" />
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset v-if="engine.dataset.enabled" class="space-y-3">
-        <legend class="font-bold text-papier">Après la manche</legend>
-        <label class="flex items-start gap-3">
-          <input v-model="s.dataset.ask_guessed" type="checkbox" :class="check" class="mt-1" />
-          <span>Demander le pays que j'avais répondu <span class="block text-[0.85rem] text-courbe">Sinon, un simple « Tu l'avais trouvé ? » Oui / Non.</span></span>
-        </label>
-        <label class="block max-w-48">
-          <span class="text-[0.85rem] text-courbe">Confusions affichées (0 = aucune)</span>
-          <input v-model.number="s.dataset.max_confusions" type="number" min="0" max="10" :class="field" :disabled="!s.dataset.ask_guessed" />
-        </label>
-      </fieldset>
-
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Langue</legend>
-        <label class="block max-w-64">
-          <span class="text-[0.85rem] text-courbe">Traduire les astuces en</span>
-          <select v-model="s.coach.language" :class="field">
-            <option value="fr">Français</option>
-            <option value="en">Anglais (pas de traduction)</option>
-            <option value="es">Espagnol</option>
-            <option value="de">Allemand</option>
-            <option value="it">Italien</option>
-            <option value="pt">Portugais</option>
-          </select>
-        </label>
-        <p class="text-[0.85rem] text-courbe">L'interface du coach reste en français pour l'instant.</p>
-      </fieldset>
-
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Guides Plonk It</legend>
-        <p class="text-[0.85rem]" :class="engine.plonkit.status === 'error' ? 'text-alerte' : 'text-courbe'" role="status">
-          {{ engine.plonkit.status === "off" ? "Désactivés." : engine.plonkit.message || "En attente…" }}
-        </p>
-        <label class="flex items-start gap-3">
-          <input v-model="s.plonkit.enabled" type="checkbox" :class="check" class="mt-1" />
-          <span>Utiliser les guides Plonk It <span class="block text-[0.85rem] text-courbe">Collectés sur ta machine pour ton usage, jamais redistribués.</span></span>
-        </label>
-        <label class="flex items-center gap-3">
-          <input v-model="s.plonkit.similar_tips" type="checkbox" :class="check" :disabled="!s.plonkit.enabled" />
-          Montrer les astuces Plonk It des pays candidats
-        </label>
-        <label class="flex items-start gap-3">
-          <input v-model="s.plonkit.ai_classify" type="checkbox" :class="check" class="mt-1" :disabled="!s.plonkit.enabled" />
-          <span>Faire classer par l'IA les astuces sans catégorie <span class="block text-[0.85rem] text-courbe">Une seule fois par astuce, avec le modèle NVIDIA ; le résultat est gardé en cache.</span></span>
-        </label>
-        <label class="flex items-start gap-3">
-          <input v-model="s.plonkit.translate" type="checkbox" :class="check" class="mt-1" :disabled="!s.plonkit.enabled" />
-          <span>Traduire les astuces affichées <span class="block text-[0.85rem] text-courbe">À la demande, par le modèle NVIDIA ; chaque traduction est gardée en cache.</span></span>
-        </label>
-        <div class="grid grid-cols-2 gap-3">
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Astuces par pays</span>
-            <input v-model.number="s.plonkit.similar_per_country" type="number" min="1" max="5" :class="field" :disabled="!s.plonkit.enabled" />
-          </label>
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Vérifier les mises à jour (jours)</span>
-            <input v-model.number="s.plonkit.refresh_days" type="number" min="1" max="365" :class="field" :disabled="!s.plonkit.enabled" />
-          </label>
-        </div>
-        <button
-          type="button"
-          class="rounded-md border border-foret/50 px-3 py-1.5 text-papier hover:bg-foret/10 disabled:opacity-50"
-          :disabled="!engine.plonkit.enabled || engine.plonkit.status === 'busy' || engine.busy"
-          @click="refreshPlonkit"
-        >
-          {{ engine.plonkit.status === "busy" ? "Mise à jour en cours…" : "Mettre à jour maintenant" }}
-        </button>
-      </fieldset>
-
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Carte (niveau 3 et plus)</legend>
-        <label class="flex items-start gap-3">
-          <input v-model="s.map.enabled" type="checkbox" :class="check" class="mt-1" />
-          <span>Afficher la carte <span class="block text-[0.85rem] text-courbe">Fond OpenStreetMap en ligne : le serveur de tuiles voit ton adresse IP et les zones affichées.</span></span>
-        </label>
-        <label class="flex items-start gap-3">
-          <input v-model="s.plonk.enabled" type="checkbox" :class="check" class="mt-1" />
-          <span>Nuage des positions probables (PLONK)
-            <span class="block text-[0.85rem] text-courbe">Local, environ 120 Mo de mémoire vidéo. Une piste pour la carte, pas un vote sur le pays.</span>
-          </span>
-        </label>
-        <p class="text-[0.85rem] text-courbe" role="status">PLONK : {{ engine.plonk.message }}</p>
-        <div class="grid grid-cols-3 gap-3">
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Pas (10 à 250)</span>
-            <input v-model.number="s.plonk.steps" type="number" min="10" max="250" :class="field" :disabled="!s.plonk.enabled" />
-          </label>
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Points</span>
-            <input v-model.number="s.plonk.points" type="number" min="64" max="2048" :class="field" :disabled="!s.plonk.enabled" />
-          </label>
-          <label class="block">
-            <span class="text-[0.85rem] text-courbe">Zoom maximal</span>
-            <input v-model.number="s.map.max_zoom" type="number" min="2" max="19" :class="field" :disabled="!s.map.enabled" />
-          </label>
-        </div>
-      </fieldset>
-
-      <fieldset class="space-y-3">
-        <legend class="font-bold text-papier">Captures</legend>
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="rounded-md border border-courbe px-3 py-1.5 text-papier hover:bg-papier/10 disabled:opacity-50"
-            :disabled="!engine.connected || engine.busy || engine.capture.starting"
-            @click="reselectWindow"
-          >
-            Changer de fenêtre
-          </button>
-          <span class="text-[0.85rem] text-courbe">Autre navigateur, écran ou résolution : rouvre le sélecteur de GNOME.</span>
-        </div>
-        <label class="flex items-center gap-3">
-          <input v-model="s.capture.notify" type="checkbox" :class="check" />
-          Notification à chaque capture
-        </label>
-        <label class="flex items-center gap-3">
-          <input v-model="s.capture.sound" type="checkbox" :class="check" :disabled="!s.capture.notify" />
-          Avec un son
-        </label>
-        <label class="flex items-center gap-3">
-          <input v-model="s.capture.save_to_disk" type="checkbox" :class="check" />
-          Garder une copie des captures sur le disque
-        </label>
-        <label class="block max-w-48">
-          <span class="text-[0.85rem] text-courbe">Nombre de captures gardées (0 = toutes)</span>
-          <input v-model.number="s.capture.keep_last" type="number" min="0" :class="field" :disabled="!s.capture.save_to_disk" />
-        </label>
-      </fieldset>
-
-      <div class="flex flex-wrap items-center gap-4 border-t border-courbe-fonce pt-4">
-        <button type="submit" class="rounded-md bg-papier px-4 py-2 font-bold text-encre hover:bg-white disabled:opacity-40" :disabled="engine.busy">
-          Enregistrer
-        </button>
-        <p v-if="saved" class="text-[0.9rem] text-papier" role="status">{{ saved }}</p>
-      </div>
-
-      <p class="text-[0.85rem] text-courbe">
-        Adresse de l'API, serveur de tuiles de la carte, recadrage, prompts, liste des pays, consignes et poids
-        des catégories se modifient dans
-        ~/.config/geonesclick/config.toml. Cet écran n'y écrit que les valeurs que tu changes, en
-        conservant tes commentaires.
-      </p>
-    </form>
+      </Section>
+    </div>
   </section>
 </template>

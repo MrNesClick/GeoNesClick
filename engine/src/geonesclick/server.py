@@ -38,12 +38,13 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from .analysis_log import AnalysisLog
 from .borders import Borders
 from .capture import CaptureError, CaptureService, apply_crop_and_masks, prune_captures, save_png
 from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, progress
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
-from .settings import SettingsError, current, save
+from .settings import RESTART, SettingsError, current, file_only, save
 from .notify import Notifier
 from .plonkit import CHECKED_FILE, PlonkitError, collect, load_tips
 from .plonkit_ai import classify as classify_tips
@@ -140,11 +141,18 @@ class Engine:
                 new = await asyncio.to_thread(save, changes, self.settings_path)
             except SettingsError as exc:
                 raise HTTPException(422, str(exc)) from exc
-            self.cfg = new
+            old, self.cfg = self.cfg, new
             self.notifier.enabled, self.notifier.sound = new.capture.notify, new.capture.sound
             self.vision = VisionClient(new.vision)
             if self.streetclip:
-                self.streetclip.cfg = new.streetclip  # seul top_k est modifiable : pas de rechargement
+                labels = (new.streetclip.prompt, new.streetclip.countries)
+                if labels != (old.streetclip.prompt, old.streetclip.countries):  # vecteurs texte à recalculer
+                    async with self.gpu_lock:
+                        await asyncio.to_thread(self.streetclip.set_labels, new.streetclip)
+                else:
+                    self.streetclip.cfg = new.streetclip
+            if new.dataset.enabled != (self.dataset is not None):
+                self.dataset = Dataset(new.dataset.path) if new.dataset.enabled else None
             self.load_metas()
             if self.plonk:
                 self.plonk.cfg = new.plonk  # pas et points : lus à chaque nuage
@@ -158,7 +166,9 @@ class Engine:
             elif not new.plonkit.enabled:
                 self.plonkit_status, self.plonkit_message = "off", ""
         await self.broadcast(self.state())
-        return {"ok": True, "settings": current(self.cfg)}
+        restart = [f"{section}.{key}" for section, values in changes.items() for key in values
+                   if key in RESTART.get(section, ())]
+        return {"ok": True, "settings": current(self.cfg), "restart": restart}
 
     # --- diffusion -------------------------------------------------------------------------
     def state(self) -> dict[str, Any]:
@@ -177,6 +187,7 @@ class Engine:
             },
             "help_level": self.cfg.coach.help_level,
             "trust_proof": self.cfg.coach.trust_proof,
+            "leader": {"min": self.cfg.coach.leader_min, "margin": self.cfg.coach.leader_margin},
             "metas": {
                 "count": len(self.metas), "message": self.metas_message, "judge": self.cfg.metas.judge_buttons,
             },
@@ -274,6 +285,7 @@ class Engine:
             message = {"type": "cloud", "id": capture_id, **summarise(cloud, countries, plonk.cfg)}
         except Exception as exc:  # mémoire vidéo saturée… : la carte reste au niveau des pays
             message = {"type": "cloud", "id": capture_id, "error": f"nuage indisponible ({type(exc).__name__})"}
+        await self._log(capture_id, cloud={k: v for k, v in message.items() if k not in ("type", "id")})
         await self.broadcast(message)
 
     # --- Plonk It ------------------------------------------------------------------------------
@@ -419,16 +431,19 @@ class Engine:
             await self.broadcast({"type": "error", "message": str(exc)})
             return {"ok": False, "error": str(exc)}
 
-        self.recent[capture_id] = {"frame": frame, "predicted": "", "scores": []}
+        self.recent[capture_id] = {"frame": frame, "predicted": "", "scores": [], "log": None}
         while len(self.recent) > RECENT_FRAMES:
             self.recent.popitem(last=False)
         view = apply_crop_and_masks(frame, self.cfg.capture.crop, self.cfg.capture.masks)
         saved = None
         if self.cfg.capture.save_to_disk:
             saved = await asyncio.to_thread(save_png, view, self.cfg.capture.path, f"capture-{capture_id}")
-            if self.cfg.capture.keep_last:
-                await asyncio.to_thread(prune_captures, self.cfg.capture.path, self.cfg.capture.keep_last)
+        if (self.cfg.capture.save_to_disk or self.cfg.debug.enabled) and self.cfg.capture.keep_last:
+            # Aussi en débogage sans copie des captures : les journaux seuls ne doivent pas s'accumuler.
+            await asyncio.to_thread(prune_captures, self.cfg.capture.path, self.cfg.capture.keep_last)
         capture_ms = (time.perf_counter() - t0) * 1000
+        if self.cfg.debug.enabled:
+            await self._start_log(capture_id, saved)
         await asyncio.to_thread(self.notifier.send, "Capture prise", f"{capture_ms:.0f} ms", image=saved)
         await self.broadcast({
             "type": "capture", "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
@@ -454,6 +469,11 @@ class Engine:
             missing = list({tip["id"]: tip["text"] for tips in similar.values() for tip in tips
                             if tip["translated"] is None}.items())
             lang = self.translation_lang
+            await self._log(capture_id, streetclip={
+                "ms": round(ms), "scores": [s.__dict__ for s in scores],
+                "lookfor": [lf.label for lf in self.look_for(pairs)],
+                "similar": {code: [t["text"][:120] for t in tips] for code, tips in similar.items()},
+            })
             await self.broadcast({
                 "type": "streetclip", "id": capture_id, "ms": round(ms),
                 "scores": [s.__dict__ for s in scores],
@@ -528,6 +548,7 @@ class Engine:
             )
         except DatasetError as exc:
             raise HTTPException(422, str(exc)) from exc
+        await self._log(req.id, label={"country": country, "guessed": guessed, "found": saved.found, "area": req.area})
         prog = await self.progress()
         await self.broadcast({"type": "labelled", "id": req.id, "country": country, "guessed": guessed,
                               "found": saved.found, "progress": prog})
@@ -547,12 +568,38 @@ class Engine:
         await self.broadcast({"type": "vision_pending", "id": capture_id, "model": self.cfg.vision.model})
         try:
             fiche, seconds = await self.vision.describe(view)
+            await self._log(capture_id, vision={"model": self.cfg.vision.model, "seconds": round(seconds, 1),
+                                                "fiche": fiche})
             await self.broadcast({
                 "type": "vision", "id": capture_id, "model": self.cfg.vision.model,
                 "seconds": round(seconds, 1), "fiche": fiche,
             })
         except VisionError as exc:
+            await self._log(capture_id, vision={"model": self.cfg.vision.model, "error": str(exc)})
             await self.broadcast({"type": "vision_error", "id": capture_id, "error": str(exc)})
+
+    # --- mode débogage : journal de chaque analyse -------------------------------------------------
+    async def _start_log(self, capture_id: str, saved: Path | None) -> None:
+        cfg = self.cfg
+        base = {
+            "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
+            "capture": saved.name if saved else None, "help_level": cfg.coach.help_level,
+            "models": {"streetclip": cfg.streetclip.model, "vision": cfg.vision.model if cfg.vision.enabled else None,
+                       "plonk": f"{cfg.plonk.model}@{cfg.plonk.revision[:7]}" if cfg.plonk.enabled else None},
+        }
+        try:
+            log = await asyncio.to_thread(AnalysisLog, cfg.capture.path / f"capture-{capture_id}.json", base)
+        except OSError:  # disque plein, dossier interdit : le coach continue sans journal
+            return
+        if capture_id in self.recent:
+            self.recent[capture_id]["log"] = log
+
+    async def _log(self, capture_id: str, **fields: Any) -> None:
+        entry = self.recent.get(capture_id)
+        log = entry.get("log") if entry else None
+        if log is not None:
+            with suppress(OSError):  # un journal raté ne doit jamais casser l'analyse
+                await asyncio.to_thread(log.update, **fields)
 
 
 async def _unix_trigger(engine: Engine) -> asyncio.AbstractServer:
@@ -670,6 +717,11 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     @app.get("/settings")
     async def get_settings() -> dict[str, Any]:
         return current(engine.cfg)
+
+    @app.get("/settings/file-only")
+    async def get_file_only() -> dict[str, Any]:
+        """Réglages réservés au fichier (sécurité), affichés en lecture seule avec leur raison."""
+        return file_only(engine.cfg)
 
     @app.post("/settings")
     async def post_settings(changes: dict[str, dict[str, Any]]) -> dict[str, Any]:

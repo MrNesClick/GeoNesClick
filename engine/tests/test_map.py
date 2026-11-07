@@ -192,12 +192,12 @@ def test_turning_plonk_off_frees_it(cfg, tmp_path):
     "changes",
     [
         {"map": {"tile_url": "https://attaquant.example/{z}/{x}/{y}.png"}},  # serveur : fichier seulement
-        {"map": {"tile_filter": "none"}},
+        {"map": {"attribution_url": "https://attaquant.example/"}},
         {"plonk": {"model": "quelqu-un/autre"}},
         {"plonk": {"revision": "0" * 40}},
     ],
 )
-def test_map_server_and_model_are_file_only(tmp_path, changes):
+def test_tile_server_links_and_models_are_file_only(tmp_path, changes):
     with pytest.raises(SettingsError):
         save(changes, tmp_path / "config.toml")
 

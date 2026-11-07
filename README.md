@@ -102,6 +102,9 @@ semblent même gêner StreetCLIP. Le recadrage et les masques restent disponible
 remesurera avec un jeu de test plus grand.
 
 Enseignements de la phase 0 (tests de faisabilité) :
+- Rallonger le prompt du modèle de vision dégrade sa lecture du texte : sur la plaque « Repkény utca », 8
+  lectures exactes sur 10 avec le prompt actuel, 4 sur 12 avec des consignes en plus (ignorer l'interface du
+  jeu, écrire « illisible »). Le texte de l'interface sera donc filtré par le coach, pas par le prompt.
 - Sur le palier gratuit NVIDIA, la disponibilité varie : le 2026-11-07, `z-ai/glm-5.3-flash` et
   `meta/llama-3.2-90b-vision-instruct` ne répondaient pas ; Nemotron Nano Omni répondait en 5 s mais
   inventait des détails. D'où le choix de Nemotron 3.5 Super VL par défaut.
@@ -164,13 +167,19 @@ sans clic**, l'aide du niveau choisi en haut de sa fenêtre :
 | 3. Pays | + pays probables, onglet Carte avec les zones probables, indices de chacun, astuces Plonk It traduites |
 | 4. Réponse (défaut) | + synthèse en tête : pays, région si un texte la nomme, et la preuve |
 
-Au niveau 4, une **preuve explicite** lue par l'IA (texte nommant un lieu, nom de domaine, indicatif,
-drapeau, plaque) l'emporte, par exemple « Espagne, Albacete : panneau "PROVINCIA DE ALBACETE" ». Sans
-preuve, le coach donne le pays le plus probable d'après l'allure de la vue (StreetCLIP), présenté comme
-tel. Avec une certitude forte, la preuve tranche aussi dans la liste des pays (niveau 3 et plus) : le
-pays prouvé passe en tête, « certain », les autres sont écartés et leurs astuces masquées ; le pourcentage
-de StreetCLIP reste affiché pour comparer (`[coach] trust_proof`, désactivable). Vérifié le 2026-11-07 : aucune fausse conclusion sur les 5 captures du jeu de test, y compris une
-enseigne finlandaise en Norvège.
+Au niveau 4, la carte Réponse dit honnêtement ce que le coach sait :
+- **une lecture de l'IA** (texte nommant un lieu, domaine, plaque…) passe en tête comme **« très probable :
+  lu par l'IA, à confirmer »**, avec ce qu'elle a lu ; les autres pays restent affichés. Mesuré le 2026-11-07
+  sur une plaque « Repkény utca » (Budapest) : sur 8 appels, le modèle a conclu 2 fois à tort avec « certitude
+  forte » (Tchéquie sans avoir lu la plaque, Slovaquie en lisant « ulica »). Une conclusion ne deviendra
+  **« certaine »** (pays en tête, autres écartés, `[coach] trust_proof`) qu'une fois confirmée par une règle
+  locale (mot propre à une langue, domaine, indicatif) : c'est la prochaine étape ;
+- **sans lecture**, un pays n'est donné que s'il **se détache** de l'allure de la vue (StreetCLIP) : au moins
+  40 % et 15 points d'avance sur le 2ᵉ (`[coach] leader_min`, `leader_margin`). Sinon : **« Hésitation »**
+  entre les premiers (ex. Bulgarie 22 %, Hongrie 21 %, Slovaquie 16 %, Roumanie 14 %), sans faux gagnant ;
+- si l'IA signale un **texte illisible**, le coach conseille de zoomer dessus dans le jeu puis de recapturer :
+  sur une capture roumaine, le panneau « Monumentul Eroilor Neamului » était illisible dans la vue entière, et
+  lu exactement (Roumanie) une fois la zone découpée et agrandie trois fois. D'où la capture de zone, à venir.
 
 Pour lancer le moteur seul (sans interface) : `cd engine && .venv/bin/python -m geonesclick`.
 
@@ -206,13 +215,35 @@ model = "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
 Chaque aide se désactive : niveau 2, amorce, consignes « Regarde… », boutons « Juste » / « Faux », pays
 répondu, confusions, notifications, copie des captures (sections `[coach]`, `[vision]`, `[metas]`,
 `[dataset]`, `[capture]` du fichier par défaut).
-Pour retirer des pays candidats : `[streetclip] exclude_countries = ["RU", "UA"]` (ton fichier peut
-ajouter des pays à la liste, mais pas en enlever autrement).
+Pour retirer des pays candidats : décoche-les dans Réglages › Analyse, ou `[streetclip] exclude_countries =
+["RU", "UA"]` dans le fichier (il peut ajouter des pays à la liste, mais pas en enlever autrement).
 
-L'écran **Réglages** de l'application modifie les réglages courants à chaud : il n'écrit dans ce fichier
-que les valeurs que tu changes, en conservant tes commentaires et leur ordre. L'adresse de l'API, la clé, le port, les origines, le recadrage, les prompts, les consignes et les
-poids des catégories (`category_looks`, `category_weights`) ne se modifient que dans le fichier, puis
-en relançant l'application. La liste des modèles est publique :
+**Tout est configurable**, aussi depuis l'onglet **Réglages** de l'application, rangé en sections repliables
+(Aide, Analyse, Indices, Carte, Capture, Jeu de test, Moteur), chacune avec son résumé d'une ligne ; les
+réglages fins sont dans une partie « Avancé ». Chaque changement s'applique et s'enregistre tout de suite (une
+case, un menu, ou un champ à la sortie du champ) ; une valeur refusée est signalée sur place et l'écran revient
+à la valeur en vigueur. L'écran n'écrit dans `config.toml` que les valeurs que tu changes, en conservant tes
+commentaires et leur ordre. Pays candidats : décoche un pays pour l'écarter, ou ajoute-en un (nom anglais et
+code ISO). Deux réglages ne prennent effet qu'au prochain démarrage (StreetCLIP activé et son calcul, ce que
+GNOME propose de partager) : l'écran le signale.
+
+**Seule exception, la sécurité** : ces réglages ne se changent que dans le fichier, puis en relançant
+l'application. L'écran les affiche en lecture seule avec leur raison :
+
+| Réglage | Pourquoi dans le fichier seulement |
+|---|---|
+| `[server]` host, port, allowed_origins | le moteur ne doit écouter que ta machine et ta fenêtre du coach |
+| `[vision]` base_url, api_key_env | une requête pourrait rediriger ta clé API vers un autre serveur |
+| `[streetclip]` model, `[plonk]` model, revision | un modèle téléchargé est exécuté sur ta machine : un modèle piégé pourrait exécuter du code |
+| `[map]` tile_url, attribution_url | doivent aussi être autorisés dans la fenêtre (CSP et autorisations de Tauri) |
+| dossiers et fichiers (`directory`, `user_file`, `data_dir`) | une requête ne doit pas pouvoir faire écrire ailleurs sur le disque |
+
+**Mode débogage** (Réglages › Moteur, `[debug] enabled`, coupé par défaut) : le moteur écrit à côté de chaque
+capture un journal `capture-<id>.json` (pays de StreetCLIP, zones, ce que l'IA a lu et sa conclusion, temps,
+étiquette « C'était où ? »), pour relire une manche après coup. Local, supprimé avec les anciennes captures.
+
+Un test vérifie que chaque clé de la configuration est soit modifiable à l'écran, soit dans cette liste : un
+réglage ajouté sans être rangé fait échouer les tests. La liste des modèles NVIDIA est publique :
 `curl -s https://integrate.api.nvidia.com/v1/models`.
 
 ## Metas
@@ -299,8 +330,10 @@ La fenêtre a trois onglets, en bas : **Coach**, **Carte** et **Réglages** ; le
 L'onglet **Carte** s'ouvre à partir du niveau 3 et occupe toute la fenêtre ; un point bleu s'y allume quand de
 nouvelles zones sont prêtes. Aux niveaux 1 et 2, l'onglet est grisé : la carte dévoilerait les pays. Elle montre :
 - les **pays probables** selon StreetCLIP, d'autant plus colorés qu'ils sont probables ;
-- avec une **preuve forte** (texte lu, domaine, plaque…) : le pays prouvé en bleu, les autres candidats
-  grisés et barrés, et les seules zones du pays prouvé, comme dans la liste des pays ;
+- avec une **preuve certaine** : le pays prouvé en bleu, les autres candidats grisés et barrés, et les seules
+  zones du pays prouvé, comme dans la liste des pays ;
+- avec une **lecture de l'IA** (très probable, à confirmer) : ce pays est cerné de bleu en pointillés et ses
+  zones passent en tête ; les autres pays restent colorés. Les astuces Plonk It le mettent aussi en premier ;
 - les **zones probables** : le moteur garde les 80 % de positions PLONK les plus denses, les regroupe (deux
   positions à moins de 150 km vont ensemble) et trace un contour arrondi autour de chaque groupe d'au moins
   5 % des positions. Chaque zone est numérotée avec sa part des positions ; sous la carte, la liste donne ses
@@ -407,7 +440,7 @@ venv avec `uv.lock` et le front avec `pnpm-lock.yaml`). Pour le banc PLONK, rela
 | `~/.local/share/geonesclick/plonkit/` | guides Plonk It, astuces, vecteurs, traductions | reconstruit au démarrage (~3 min, traductions refaites à la demande) |
 | `~/.cache/huggingface/hub/` | poids StreetCLIP et PLONK | retéléchargés au prochain lancement (réseau requis) |
 | `engine/dataset/` | jeu de test (images + `labels.toml`) | perdu : à sauvegarder, c'est la base de toutes les mesures |
-| `engine/captures/` | captures des manches | sans conséquence |
+| `engine/captures/` | captures des manches ; en mode débogage, le journal `capture-<id>.json` de chaque analyse | sans conséquence |
 | `engine/spikes/.vendor/` | code et dépendances du banc PLONK | `scripts/setup-plonk-spike.sh` le refait |
 
 **Hors ligne** : une fois StreetCLIP et PLONK (s'il est activé) en cache, le moteur passe Hugging Face en
@@ -461,7 +494,8 @@ app/                      interface Tauri + Vue
   src-tauri/src/lib.rs    lance et arrête le moteur
   src/engine.ts           connexion au moteur (WebSocket + HTTP)
   src/components/         pays (Countries), carte (CoachMap), ce que voit l'IA (Observations),
-                          « C'était où ? » (LabelForm), réglages (SettingsPanel)…
+                          « C'était où ? » (LabelForm), réglages (SettingsPanel + SettingField)…
+  src/settingsSchema.ts   description de chaque réglage de l'écran (libellé, aide, type, section)
 engine/                   moteur Python
   src/geonesclick/     capture, StreetCLIP, PLONK (plonk.py), frontières (borders.py), vision, metas
                           (+ amorce), jeu de test, réglages, serveur

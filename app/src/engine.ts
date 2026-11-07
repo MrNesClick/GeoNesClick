@@ -66,6 +66,9 @@ export interface Conclusion {
   region: string;
   proof: string;
   certainty: string;
+  /** Confirmée par une règle locale (mot, domaine, indicatif…). Mesuré : le modèle seul se trompe parfois
+   * avec « certitude forte » (Slovaquie sur « utca » mal lu) ; sans confirmation, jamais « certain ». */
+  confirmed: boolean;
 }
 
 /** Lit la clé « conclusion » de la fiche ; null si absente, vide ou pays inconnu de la configuration. */
@@ -78,24 +81,60 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
   };
   const country = field("pays").toUpperCase();
   if (!engine.countries.includes(country)) return null;
-  return { country, region: field("region"), proof: field("preuve"), certainty: field("certitude").toLowerCase() };
+  return {
+    country, region: field("region"), proof: field("preuve"), certainty: field("certitude").toLowerCase(),
+    confirmed: false, // la confirmation locale arrive avec la chaîne « texte d'abord »
+  };
 }
 
 /** Preuve lue par l'IA pour cette capture (null tant que l'IA n'a pas répondu, ou sans preuve). */
 export const proofOf = (a: Analysis): Conclusion | null =>
   a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
 
-/** Preuve de certitude forte, quand le réglage « une preuve lue tranche » est actif. */
+/** Libellé d'une lecture de l'IA selon sa confirmation et la certitude annoncée par le modèle. */
+export const proofLabel = (c: Conclusion): string =>
+  c.confirmed ? "Certain" : c.certainty === "forte" ? "Très probable : lu par l'IA, à confirmer" : "Probable : lu par l'IA, à confirmer";
+
+/** Preuve CERTAINE : forte, confirmée par une règle locale, et réglage « une preuve lue tranche » actif. */
 export function certainProof(a: Analysis): Conclusion | null {
   const proof = proofOf(a);
-  return engine.trustProof && proof?.certainty === "forte" ? proof : null;
+  return engine.trustProof && proof?.certainty === "forte" && proof.confirmed ? proof : null;
 }
 
-/** Astuces Plonk It à afficher, dans l'ordre des pays probables (seul le pays prouvé si la preuve est forte). */
-export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
+/** Pays qui se détache nettement d'après StreetCLIP, ou null : le coach parle alors d'hésitation. */
+export function clearLeader(a: Analysis): CountryScore | null {
+  const [first, second] = a.scores ?? [];
+  if (!first) return null;
+  const ok = first.probability >= engine.leader.min && first.probability - (second?.probability ?? 0) >= engine.leader.margin;
+  return ok ? first : null;
+}
+
+/** Pays entre lesquels StreetCLIP hésite : les premiers, au moins 10 % chacun (quatre au plus). */
+export const contenders = (a: Analysis): CountryScore[] =>
+  (a.scores ?? []).filter((s, i) => i === 0 || s.probability >= 0.1).slice(0, 4);
+
+/** Le modèle de vision a vu du texte sans pouvoir le lire (trop petit ou flou). */
+export function unreadableText(a: Analysis): boolean {
+  if (a.vision.status !== "done") return false;
+  const text = a.vision.fiche.panneaux_et_texte;
+  const all = Array.isArray(text) ? text.join(" ") : String(text ?? "");
+  return /illisible/i.test(all);
+}
+
+/** Pays en tête : prouvé (certain, les autres écartés) ou lu par l'IA (très probable, les autres restent). */
+export function headCountry(a: Analysis): { code: string; certain: boolean } | null {
   const certain = certainProof(a);
+  if (certain) return { code: certain.country, certain: true };
+  const proof = proofOf(a);
+  return proof ? { code: proof.country, certain: false } : null;
+}
+
+/** Astuces Plonk It à afficher : le pays en tête d'abord (seul lui s'il est certain), puis les probables. */
+export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
+  const head = headCountry(a);
   return (a.scores ?? [])
-    .filter((s) => !certain || s.code === certain.country)
+    .filter((s) => !head?.certain || s.code === head.code)
+    .sort((x, y) => Number(y.code === head?.code) - Number(x.code === head?.code))
     .map((s) => ({ code: s.code, tips: a.similar?.[s.code] ?? [] }))
     .filter((c) => c.tips.length);
 }
@@ -120,11 +159,13 @@ export interface Cloud {
   ms: number;
 }
 
-/** Zones à dessiner : seules celles du pays prouvé quand la preuve est forte (les autres pays sont écartés). */
+/** Zones à dessiner : celles du pays en tête (prouvé ou lu par l'IA), sinon toutes. Un pays lu mais sans
+ * zone à lui garde les zones de tous les pays : il n'est pas certain. */
 export function visibleZones(a: Analysis): Zone[] {
   if (a.cloud.status !== "done") return [];
-  const certain = certainProof(a);
-  return certain ? (a.cloud.data.zones_by_country[certain.country] ?? []) : a.cloud.data.zones;
+  const head = headCountry(a);
+  if (!head) return a.cloud.data.zones;
+  return a.cloud.data.zones_by_country[head.code] ?? (head.certain ? [] : a.cloud.data.zones);
 }
 
 export interface Analysis {
@@ -165,6 +206,8 @@ export const engine = reactive({
   helpLevel: 4,
   /** Une preuve lue avec certitude forte met son pays en tête et écarte les autres. */
   trustProof: true,
+  /** Sans preuve, un pays n'est donné en réponse que s'il se détache (probabilité et avance sur le 2ᵉ). */
+  leader: { min: 0.4, margin: 0.15 },
   busy: false,
   error: null as string | null,
   current: null as Analysis | null,
@@ -185,6 +228,7 @@ type Message =
       countries: string[];
       help_level: number;
       trust_proof: boolean;
+      leader: { min: number; margin: number };
     }
   | { type: "capture"; id: string; at: string; thumbnail: string; ms: number }
   | {
@@ -221,6 +265,7 @@ function handle(msg: Message) {
       engine.countries = msg.countries;
       engine.helpLevel = msg.help_level;
       engine.trustProof = msg.trust_proof;
+      engine.leader = msg.leader;
       break;
     case "capture":
       engine.error = null;
@@ -408,7 +453,25 @@ export const flag = (code: string) =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
 
 // --- Réglages ------------------------------------------------------------------------------------
-export type Settings = Record<string, Record<string, string | number | boolean>>;
+export type Settings = Record<string, Record<string, unknown>>;
+/** Réglages réservés au fichier (sécurité) : valeur et raison, affichés en lecture seule. */
+export type FileOnly = Record<string, Record<string, { value: unknown; why: string }>>;
+
+/** Enregistre un seul réglage, tout de suite ; renvoie l'erreur éventuelle et s'il attend un redémarrage. */
+export async function saveSetting(section: string, key: string, value: unknown): Promise<{ error: string | null; restart: boolean }> {
+  try {
+    const res = await fetch(ENGINE_URL + "/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [section]: { [key]: value } }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: typeof body.detail === "string" ? body.detail : `Refusé (${res.status}).`, restart: false };
+    return { error: null, restart: Array.isArray(body.restart) && body.restart.length > 0 };
+  } catch {
+    return { error: "Le moteur ne répond pas.", restart: false };
+  }
+}
 
 export async function getJSON<T>(path: string): Promise<T | null> {
   try {

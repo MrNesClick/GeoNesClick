@@ -35,6 +35,10 @@ help_level = 4
 # « certain », et les autres sont écartés ; false = garder les seuls pourcentages de StreetCLIP.
 trust_proof = true
 language = "fr"          # langue des traductions : fr, en, es, de, it, pt (l'interface suivra)
+# Sans preuve lue, un pays n'est donné en réponse que s'il se détache : probabilité d'au moins leader_min
+# ET leader_margin d'avance sur le 2ᵉ. Sinon : « Hésitation » entre les premiers (ex. 22 %, 21 %, 16 %).
+leader_min = 0.40
+leader_margin = 0.15
 
 [dataset]
 # Jeu de test : « C'était où ? » après la manche enregistre la capture brute et le pays réel.
@@ -218,6 +222,8 @@ timeout_s = 90
 max_tokens = 2000
 temperature = 0.2
 max_side_px = 1280       # l'image est réduite à cette taille avant l'envoi
+# Prompt mesuré : le rallonger dégrade la lecture du texte (2026-11-07, plaque « Repkény utca » : 8 lectures
+# sur 10 avec celui-ci, 4 sur 12 avec des consignes en plus sur l'interface du jeu et le texte illisible).
 prompt = '''
 Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue Street View.
 Ne devine jamais un pays d'après le paysage : seule la clé "conclusion" peut nommer un lieu, et seulement
@@ -244,3 +250,9 @@ sur une preuve explicite. Réponds par un objet JSON valide, en français, avec 
 Si un élément n'est pas visible, écris "non visible". N'invente rien.
 Ignore l'interface du jeu (boutons, boussole, carte, logos).
 '''
+
+[debug]
+# Mode débogage : un journal JSON de chaque analyse (pays StreetCLIP, zones, ce que l'IA a lu, étiquette
+# « C'était où ? ») est écrit à côté de sa capture, capture-<id>.json, pour relire une manche après coup.
+# Local, supprimé avec les anciennes captures.
+enabled = false

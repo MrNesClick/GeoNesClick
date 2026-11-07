@@ -1,10 +1,10 @@
 """Réglages modifiables depuis l'interface, écrits dans ~/.config/geonesclick/config.toml.
 
-Seuls les réglages qui s'appliquent à chaud sont exposés. Par sécurité, l'adresse de l'API
-(vision.base_url), le nom de la variable de la clé, les origines autorisées et le port ne sont
-modifiables que dans le fichier : une requête qui contournerait les contrôles ne pourrait pas
-rediriger la clé API vers un autre serveur. De même, le serveur de tuiles de la carte, son attribution
-et le filtre CSS ne se changent que dans le fichier (le serveur doit en plus être autorisé dans la CSP).
+Tout est configurable. L'écran Réglages modifie tout ce qui est dans EDITABLE ; seuls les réglages de
+FILE_ONLY restent réservés au fichier, par sécurité : une requête qui contournerait les contrôles ne doit
+pas pouvoir rediriger la clé API, ouvrir le moteur au réseau, charger un modèle piégé ou faire écrire
+ailleurs sur le disque. L'écran les affiche en lecture seule, avec la raison. Un test vérifie que chaque
+clé de la configuration est dans l'un des deux.
 """
 
 from __future__ import annotations
@@ -21,18 +21,47 @@ from tomlkit.exceptions import TOMLKitError
 from .config import USER_CONFIG, Config, merge
 
 EDITABLE: dict[str, tuple[str, ...]] = {
-    "coach": ("help_level", "trust_proof", "language"),
-    "capture": ("notify", "sound", "save_to_disk", "keep_last"),
-    "dataset": ("ask_guessed", "max_confusions"),
+    "coach": ("help_level", "trust_proof", "language", "leader_min", "leader_margin"),
+    "capture": ("source", "notify", "sound", "save_to_disk", "keep_last", "crop", "masks"),
+    "dataset": ("enabled", "ask_guessed", "max_confusions"),
     "metas": (
-        "include_seed", "min_probability", "max_candidates", "max_categories", "show_looks", "max_looks",
-        "judge_buttons",
+        "enabled", "include_seed", "min_probability", "max_candidates", "max_categories", "show_looks", "max_looks",
+        "judge_buttons", "category_looks", "category_weights",
     ),
-    "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country", "ai_classify", "translate"),
-    "streetclip": ("top_k",),
-    "plonk": ("enabled", "steps", "points"),
-    "map": ("enabled", "max_zoom"),
-    "vision": ("enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px"),
+    "plonkit": (
+        "enabled", "refresh_days", "delay_s", "similar_tips", "similar_per_country", "keywords", "ai_classify",
+        "ai_model", "ai_batch", "ai_pause_s", "translate",
+    ),
+    "streetclip": ("enabled", "device", "prompt", "top_k", "countries", "exclude_countries"),
+    "plonk": ("enabled", "steps", "points", "zone_share", "zone_link_km", "zone_min_part"),
+    "map": ("enabled", "attribution", "tile_filter", "max_zoom"),
+    "vision": (
+        "enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px", "prompt",
+    ),
+    "debug": ("enabled",),
+}
+
+_NETWORK = "réseau du moteur : il ne doit écouter que ta machine et ta fenêtre du coach"
+_KEY = "redirigerait ta clé API vers un autre serveur"
+_DISK = "chemin sur le disque : une requête ne doit pas pouvoir faire écrire ailleurs"
+_MODEL = "modèle téléchargé puis exécuté sur ta machine : un modèle piégé pourrait exécuter du code"
+_CSP = "doit aussi être autorisé dans la fenêtre (CSP et autorisations de Tauri)"
+FILE_ONLY: dict[str, dict[str, str]] = {
+    "server": {"host": _NETWORK, "port": _NETWORK, "allowed_origins": _NETWORK},
+    "capture": {"directory": _DISK},
+    "dataset": {"directory": _DISK},
+    "metas": {"user_file": _DISK},
+    "plonkit": {"data_dir": _DISK},
+    "streetclip": {"model": _MODEL},
+    "plonk": {"model": _MODEL, "revision": _MODEL},
+    "map": {"tile_url": _CSP, "attribution_url": _CSP},
+    "vision": {"base_url": _KEY, "api_key_env": _KEY},
+}
+
+# Pris en compte au prochain démarrage seulement (le reste s'applique tout de suite).
+RESTART: dict[str, tuple[str, ...]] = {
+    "capture": ("source",),  # ou « Changer de fenêtre », qui rouvre le sélecteur de GNOME
+    "streetclip": ("enabled", "device"),
 }
 
 
@@ -41,7 +70,17 @@ class SettingsError(ValueError):
 
 
 def current(cfg: Config) -> dict[str, dict[str, Any]]:
-    return {section: {key: getattr(getattr(cfg, section), key) for key in keys} for section, keys in EDITABLE.items()}
+    out = {section: {key: getattr(getattr(cfg, section), key) for key in keys} for section, keys in EDITABLE.items()}
+    out["streetclip"]["countries"] = cfg.streetclip.all_countries  # liste complète : on peut en remettre un
+    return out
+
+
+def file_only(cfg: Config) -> dict[str, dict[str, dict[str, Any]]]:
+    """Réglages réservés au fichier, pour l'affichage en lecture seule : valeur et raison."""
+    return {
+        section: {key: {"value": getattr(getattr(cfg, section), key), "why": why} for key, why in keys.items()}
+        for section, keys in FILE_ONLY.items()
+    }
 
 
 HEADER = (

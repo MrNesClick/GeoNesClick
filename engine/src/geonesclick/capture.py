@@ -257,4 +257,8 @@ def prune_captures(directory: Path, keep: int) -> int:
     old = files[:-keep] if keep else []
     for f in old:
         f.unlink(missing_ok=True)
+        f.with_suffix(".json").unlink(missing_ok=True)  # journal du mode débogage
+    logs = sorted(directory.glob("capture-*.json"))  # journaux sans image (copie des captures coupée)
+    for f in logs[:-keep] if keep else []:
+        f.unlink(missing_ok=True)
     return len(old)

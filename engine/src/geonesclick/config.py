@@ -8,7 +8,7 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from .metas import CATEGORIES
 from .plonkit import DATA_DIR as PLONKIT_DATA_DIR
@@ -69,6 +69,10 @@ class CoachConfig(BaseModel):
     # écarte les autres, au lieu des seuls pourcentages de StreetCLIP.
     trust_proof: bool
     language: Literal["fr", "en", "es", "de", "it", "pt"]  # langue des traductions (l'interface suivra)
+    # Un pays ne s'affiche en réponse que s'il se détache : au moins leader_min, et leader_margin d'avance
+    # sur le 2ᵉ. Sinon le coach parle d'hésitation entre les premiers, au lieu d'un faux gagnant.
+    leader_min: float = Field(ge=0, le=1)
+    leader_margin: float = Field(ge=0, le=1)
 
 
 class DatasetConfig(BaseModel):
@@ -123,7 +127,7 @@ class PlonkitConfig(BaseModel):
     similar_per_country: int = Field(ge=1, le=5)
     keywords: dict[str, list[str]] = {}  # remplace les mots-clés de classement d'une catégorie
     ai_classify: bool  # faire classer par l'IA les astuces restées sans catégorie (une fois par texte)
-    ai_model: str  # vide = le modèle du niveau 2
+    ai_model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # vide = le modèle du niveau 2
     ai_batch: int = Field(ge=5, le=50)  # astuces par appel
     ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause entre deux appels (limites du palier gratuit)
     translate: bool  # traduire les astuces affichées dans la langue du coach (à la demande, en cache)
@@ -143,19 +147,40 @@ class PlonkitConfig(BaseModel):
 class StreetClipConfig(BaseModel):
     enabled: bool
     model: str
-    device: str
-    prompt: str
+    device: str = Field(pattern=r"^(auto|cpu|cuda(:\d+)?)$")
+    prompt: str = Field(min_length=5, max_length=300)
     top_k: int = Field(ge=1, le=20)
     countries: dict[str, str]  # nom anglais (prompt) → code ISO à 2 lettres
     exclude_countries: list[str] = []  # codes retirés de la liste (la fusion des fichiers ne sait qu'ajouter)
+    _all_countries: dict[str, str] = PrivateAttr(default_factory=dict)  # avant exclusion (écran Réglages)
+
+    @field_validator("prompt")
+    @classmethod
+    def _placeholder(cls, v: str) -> str:
+        # Passé à str.format : une seule accolade {} et aucune autre (ni champ nommé, ni largeur géante).
+        if v.count("{}") != 1 or "{" in v.replace("{}", "") or "}" in v.replace("{}", ""):
+            raise ValueError("le prompt doit contenir une fois {} (le nom du pays) et aucune autre accolade")
+        return v
+
+    @field_validator("countries")
+    @classmethod
+    def _codes(cls, v: dict[str, str]) -> dict[str, str]:
+        if bad := [code for code in v.values() if not (len(code) == 2 and code.isalpha() and code.isupper())]:
+            raise ValueError(f"codes pays invalides (2 lettres majuscules attendues) : {', '.join(bad)}")
+        return v
 
     @model_validator(mode="after")
     def _exclude(self) -> StreetClipConfig:
+        self._all_countries = dict(self.countries)
         excluded = {c.upper() for c in self.exclude_countries}
         self.countries = {name: code for name, code in self.countries.items() if code.upper() not in excluded}
         if len(self.countries) < 2:
             raise ValueError("il faut au moins 2 pays candidats")
         return self
+
+    @property
+    def all_countries(self) -> dict[str, str]:
+        return self._all_countries
 
 
 class PlonkConfig(BaseModel):
@@ -186,13 +211,18 @@ class VisionConfig(BaseModel):
     enabled: bool
     base_url: str
     api_key_env: str
-    model: str
+    model: str = Field(min_length=3, max_length=120, pattern=r"^[\w.\-]+/[\w.\-]+$")
     thinking: bool
-    timeout_s: float
-    max_tokens: int
-    temperature: float
-    max_side_px: int
-    prompt: str
+    timeout_s: float = Field(ge=5, le=300)
+    max_tokens: int = Field(ge=100, le=16000)
+    temperature: float = Field(ge=0, le=2)
+    max_side_px: int = Field(ge=256, le=4096)  # au-delà, la requête devient lourde sans gain mesuré
+    prompt: str = Field(min_length=20, max_length=20000)
+
+
+class DebugConfig(BaseModel):
+    # Mode débogage : journal JSON de chaque analyse à côté de sa capture, pour relire une manche après coup.
+    enabled: bool
 
 
 class Config(BaseModel):
@@ -206,6 +236,7 @@ class Config(BaseModel):
     plonk: PlonkConfig
     map: MapConfig
     vision: VisionConfig
+    debug: DebugConfig
 
 
 def merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:

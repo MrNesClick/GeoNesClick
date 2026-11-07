@@ -7,7 +7,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Analysis, Zone } from "../engine";
-import { certainProof, countryName, countryOutlines, engine, flag, openAttribution, visibleZones } from "../engine";
+import { certainProof, countryName, countryOutlines, engine, flag, headCountry, openAttribution, visibleZones } from "../engine";
 
 const props = defineProps<{ analysis: Analysis; level: number }>();
 
@@ -30,6 +30,8 @@ const COLORS = {
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const certain = computed(() => certainProof(props.analysis));
+/** Pays en tête : prouvé, ou lu par l'IA (très probable, les autres restent colorés). */
+const head = computed(() => headCountry(props.analysis));
 const zones = computed(() => visibleZones(props.analysis));
 const probability = (code: string) => props.analysis.scores?.find((s) => s.code === code)?.probability ?? 0;
 const pct = (p: number) => `${Math.round(p * 100)} %`;
@@ -41,6 +43,9 @@ const roundKm = (km: number) => {
 
 function styleFor(code: string): L.PathOptions {
   const proven = certain.value?.country;
+  if (!proven && code === head.value?.code) {
+    return { color: COLORS.lac, weight: 1.6, dashArray: "6 4", fillColor: COLORS.lac, fillOpacity: 0.12 };
+  }
   if (proven) {
     if (code === proven) return { color: COLORS.lac, weight: 1.6, fillColor: COLORS.lac, fillOpacity: 0.12 };
     if (probability(code) > 0) {
@@ -69,8 +74,8 @@ const union = (all: (L.LatLngBounds | null)[]) =>
   all.reduce<L.LatLngBounds | null>((acc, b) => (b ? (acc ? acc.extend(b) : L.latLngBounds(b.getSouthWest(), b.getNorthEast())) : acc), null);
 
 function frame(): L.LatLngBounds | null {
-  const proven = certain.value?.country;
-  if (props.level >= 4 && proven) return countryBounds(proven); // la réponse : on resserre sur le pays prouvé
+  const top = head.value?.code;
+  if (props.level >= 4 && top) return countryBounds(top); // la réponse : on resserre sur le pays en tête
   if (zones.value.length) return union(zones.value.map((z) => L.latLngBounds(z.polygon)));
   // Sans zone : les pays probables (au-dessus de 5 %, trois au plus).
   const codes = (props.analysis.scores ?? []).filter((s) => s.probability >= 0.05).slice(0, 3).map((s) => s.code);
@@ -124,7 +129,7 @@ onMounted(async () => {
 });
 
 watch(
-  () => [props.analysis.scores, props.analysis.cloud, certain.value?.country, props.level],
+  () => [props.analysis.scores, props.analysis.cloud, head.value?.code, certain.value?.country, props.level],
   () => redraw(),
 );
 
@@ -150,8 +155,14 @@ onBeforeUnmount(() => {
 
     <section class="mt-3" aria-labelledby="zones-titre">
       <h2 id="zones-titre" class="font-bold text-papier">
-        {{ certain ? `Zones probables en ${countryName(certain.country)}` : "Zones probables" }}
+        {{ head && analysis.cloud.status === "done" && analysis.cloud.data.zones_by_country[head.code]
+          ? `Zones probables en ${countryName(head.code)}${head.certain ? "" : " (lu par l'IA, à confirmer)"}`
+          : "Zones probables" }}
       </h2>
+      <p v-if="head && !head.certain && analysis.cloud.status === 'done' && !analysis.cloud.data.zones_by_country[head.code]"
+         class="text-[0.85rem] text-courbe">
+        Presque aucune position ne tombe en {{ countryName(head.code) }} (lu par l'IA) : voici les zones de tous les pays.
+      </p>
       <ol v-if="zones.length" class="mt-1.5 space-y-1">
         <li v-for="(z, i) in zones" :key="i" class="grid grid-cols-[1.5rem_1fr_auto] items-baseline gap-2">
           <span class="text-courbe tabular-nums">{{ i + 1 }}.</span>
