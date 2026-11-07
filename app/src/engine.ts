@@ -124,6 +124,10 @@ export interface Locks {
   rejected: Lock[];
   /** Ville proposée par le coach : jamais verrouillée sans toi. */
   proposal: Lock | null;
+  /** Régions des lieux lus dans tes marques, proposées en un clic (plusieurs : à toi de trancher). */
+  read_regions: { code: string; name: string; marks: number[]; places: string[] }[];
+  /** Étendue de la région choisie [sud, ouest, nord, est], d'après ses lieux GeoNames (pas de contour). */
+  region_bounds: [number, number, number, number] | null;
 }
 
 /** Résultat de la recherche du « + » (index GeoNames local). */
@@ -158,6 +162,8 @@ export interface Verdict {
   ignored: { n: number; value: string; label: string; countries: string[] }[];
   /** Lieux seuls, sans confirmation (2ᵉ lieu, lettre ou mot, StreetCLIP) : de simples indices. */
   unconfirmed: { n: number; value: string; country: string }[];
+  /** Lieux lus que tes choix écartent (hors de ton pays ou de ta région) : grisés sur la carte. */
+  outside?: { n: number; name: string; label: string; lat: number; lon: number }[];
 }
 
 /** Un lieu lu sur une marque, placé sur la carte (GeoNames). */
@@ -536,7 +542,10 @@ function handle(msg: Message) {
       if (cur?.id === msg.id) cur.marks = cur.marks.filter((m) => m.n !== msg.n);
       break;
     case "locks":
-      if (cur?.id === msg.id) cur.locks = { held: msg.held, rejected: msg.rejected, proposal: msg.proposal };
+      if (cur?.id === msg.id) {
+        cur.locks = { held: msg.held, rejected: msg.rejected, proposal: msg.proposal, read_regions: msg.read_regions ?? [],
+                      region_bounds: msg.region_bounds ?? null };
+      }
       break;
     case "similar": // astuces du pays verrouillé, ajoutées à celles des candidats
       if (cur?.id === msg.id) {

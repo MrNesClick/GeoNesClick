@@ -7,7 +7,7 @@
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import type { Analysis, Zone } from "../engine";
+import type { Analysis, Lock, Zone } from "../engine";
 import { certainProof, circled, countryName, countryOutlines, engine, flag, fr, headCountry, openAttribution, visibleZones } from "../engine";
 
 const props = defineProps<{ analysis: Analysis; level: number }>();
@@ -46,6 +46,13 @@ const coords = (lat: number, lon: number) =>
 const distances = computed(() => location.value?.places.filter((p) => p.km) ?? []);
 /** Lieu lu le plus proche (plus petite distance du panneau). */
 const nearestRead = computed(() => [...distances.value].sort((a, b) => a.km! - b.km!)[0] ?? null);
+// Ce qui est sûr (tes choix, ou ceux du coach au niveau qui les dévoile) : la carte se cadre dessus.
+const shownLock = (l?: Lock) => (l && (l.by === "user" || props.level >= (l.level === "country" ? 3 : 4)) ? l : null);
+const lockCountry = computed(() => shownLock(props.analysis.locks?.held.country));
+const lockRegion = computed(() => shownLock(props.analysis.locks?.held.region));
+const lockCity = computed(() => shownLock(props.analysis.locks?.held.city));
+const regionBounds = computed(() => (lockRegion.value ? props.analysis.locks?.region_bounds ?? null : null));
+const outside = computed(() => props.analysis.verdict?.outside ?? []);
 const probability = (code: string) => props.analysis.scores?.find((s) => s.code === code)?.probability ?? 0;
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 /** Taille lisible : arrondie à 10 km, à 50 km au-delà de 200 km. */
@@ -55,7 +62,7 @@ const roundKm = (km: number) => {
 };
 
 function styleFor(code: string): L.PathOptions {
-  const proven = certain.value?.country;
+  const proven = certain.value?.country ?? lockCountry.value?.country; // prouvé, ou dit sûr
   if (!proven && code === head.value?.code) {
     return { color: COLORS.lac, weight: 1.6, dashArray: "6 4", fillColor: COLORS.lac, fillOpacity: 0.12 };
   }
@@ -97,8 +104,13 @@ function locationBounds(): L.LatLngBounds | null {
 }
 
 function frame(): L.LatLngBounds | null {
+  const city = lockCity.value;
+  if (city?.lat != null && city.lon != null) return L.latLng(city.lat, city.lon).toBounds(5000); // la ville choisie
   const here = locationBounds(); // tes marques situent la vue : plus précis que tout le reste
   if (here) return here;
+  const rb = regionBounds.value; // la région choisie, d'après l'étendue de ses lieux
+  if (rb) return L.latLngBounds([rb[0], rb[1]], [rb[2], rb[3]]).pad(0.05);
+  if (lockCountry.value) return countryBounds(lockCountry.value.country);
   const top = head.value?.code;
   if (props.level >= 4 && top) return countryBounds(top); // la réponse : on resserre sur le pays en tête
   if (zones.value.length) return union(zones.value.map((z) => L.latLngBounds(z.polygon)));
@@ -124,6 +136,24 @@ function textNode(text: string): HTMLElement {
   const span = document.createElement("span");
   span.textContent = text;
   return span;
+}
+
+/** Ta ville choisie (marqueur) et les lieux lus que tes choix écartent (grisés, jamais effacés). */
+function drawChoices() {
+  if (!placeLayer) return;
+  for (const o of outside.value) {
+    L.circleMarker([o.lat, o.lon], { radius: 4, color: COLORS.courbe, weight: 1.5, fillColor: COLORS.courbeFonce, fillOpacity: 1 })
+      .bindTooltip(textNode(`${circled(o.n)} ${o.label} · hors de ton choix`),
+                   { permanent: true, direction: "right", className: "ggc-zone ggc-place ggc-outside" })
+      .addTo(placeLayer);
+  }
+  const city = lockCity.value;
+  if (city?.lat != null && city.lon != null) {
+    L.circleMarker([city.lat, city.lon], { radius: 8, color: COLORS.marque, weight: 3, fillColor: COLORS.encre, fillOpacity: 1 })
+      .bindTooltip(textNode(`${city.name} (${city.by === "user" ? "toi" : "le coach"})`),
+                   { permanent: true, direction: "top", className: "ggc-zone" })
+      .addTo(placeLayer);
+  }
 }
 
 function drawLocation() {
@@ -160,11 +190,13 @@ function redraw() {
   zoneLayer?.clearLayers();
   placeLayer?.clearLayers();
   zones.value.forEach(drawZone);
+  drawChoices();
   drawLocation();
   const bounds = frame();
   if (bounds?.isValid()) {
     // Une position estimée se regarde de près (rues, villages) ; une zone ou un pays, de loin.
-    const close = !!location.value; // lieux lus : cadrés au plus près (fitBounds s'arrête là où ils tiennent tous)
+    // Lieux lus, ville ou région choisies : cadrés au plus près (fitBounds s'arrête là où ils tiennent tous).
+    const close = !!(location.value || lockCity.value || regionBounds.value);
     const options = { padding: [24, 24] as L.PointTuple, maxZoom: close ? engine.map.max_zoom : Math.min(engine.map.max_zoom, 8) };
     if (reducedMotion) map.fitBounds(bounds, options);
     else map.flyToBounds(bounds, { ...options, duration: 0.8 });
@@ -205,7 +237,8 @@ onMounted(async () => {
 });
 
 watch(
-  () => [props.analysis.scores, props.analysis.cloud, head.value?.code, certain.value?.country, props.level, location.value],
+  () => [props.analysis.scores, props.analysis.cloud, head.value?.code, certain.value?.country, props.level, location.value,
+         props.analysis.locks, outside.value],
   () => redraw(),
 );
 
@@ -228,6 +261,17 @@ onBeforeUnmount(() => {
         {{ engine.map.attribution }}
       </button>
     </div>
+
+    <!-- Ce qui est sûr : la carte se cadre dessus (la région d'après l'étendue de ses lieux, sans contour). -->
+    <p v-if="lockCountry" class="mt-3 text-papier">
+      <span class="text-courbe">C'est sûr :</span> {{ flag(lockCountry.country) }} {{ countryName(lockCountry.country) }}
+      <template v-if="lockRegion"> › {{ lockRegion.name }}</template>
+      <template v-if="lockCity"> › {{ lockCity.name }}</template>
+      <span v-if="lockRegion && !lockCity" class="text-[0.85rem] text-courbe"> (cadrée sur l'étendue de ses lieux, sans contour)</span>
+    </p>
+    <p v-if="outside.length" class="mt-1 text-[0.85rem] text-courbe">
+      Grisés : {{ outside.map((o) => `${circled(o.n)} ${o.label}`).join(", ") }}, lus mais hors de ton choix.
+    </p>
 
     <!-- Tes marques situent la vue : lieux lus (GeoNames) et distances d'un panneau directionnel. -->
     <section v-if="location" class="mt-3" aria-labelledby="position-titre">

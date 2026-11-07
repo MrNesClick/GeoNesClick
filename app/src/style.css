@@ -100,6 +100,10 @@
 .leaflet-tooltip.ggc-place {
   border-color: var(--color-marque);
 }
+.leaflet-tooltip.ggc-outside {
+  border-color: var(--color-courbe);
+  color: var(--color-courbe);
+}
 .ggc-far .leaflet-tooltip.ggc-place {
   display: none;
 }

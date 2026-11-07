@@ -4,7 +4,7 @@
 // Sans preuve, le premier n'est mis en avant que s'il se détache (même règle que la carte Réponse).
 import { computed } from "vue";
 import type { Analysis } from "../engine";
-import { certainProof, clearLeader, countryName, engine, excluded, flag, lockedCountry, proofLabel, proofOf, setLock, viable } from "../engine";
+import { certainProof, clearLeader, countryName, excluded, flag, proofLabel, proofOf } from "../engine";
 
 const props = defineProps<{ analysis: Analysis }>();
 
@@ -26,8 +26,6 @@ const others = computed(() => {
 });
 // Écarté : par une preuve certaine, ou par l'alphabet de tes marques (« cyrillique » exclut la France).
 const out = (code: string) => !!certain.value || excluded(props.analysis, code);
-// Raccourci : verrouiller un des pays possibles d'un clic (le tien : le coach ne le remplacera pas).
-const lockable = computed(() => (engine.locks.enabled && !lockedCountry(props.analysis) ? viable(props.analysis).slice(0, 5) : []));
 </script>
 
 <template>
@@ -103,20 +101,5 @@ const lockable = computed(() => (engine.locks.enabled && !lockedCountry(props.an
       </li>
     </ol>
 
-    <p v-if="lockable.length" class="mt-3 flex flex-wrap items-center gap-1.5 text-[0.85rem] text-courbe">
-      Tu le sais déjà ? Verrouille :
-      <button
-        v-for="s in lockable"
-        :key="s.code"
-        type="button"
-        class="rounded border border-courbe-fonce px-1.5 py-0.5 text-papier hover:border-marque/70 disabled:opacity-40"
-        :aria-label="`Verrouiller ${countryName(s.code)}`"
-        :title="`Verrouiller ${countryName(s.code)}`"
-        :disabled="engine.busy"
-        @click="setLock(analysis.id, { level: 'country', country: s.code })"
-      >
-        {{ flag(s.code) }}
-      </button>
-    </p>
   </template>
 </template>

@@ -79,11 +79,11 @@ const KIND: Record<Evidence["kind"], string> = {
                 v-if="cityOf(m.n, e)"
                 type="button"
                 class="ml-1.5 text-courbe underline underline-offset-2 hover:text-papier disabled:opacity-40"
-                :title="`On y est : verrouiller ${cityOf(m.n, e)!.name} (un panneau directionnel nomme un lieu où l'on n'est pas)`"
+                :title="`Tu es à ${cityOf(m.n, e)!.name} : dis-le au coach (attention, un panneau directionnel nomme un lieu où l'on n'est pas)`"
                 :disabled="engine.busy"
                 @click="setLock(analysisId, cityOf(m.n, e)!)"
               >
-                verrouiller
+                c'est ici
               </button>
             </li>
           </ul>

@@ -237,6 +237,14 @@ relative, si bien que les lieux proches fixent le point. Mesuré sur ce panneau 
 Гърмен, annoncé à 2 km près (pas encore de vérité terrain pour le confirmer). L'IA lit parfois mal un chiffre
 (« 6 » puis « 8 » sur une même marque) : si les distances ne concordent pas, **pas de point**. Le coach désigne la
 distance à vérifier et ne garde que ce qui reste vrai (la vue est à moins de *d* km du lieu le plus proche).
+**Panneaux recopiés colonne par colonne.** L'IA recopie souvent un panneau directionnel ligne par ligne, chiffres à
+part. Le coach le relit comme un tableau (mesuré le 2026-11-07 sur trois panneaux) : une distance après le nom, sur
+sa ligne, n'est jamais remplacée ; des nombres seuls qui suivent un bloc de lieux leur reviennent dans l'ordre s'ils
+sont aussi nombreux (« 329 Faaborg », « Glamsbjerg », « 28 », « 3 » : Faaborg 28, Glamsbjerg 3, le 329 était une
+route) ; sinon un nombre seul juste sous un lieu lui revient (« SARANSK », « 162 ») ; enfin, un nombre devant le nom
+compte (« 10 Aarup »). Un nombre en trop est un numéro de route, ignoré (« 5 Ørsted », « 329 » ; « Гърмен 3 », « 197 »).
+Reste indécidable par le texte seul : « 329 Faaborg » sans autre chiffre ; la cohérence des distances le signale.
+
 Limite : un chiffre faux mais géométriquement plausible (« 8 » pour « 3 » entre deux villages voisins) passe ce
 contrôle, avec quelques km d'erreur.
 
@@ -263,28 +271,35 @@ région s'affiche par son code) : elle sert aux verrous.
 
 ### Verrous
 
-Un bandeau en tête du coach montre ce qui est **fixé pour la capture** : pays › région › ville. Chaque niveau
-verrouillé restreint la recherche du suivant (lieux et homonymes du pays, villages de la région, zones de la carte
-et astuces Plonk It du pays). Décidé le 2026-11-07 :
+En tête du coach, « **Tu sais où tu es ? Dis-le au coach** » : la liste des pays (les plus probables d'abord, dès
+le niveau 3) ; un clic, et la ligne devient « C'est sûr : 🇨🇿 Tchéquie (toi) ✕ », puis Région et Ville se
+choisissent de la même façon. Ce qui est sûr (le « verrou ») restreint la recherche suivante : lieux et homonymes
+du pays, villages de la région, zones de la carte et astuces Plonk It du pays. Décidé le 2026-11-07 :
 
 - **le coach** verrouille seul le pays quand tes marques le rendent **certain** (jamais sur « très probable »), et la
   région quand la position estimée est un point net (panneau aux distances cohérentes) et que tous les lieux à
-  moins de 10 km de ce point sont de la même région. Une **ville**, il ne fait que la **proposer** (« Laàs ? », un
+  moins de 10 km de ce point sont de la même région (ou « à moins de N km de tel lieu », N ≤ 10, quand les distances
+  sont incohérentes : la plus courte reste vraie) ; sans distance lue, quand au moins deux lieux lus sont dans la
+  même région, à moins de 50 km l'un de l'autre (`region_places_km`). Un lieu seul ne suffit pas. Quand tes lieux
+  se partagent entre régions (« Oker » en Basse-Saxe, « Retz » → Rötz en Bavière), il te les propose en boutons. Une **ville**, il ne fait que la **proposer** (« Laàs ? », un
   clic pour la verrouiller) : un panneau « Pau 40 km » nomme justement un lieu où tu n'es pas. Ses verrous suivent
   les preuves : une marque retirée peut les défaire ;
-- **toi**, tu peux toujours **rejeter** un verrou (✕) : il reste écarté pendant toute la capture, le coach ne le
-  repose pas. Tu peux aussi verrouiller toi-même (« + » : recherche dans l'index local, sans réseau ; ou
-  « verrouiller » sur un lieu lu dans tes marques, ou sur un drapeau de la section Pays). Le coach ne remplace
-  jamais ton verrou ; une ville que tu verrouilles verrouille aussi sa région et son pays ;
-- **les avis indépendants restent affichés** : si StreetCLIP ou l'IA voient un autre pays, le bandeau le signale,
-  et une preuve de tes marques hors du verrou reste visible (« hors du pays verrouillé »). C'est ce qui révèle un
-  verrou faux ;
+- **toi**, tu peux toujours dire « pas ça » (✕) : écarté pendant toute la capture, le coach ne le repropose pas.
+  Tu peux aussi le dire toi-même (liste ou recherche dans l'index local, sans réseau ; ou « c'est ici » sur un lieu
+  lu dans tes marques). Le coach ne remplace jamais ton choix ; une ville choisie fixe aussi sa région et son pays ;
+- **les avis indépendants restent indépendants** : la Réponse tirée de tes marques ne tient compte ni de ton
+  choix ni de tes ✕ ; le bandeau dit si elle le confirme (« ✓ tes marques le confirment : ① ř, ů, ě ») ou le
+  contredit (« ⚠ tes marques désignent la Pologne »), de même pour StreetCLIP et l'IA. C'est ce qui révèle un choix
+  faux. Contradiction forte (autre pays « certain », ou alphabet qui exclut ton pays) : alerte en tête et deux
+  sorties en un clic, « Passer à 🇵🇱 Pologne » ou « ① est mal lue : la retirer » (l'erreur peut venir de toi ou de
+  la lecture) ; le coach ne change jamais ton choix lui-même. Ton choix ne restreint que la suite : homonymes
+  retenus pour la position, région, ville proposée ;
 - un verrou du coach ne se nomme qu'au niveau d'aide qui le dévoile (pays au niveau 3, région et ville au 4) ; en
-  dessous, le bandeau dit « pays verrouillé, caché à ce niveau » ;
+  dessous, le bandeau dit « le coach en est sûr (caché à ce niveau d'aide) » ;
 - les verrous **durent une capture** : une nouvelle capture repart de zéro (un verrou périmé fausserait la manche
   suivante). En mode débogage, chaque verrou et chaque rejet est journalisé dans `capture-<id>.json`.
 
-Réglages › Verrous (`[locks]`) : activation, verrou automatique du pays et de la région, ville proposée, rayon.
+Réglages › Ce qui est sûr (`[locks]`) : activation, pays et région fixés seuls par le coach, ville proposée, rayon.
 
 Pour lancer le moteur seul (sans interface) : `cd engine && .venv/bin/python -m geonesclick`.
 

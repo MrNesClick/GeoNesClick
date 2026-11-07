@@ -114,10 +114,9 @@ class Locks:
 
     # --- ce qui restreint la recherche ---------------------------------------------------------
     def scope(self) -> tuple[str | None, str | None, set[str], set[str]]:
-        """(pays verrouillé, région verrouillée, pays rejetés, régions rejetées) pour les règles des marques.
+        """(pays verrouillé, région verrouillée, pays rejetés, régions rejetées) pour situer la vue.
 
-        Seuls les verrous du JOUEUR restreignent les preuves : ceux du coach en découlent déjà, et s'en servir
-        pour filtrer les preuves les rendrait impossibles à défaire par une nouvelle marque.
+        Seuls les choix du JOUEUR comptent ici : ceux du coach découlent déjà des preuves.
         """
         country = self.held.get("country")
         region = self.held.get("region")
@@ -174,10 +173,10 @@ class Locks:
 
 
 def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
-    """Restreint les preuves d'une marque à ce que le joueur a verrouillé, et en retire ce qu'il a rejeté.
+    """Restreint les preuves d'une marque à ce que le joueur a choisi, et en retire ce qu'il a rejeté.
 
-    Une preuve qui ne désigne plus rien reste affichée avec la raison (« hors du pays verrouillé ») : c'est une
-    preuve contraire, visible, jamais effacée. L'alphabet n'est restreint que par les rejets : du cyrillique sous un
+    Sert à situer la vue sous ses choix (homonymes de son pays, de sa région), JAMAIS à conclure : la conclusion des
+    marques reste indépendante. Une preuve qui ne désigne plus rien garde la raison (« hors du pays verrouillé »). L'alphabet n'est restreint que par les rejets : du cyrillique sous un
     verrou « France » doit rester une contradiction visible, pas devenir un alphabet sans pays.
     """
     country, region, no_countries, no_regions = scope

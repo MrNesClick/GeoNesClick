@@ -268,6 +268,7 @@ class LocksConfig(BaseModel):
     auto_region: bool  # … et la région quand la position estimée est nette et tombe dans une seule région
     propose_city: bool  # le coach PROPOSE une ville (un clic pour la verrouiller), jamais seul
     region_radius_km: float = Field(ge=1, le=100)  # lieux autour du point qui doivent tous être de la même région
+    region_places_km: float = Field(ge=5, le=300)  # sans point : 2 lieux lus de la même région, à moins de ça
 
 
 class StorageConfig(BaseModel):

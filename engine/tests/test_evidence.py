@@ -290,3 +290,25 @@ def test_unzipped_size_is_bounded(tmp_path, monkeypatch):
 def test_country_code_cannot_escape_the_folder():
     with pytest.raises(PlacesError):
         places.detail_name("../x")
+
+
+def test_distance_on_its_own_line_belongs_to_the_place_above(gazetteer):
+    """« SARANSK » puis « 162 » (manche russe du 2026-11-07) ; « Гърмен 3 » puis « 197 » : une route."""
+    found = {e.value: e.km for e in gazetteer.match(["Благоевград", "109", "СТАРЫЙ", "София", "219 km"])
+             if e.kind == "lieu"}
+    assert found == {"Благоевград": 109.0, "София": 219.0}
+    found = {e.value: e.km for e in gazetteer.match(MARK_1) if e.kind == "lieu"}
+    assert found["Гърмен"] == 3.0 and found["Гоце Делчев"] == 10.0  # « 197 » n'est pas une distance
+    assert {e.value: e.km for e in gazetteer.match(["Sofia", "", "Catania"]) if e.kind == "lieu"} == {
+        "Sofia": None, "Catania": None}
+
+
+@pytest.mark.parametrize("sign, expected", [
+    (["10 Sofia", "5 Catania", "329"], {"Sofia": 10.0, "Catania": 5.0}),  # devant le nom ; « 329 » : une route
+    (["329 Palermo", "Roma", "28", "3"], {"Palermo": 28.0, "Roma": 3.0}),  # route devant, distances à la fin
+    (["Sofia", "162", "Catania", "11"], {"Sofia": 162.0, "Catania": 11.0}),  # chacune sous son lieu
+    (["Sofia 219", "1", "Catania"], {"Sofia": 219.0, "Catania": None}),  # « 1 » sous un lieu qui a sa distance
+])
+def test_direction_signs_are_read_as_a_table(gazetteer, sign, expected):
+    """Panneaux recopiés colonne par colonne (danois, russe, bulgare du 2026-11-07)."""
+    assert {e.value: e.km for e in gazetteer.match(sign) if e.kind == "lieu"} == expected

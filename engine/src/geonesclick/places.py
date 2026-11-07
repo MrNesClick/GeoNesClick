@@ -44,6 +44,8 @@ MAX_BYTES = 64 * 1024 * 1024  # garde-fou : l'archive fait ~11 Mo
 MAX_UNZIPPED = 600 * 1024 * 1024  # garde-fou contre une archive piégée (cities1000 : ~31 Mo ; FR : ~50 Mo)
 COUNTRY = re.compile(r"[A-Z]{2}")  # code pays : sert à une adresse et à un nom de fichier
 REGION = re.compile(r"[A-Z]{2}\.[0-9A-Z]{1,20}")  # code de région GeoNames : « FR.75 »
+NUMBER_LINE = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)\s*(?:km)?\.?\s*", re.IGNORECASE)  # « 162 », « 11 km »
+LEADING_NUMBER = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)(\s*(?:km)?\s+)", re.IGNORECASE)  # « 10 Aarup »
 
 
 class PlacesError(RuntimeError):
@@ -204,6 +206,48 @@ def _distance_after(words: list[str], end: int, line: str) -> float | None:
     return km if 0 < km <= 2000 else None
 
 
+def _read_table(table: list[float | list[Evidence]], ahead: dict[int, float]) -> None:
+    """Distances d'un panneau directionnel que l'IA a recopié colonne par colonne (décidé le 2026-11-07).
+
+    Mesuré ce soir-là : « SARANSK » / « 162 » / « СТАРЫЙ ГОРОД » / « 11 » (chaque distance sous son lieu) ;
+    « 10 Aarup » / « 5 Ørsted » / « 329 » (distance DEVANT le nom, puis le numéro de route) ; « 329 Faaborg » /
+    « Glamsbjerg » / « 28 » / « 3 » (route devant, les deux distances à la fin). Règles, du plus sûr au moins sûr :
+    1. une distance écrite après le nom, sur sa ligne, n'est jamais remplacée ;
+    2. des nombres seuls qui suivent un bloc de lieux leur reviennent dans l'ordre s'ils sont aussi nombreux que
+       les lieux du bloc (Faaborg 28, Glamsbjerg 3 : le « 329 » devant Faaborg était une route) ;
+    3. sinon, un nombre seul juste sous un lieu sans distance lui revient (Saransk 162) ;
+    4. enfin, un lieu encore sans distance prend le nombre écrit devant son nom (Aarup 10, Ørsted 5) ;
+    un nombre en trop est ignoré (« 329 » sous « 5 Ørsted », « 197 » sous « Гърмен 3 ») : un numéro de route.
+    """
+    def fits(km: float) -> bool:
+        return 0 < km <= 2000
+
+    block: list[Evidence] = []  # lieux depuis la dernière suite de nombres
+    i = 0
+    while i < len(table):
+        row = table[i]
+        if not isinstance(row, float):
+            block += row
+            i += 1
+            continue
+        run = []
+        while i < len(table) and isinstance(table[i], float):
+            run.append(table[i])
+            i += 1
+        just_above = table[i - len(run) - 1] if i - len(run) - 1 >= 0 else []
+        if len(run) == len(block) >= 2 and all(e.km is None for e in block) and all(map(fits, run)):
+            for e, km in zip(block, run, strict=True):
+                e.km = km
+        elif isinstance(just_above, list) and just_above and just_above[-1].km is None \
+                and id(just_above[-1]) not in ahead and fits(run[0]):
+            just_above[-1].km = run[0]
+        block = []
+    for row in table:
+        for e in row if isinstance(row, list) else []:
+            if e.km is None and fits(ahead.get(id(e), 0.0)):
+                e.km = ahead[id(e)]
+
+
 def detail_name(country: str) -> str:
     if not COUNTRY.fullmatch(country):
         raise PlacesError(f"code pays invalide : {country!r}")
@@ -230,15 +274,18 @@ class Places:
         self._lock = threading.Lock()
         self.count = self.con.execute("SELECT COUNT(*) FROM place").fetchone()[0]
         self.details: dict[str, sqlite3.Connection] = {}
+        self._bounds: dict[str, list[float] | None] = {}  # étendue des régions déjà demandées
 
     def add_detail(self, country: str, path: Path) -> None:
         con = _open(path)
         with self._lock:
             self.details[country] = con
+            self._bounds.clear()  # les villages élargissent l'étendue connue des régions
 
     def remove_detail(self, country: str) -> None:
         with self._lock:
             con = self.details.pop(country, None)
+            self._bounds.clear()
         if con is not None:
             con.close()
 
@@ -258,6 +305,15 @@ class Places:
         with self._lock:
             row = self.con.execute("SELECT name FROM region WHERE code = ?", (code,)).fetchone()
         return row[0] if row else code
+
+    def region_bounds(self, code: str) -> list[float] | None:
+        """[sud, ouest, nord, est] des lieux de la région (cadrage de la carte, sans contour), gardé en mémoire."""
+        if code not in self._bounds:
+            rows = self._rows("SELECT MIN(lat), MIN(lon), MAX(lat), MAX(lon) FROM place WHERE region = ?", (code,))
+            found = [r for r in rows if r[0] is not None]
+            self._bounds[code] = [min(r[0] for r in found), min(r[1] for r in found),
+                                  max(r[2] for r in found), max(r[3] for r in found)] if found else None
+        return self._bounds[code]
 
     def regions(self, country: str, query: str = "") -> list[dict[str, str]]:
         """Régions d'un pays dont le nom commence par query (sans accents ni casse), par ordre alphabétique."""
@@ -301,7 +357,14 @@ class Places:
         out: list[Evidence] = []
         seen: set[str] = set()
         street_next = ""  # ligne réduite à un mot de rue (« VIA ») : la ligne suivante est le nom de la rue
+        table: list[float | list[Evidence]] = []  # le panneau ligne par ligne : un nombre seul, ou les lieux lus
+        ahead: dict[int, float] = {}  # lieu → nombre écrit DEVANT son nom (« 10 Aarup »)
         for line in lines:
+            alone = NUMBER_LINE.fullmatch(line)
+            if alone:
+                table.append(float(alone.group(1).replace(",", ".")))
+                continue
+            before = len(out)
             words = re.findall(r"[^\W\d_]+(?:[-'’][^\W\d_]+)*", unicodedata.normalize("NFC", line))
             norm = [normalise(w) for w in words]
             blocked = set(range(len(words))) if street_next else set()
@@ -332,6 +395,12 @@ class Places:
                     out.append(Evidence("lieu", candidate, rows[0][2], countries, SOURCE,
                                         km=_distance_after(words, start + size, line),
                                         points=[[lat, lon, c, n, r] for c, _, n, lat, lon, r in rows]))
+            placed = [e for e in out[before:] if e.kind == "lieu"]
+            lead = LEADING_NUMBER.match(line)
+            if lead and placed and line.find(placed[0].value) == lead.end() and placed[0].km is None:
+                ahead[id(placed[0])] = float(lead.group(1).replace(",", "."))
+            table.append(placed)
+        _read_table(table, ahead)
         return out
 
     def close(self) -> None:

@@ -3,7 +3,8 @@
 Engine hérite de LocksMixin (comme de MarksMixin) ; les verrous vivent dans l'entrée de la capture
 (self.recent[id]["locks"]) : une nouvelle capture repart de zéro. Flux :
 - _verdict (marks_engine) → coach_locks : pays certain, région d'un point net, ville proposée ;
-- set_lock / reject_lock (routes) → les marques sont relues sous la nouvelle restriction, puis la conclusion ;
+- set_lock / reject_lock (routes) → position, région et ville proposée recalculées sous tes choix (la conclusion
+  des marques, elle, reste indépendante : elle confirme ou contredit ce que tu as dit) ;
 - publish_locks : message « locks » à l'interface, journal (mode débogage), astuces du pays verrouillé.
 """
 
@@ -16,6 +17,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
 from .evidence import Evidence, Verdict, as_dict
+from .locate import haversine
 from .locks import NO_SCOPE, Lock, Locks, Scope
 
 CODE = r"^[A-Z]{2}$"
@@ -122,59 +124,93 @@ class LocksMixin:
         return {"results": await asyncio.to_thread(self.places.search, req.q, req.country, req.region)}
 
     async def _locks_changed(self, capture_id: str) -> None:
-        """La restriction a changé : les marques sont relues sous elle, puis la conclusion (qui publie les verrous)."""
+        """Tes choix ont changé : position, région et ville proposée sont recalculées (la conclusion des marques,
+        elle, n'en dépend pas), puis les verrous publiés."""
         entry = self.recent.get(capture_id)
         if entry is None:
             return
-        if not await self.reread_marks(capture_id):
+        if any(m.get("status") == "done" for m in entry["marks"]):
+            await self._verdict(capture_id)  # publie les verrous
+        else:
             await self.publish_locks(capture_id)
 
     # --- coach ------------------------------------------------------------------------------------
-    async def coach_locks(self, capture_id: str, v: Verdict, read: list[tuple[int, list[Evidence]]],
-                          location: dict[str, Any] | None) -> None:
-        """Après chaque conclusion : ce que le coach verrouille, et la ville qu'il propose."""
+    async def coach_locks(self, capture_id: str, v: Verdict, cited: list[tuple[int, list[Evidence]]],
+                          location: dict[str, Any] | None, target: str) -> None:
+        """Après chaque conclusion : ce que le coach verrouille, et la ville qu'il propose.
+
+        cited : preuves des marques qui situent la vue (sous tes choix) ; target : ton pays, sinon celui des marques.
+        """
         entry = self.recent.get(capture_id)
         if entry is None or not self.cfg.locks.enabled:
             return
-        country, region, proposal = await asyncio.to_thread(self._candidates, v, read, location)
+        country, region, proposal, read_regions = await asyncio.to_thread(self._candidates, v, cited, location, target)
+        entry["read_regions"] = read_regions
         self.locks_of(entry).coach(country, region, proposal)
         await self.publish_locks(capture_id)
 
-    def _candidates(self, v: Verdict, read: list[tuple[int, list[Evidence]]], location: dict[str, Any] | None
-                    ) -> tuple[Lock | None, Lock | None, Lock | None]:
+    def _candidates(self, v: Verdict, cited: list[tuple[int, list[Evidence]]], location: dict[str, Any] | None,
+                    target: str) -> tuple[Lock | None, Lock | None, Lock | None, list[dict[str, Any]]]:
+        """(pays certain, région, ville proposée, régions des lieux lus) d'après les marques."""
         lc, places = self.cfg.locks, self.places
-        if not v.country:
-            return None, None, None
-        cites = ", ".join(str(c["n"]) for c in v.cites)
-        country = Lock("country", v.country, why=f"marques {cites}") if lc.auto_country and v.level == "certain" \
-            else None
-        point = location if location and location.get("kind") == "point" else None
+        marks = ", ".join(str(c["n"]) for c in v.cites)
+        country = Lock("country", v.country, why=f"marques {marks}") \
+            if lc.auto_country and v.country and v.level == "certain" else None
+        if not target:
+            return country, None, None, []
+        # Position nette : un point, ou « à moins de N km de ce lieu » quand N est petit (distances incohérentes, mais
+        # la plus courte reste toujours vraie : Glamsbjerg 3 km sur le panneau danois du 2026-11-07).
+        point = location if location and (location.get("kind") == "point" or (
+            location.get("kind") == "rough" and location["radius_km"] <= lc.region_radius_km)) else None
         region = None
         if lc.auto_region and places and point:
-            near = places.around(point["lat"], point["lon"], lc.region_radius_km, v.country)
-            codes = {r for _, _, r, *_ in near}
-            if len(codes) == 1 and "" not in codes:  # tous les lieux autour du point : la même région
+            near = places.around(point["lat"], point["lon"], lc.region_radius_km, target)
+            codes = {r for _, _, r, *_ in near if r}  # un lieu sans région connue ne contredit rien (Mordovie)
+            if len(codes) == 1:  # tous les lieux autour du point : la même région
                 code = codes.pop()
-                region = Lock("region", v.country, region=code, name=places.region_name(code),
-                              why=f"position estimée (marques {cites})")
+                region = Lock("region", target, region=code, name=places.region_name(code),
+                              why="position estimée d'après tes marques")
+        # Régions des lieux lus (homonyme retenu dans le pays) : proposées en un clic, surtout quand elles divergent
+        # (« Oker » en Basse-Saxe, « Retz » → Rötz en Bavière, 2026-11-07).
+        read: dict[str, tuple[int, list[Any]]] = {}
+        for n, found in cited:
+            for e in found:
+                p = next((q for q in e.points if q[2] == target), None) if e.kind == "lieu" else None
+                if p is not None:
+                    read.setdefault(p[3], (n, p))
+        by_region: dict[str, list[tuple[int, str, float, float]]] = {}
+        for name, (n, p) in read.items():
+            by_region.setdefault(p[4] if len(p) > 4 else "", []).append((n, name, p[0], p[1]))
+        read_regions = [{"code": code, "name": places.region_name(code) if places else code,
+                         "marks": sorted({n for n, *_ in items}), "places": sorted({name for _, name, *_ in items})}
+                        for code, items in sorted(by_region.items(), key=lambda kv: -len(kv[1])) if code]
+        # Sans point net : au moins deux lieux lus, tous dans la même région et proches les uns des autres (un lieu
+        # seul ne suffit pas : un panneau nomme souvent une ville de la région voisine).
+        # Avec un point net mais une limite de région toute proche, c'est le point qui dit vrai : pas de région.
+        if point is None and lc.auto_region and len(by_region) == 1 and read_regions:
+            items = by_region[read_regions[0]["code"]]
+            spread = max((haversine(a[2:], b[2:]) for a in items for b in items), default=0.0)
+            if len(items) >= 2 and spread <= lc.region_places_km:
+                cited_marks = " ".join(f"{n}" for n in read_regions[0]["marks"])
+                region = Lock("region", target, region=read_regions[0]["code"], name=read_regions[0]["name"],
+                              why=f"lieux lus dans la même région (marques {cited_marks})")
         proposal = None
         if lc.propose_city:
             # Un lieu lu SANS distance (panneau d'entrée, enseigne) : on y est sans doute ; avec distance, non.
-            cited = {c["n"] for c in v.cites}
             bare = {(p[3], p[4] if len(p) > 4 else "", p[0], p[1])
-                    for n, found in read if n in cited for e in found
+                    for _, found in cited for e in found
                     if e.kind == "lieu" and e.km is None
-                    for p in e.points[:1] if p[2] == v.country and len(p) > 3}
+                    for p in e.points[:1] if p[2] == target and len(p) > 3}
             if len(bare) == 1:
                 name, code, lat, lon = bare.pop()
-                proposal = Lock("city", v.country, region=code, name=name, lat=lat, lon=lon, why="lu sans distance")
+                proposal = Lock("city", target, region=code, name=name, lat=lat, lon=lon, why="lu sans distance")
             elif not bare and places and point:
-                near = places.around(point["lat"], point["lon"], max(2.0, point["radius_km"]), v.country)
+                near = places.around(point["lat"], point["lon"], max(2.0, point["radius_km"]), target)
                 if near:
                     _, name, code, lat, lon = near[0]
-                    proposal = Lock("city", v.country, region=code, name=name, lat=lat, lon=lon,
+                    proposal = Lock("city", target, region=code, name=name, lat=lat, lon=lon,
                                     why="le plus proche de la position estimée")
-        return country, region, proposal
+        return country, region, proposal, read_regions
 
     # --- diffusion --------------------------------------------------------------------------------
     async def publish_locks(self, capture_id: str) -> None:
@@ -183,7 +219,10 @@ class LocksMixin:
             return
         locks: Locks = entry["locks"]
         await self._log(capture_id, locks={**locks.as_dict(), "events": list(locks.events)})
-        await self.broadcast({"type": "locks", "id": capture_id, **locks.as_dict()})
+        region = locks.held.get("region")
+        bounds = await asyncio.to_thread(self.places.region_bounds, region.region) if region and self.places else None
+        await self.broadcast({"type": "locks", "id": capture_id, **locks.as_dict(),
+                              "read_regions": entry.get("read_regions", []), "region_bounds": bounds})
         country = locks.country()
         if country and country not in entry.setdefault("tips_for", set()):
             await self._tips_for(capture_id, country)
@@ -209,20 +248,15 @@ class LocksMixin:
             task.add_done_callback(self.background.discard)
 
     # --- relecture des marques ---------------------------------------------------------------------
-    async def reread_marks(self, capture_id: str) -> bool:
-        """Relit les marques lues (villages arrivés, restriction changée) puis refait la conclusion.
-
-        False s'il n'y avait aucune marque lue (rien n'a été recalculé).
-        """
+    async def reread_marks(self, capture_id: str) -> None:
+        """Relit les marques lues (villages du pays arrivés) puis refait la conclusion."""
         entry = self.recent.get(capture_id)
         if entry is None:
-            return False
+            return
         done = [m for m in entry["marks"] if m.get("status") == "done"]
-        scope = self.lock_scope(capture_id)
         for mark in done:
-            mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"], scope))
+            mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"]))
             await self.broadcast({"type": "mark", "id": capture_id, "n": mark["n"], "status": "done",
                                   "evidence": mark["evidence"]})
         if done:
             await self._verdict(capture_id)
-        return bool(done)

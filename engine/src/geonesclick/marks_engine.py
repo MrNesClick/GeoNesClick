@@ -21,7 +21,7 @@ from . import storage
 from .capture import data_url, new_id, save_png
 from .evidence import Evidence, as_dict, from_dict, text_evidence, verdict
 from .locate import keep_nearby, locate
-from .locks import NO_SCOPE, Scope, restrict
+from .locks import NO_SCOPE, restrict
 from .marks import MAX_PER_ANALYSIS, DeleteRequest, FrameRequest, MarksRequest, crop_mark, reading
 from .places import DB_NAME as PLACES_DB
 from .places import COUNTRY, OLD_DBS, VERSION, Places, PlacesError, detail_name
@@ -117,8 +117,7 @@ class MarksMixin:
                     fiche, seconds = await self.vision.ask(img, mc.prompt, mc.model or self.cfg.vision.model,
                                                            mc.max_tokens)
                     mark.update(status="done", seconds=round(seconds, 1), **reading(fiche))
-                    mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"],
-                                                                       self.lock_scope(capture_id)))
+                    mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"]))
                 except VisionError as exc:
                     mark.update(status="error", error=str(exc)[:300])
         entry = self.recent.get(capture_id)
@@ -129,10 +128,10 @@ class MarksMixin:
         await self.broadcast(message)
         await self._verdict(capture_id)
 
-    def evidence_of(self, lines: list[str], scope: Scope = NO_SCOPE) -> list[Evidence]:
+    def evidence_of(self, lines: list[str]) -> list[Evidence]:
         """Preuves tirées du texte d'une marque, selon les règles actives (appelée hors de la boucle).
 
-        scope : verrous du joueur et rejets de la capture (locks.restrict) ; une preuve hors d'eux reste affichée.
+        Jamais restreintes par tes choix (« c'est sûr ») : la conclusion des marques reste un avis indépendant.
         """
         rc = self.cfg.rules
         found = [e for e in text_evidence(lines)
@@ -147,29 +146,48 @@ class MarksMixin:
             if e.countries and not kept:
                 e.note = f"hors de tes pays candidats ({', '.join(e.countries[:4])})"
             e.countries = kept
-        return restrict(found, scope) if scope != NO_SCOPE else found
+        return found
 
     async def _verdict(self, capture_id: str) -> None:
-        """Conclusion des marques lues, recalculée à chaque lecture ou retrait, poussée à l'interface."""
+        """Conclusion des marques lues, recalculée à chaque lecture, retrait ou choix, poussée à l'interface.
+
+        La conclusion (pays, certitude) ne tient PAS compte de tes choix ni de tes rejets (décidé avec l'utilisateur
+        le 2026-11-07) : elle confirme ou contredit ce que tu as dit, au lieu d'en être l'écho. Tes choix restreignent
+        seulement la suite : homonymes retenus pour la position, région, ville proposée.
+        """
         entry = self.recent.get(capture_id)
         if entry is None:
             return
-        read = [(m["n"], from_dict(m.get("evidence", []))) for m in entry["marks"] if m.get("status") == "done"]
-        read, ignored = keep_nearby(read, self.cfg.rules.place_max_spread_km)  # homonymes lointains écartés
+        done = [m for m in entry["marks"] if m.get("status") == "done"]
+        spread = self.cfg.rules.place_max_spread_km
+        read, ignored = keep_nearby([(m["n"], from_dict(m.get("evidence", []))) for m in done], spread)
         v = verdict(read, dict(entry.get("scores") or []), self.cfg.rules.prior_min)
         result = asdict(v)
-        result["ignored"] = ignored
-        # Position estimée : lieux des marques qui prouvent le pays, et distances d'un panneau directionnel.
-        cited = {c["n"] for c in v.cites}
-        places = [(n, e) for n, found in read if n in cited for e in found
-                  if e.kind == "lieu" and v.country in e.countries]
-        result["location"] = await asyncio.to_thread(locate, places, v.country) if places else None
-        if v.country:
-            self.ensure_detail(v.country)
+        result["ignored"] = ignored  # homonymes lointains écartés
+        # Position estimée, dans le pays que tu as choisi s'il y en a un (et ses homonymes seulement), sinon dans
+        # celui des marques : lieux des marques qui le prouvent, et distances d'un panneau directionnel.
+        scope = self.lock_scope(capture_id)
+        target = scope[0] or v.country
+        near = read
+        if scope != NO_SCOPE:
+            near, _ = keep_nearby([(m["n"], restrict(from_dict(m.get("evidence", [])), scope)) for m in done], spread)
+        cited = {n for n, _ in near} if scope[0] else {c["n"] for c in v.cites}
+        places = [(n, e) for n, found in near if n in cited for e in found
+                  if e.kind == "lieu" and target in e.countries]
+        result["location"] = await asyncio.to_thread(locate, places, target) if places else None
+        # Lieux lus que tes choix écartent (« ③ Rötz » hors de ta Basse-Saxe) : grisés sur la carte, jamais effacés.
+        kept = {(n, e.value) for n, found in near for e in found if e.kind == "lieu" and e.points}
+        result["outside"] = [{"n": n, "name": e.value, "label": e.points[0][3], "lat": e.points[0][0],
+                              "lon": e.points[0][1]}
+                             for n, found in read for e in found
+                             if scope != NO_SCOPE and e.kind == "lieu" and e.points and len(e.points[0]) > 3
+                             and (n, e.value) not in kept]
+        if target:
+            self.ensure_detail(target)
         entry["verdict"] = result
         await self._log(capture_id, verdict=result)
         await self.broadcast({"type": "verdict", "id": capture_id, **result})
-        await self.coach_locks(capture_id, v, read, result["location"])
+        await self.coach_locks(capture_id, v, [(n, f) for n, f in near if n in cited], result["location"], target)
 
     async def remove_mark(self, req: DeleteRequest) -> dict[str, Any]:
         """Le joueur retire une marque (lecture fausse) : elle ne compte plus, les autres gardent leur numéro."""

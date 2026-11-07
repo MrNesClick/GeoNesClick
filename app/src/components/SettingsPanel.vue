@@ -86,7 +86,7 @@ function summary(g: Group): string {
     case "verrous": {
       if (!v.locks.enabled) return "désactivés";
       const auto = [v.locks.auto_country ? "pays" : "", v.locks.auto_region ? "région" : ""].filter(Boolean).join(" et ");
-      return `${auto ? `le coach verrouille ${auto}` : "toi seul verrouilles"}${v.locks.propose_city ? " · ville proposée" : ""}`;
+      return `${auto ? `le coach fixe ${auto}` : "toi seul le dis"}${v.locks.propose_city ? " · ville proposée" : ""}`;
     }
     case "stockage":
       return `caches limités à ${v.storage.max_cache_mb} Mo`;

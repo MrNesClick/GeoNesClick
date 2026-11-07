@@ -325,6 +325,9 @@ auto_country = true      # pays verrouillé seul quand tes marques le rendent CE
 # tous les lieux à moins de region_radius_km de ce point sont de la même région.
 auto_region = true
 region_radius_km = 10
+# Sans distance lue : au moins deux lieux lus, tous dans la même région et à moins de region_places_km les uns des
+# autres (un lieu seul ne suffit pas). Quand tes lieux se partagent entre régions, le coach te les propose en boutons.
+region_places_km = 50
 # Ville : jamais verrouillée seule (un panneau « Pau 40 km » nomme un lieu où tu n'es pas) ; le coach la propose.
 propose_city = true
 
