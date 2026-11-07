@@ -11,9 +11,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from .metas import CATEGORIES
+from .paths import CONFIG_DIR, DATA_DIR  # un seul endroit pour les dossiers de l'application
 from .plonkit import DATA_DIR as PLONKIT_DATA_DIR
 
-CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "geonesclick"
 USER_CONFIG = CONFIG_DIR / "config.toml"
 PROJECT_ROOT = Path(__file__).resolve().parents[3]  # engine/src/geonesclick → racine du dépôt
 
@@ -255,8 +255,7 @@ class RulesConfig(BaseModel):
 
     @property
     def places_path(self) -> Path:
-        base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "geonesclick" / "places"
-        return Path(self.places_dir).expanduser() if self.places_dir else base
+        return Path(self.places_dir).expanduser() if self.places_dir else DATA_DIR / "places"
 
 
 class LocksConfig(BaseModel):

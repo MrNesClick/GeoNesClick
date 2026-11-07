@@ -128,6 +128,16 @@ if ((SETUP_SHORTCUT)); then
     gsettings set "$rel" binding "$4"
     ok "raccourci $4 → $3"
   }
+  # Raccourcis de l'ancien nom (GeoNesClick) : retirés, leur commande n'existe plus.
+  for old in geonesclick geonesclick-mark; do
+    old_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$old/"
+    current="$(gsettings get "$SCHEMA" custom-keybindings)"
+    if [[ "$current" == *"$old_path"* ]]; then
+      gsettings set "$SCHEMA" custom-keybindings "$(python3 -c 'import ast, sys; keys = ast.literal_eval(sys.argv[1].removeprefix("@as ")); print([k for k in keys if k != sys.argv[2]])' "$current" "$old_path")"
+      gsettings reset-recursively "$SCHEMA.custom-keybinding:$old_path" || true
+      ok "ancien raccourci $old retiré"
+    fi
+  done
   add_shortcut geonesclick "GeoNesClick – capture" capture "${GNC_SHORTCUT:-<Super><Shift>g}"
   add_shortcut geonesclick-mark "GeoNesClick – marques" mark "${GNC_MARK_SHORTCUT:-<Super><Shift>z}"
 fi

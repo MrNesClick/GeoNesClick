@@ -19,11 +19,13 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
+
+from .paths import DATA_DIR as APP_DATA
 from typing import Any
 
 BASE_URL = "https://www.plonkit.net"
 USER_AGENT = "GeoNesClick/0.1 (outil d'entrainement personnel)"
-DATA_DIR = Path.home() / ".local" / "share" / "geonesclick" / "plonkit"
+DATA_DIR = APP_DATA / "plonkit"
 CHECKED_FILE = "checked_at"  # date du dernier contrôle de la liste des guides
 MAX_BYTES = 5_000_000  # une page de guide fait ~30 Ko : au-delà, quelque chose ne va pas
 SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")  # sert de nom de fichier : jamais de « / » ni de « .. »

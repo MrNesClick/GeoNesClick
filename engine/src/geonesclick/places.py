@@ -412,7 +412,9 @@ class Places:
 def main() -> int:
     """python -m geonesclick.places : (re)construit l'index des lieux (appelé par scripts/install.sh)."""
     from .config import load_config
+    from .paths import migrate_legacy
 
+    migrate_legacy()  # index déjà construit sous l'ancien nom : on le retrouve au lieu de le retélécharger
     cfg = load_config().rules
     try:
         path = build(cfg.places_url, cfg.places_path, regions_url=cfg.regions_url)

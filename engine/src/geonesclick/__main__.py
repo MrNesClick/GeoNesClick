@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 
 from .config import load_config
+from .paths import migrate_legacy
 
 
 def _hf_model_cached(model_id: str) -> bool:
@@ -15,6 +16,8 @@ def _hf_model_cached(model_id: str) -> bool:
 # Le niveau 1 doit fonctionner hors ligne et ne rien envoyer sur le réseau : une fois les modèles locaux en
 # cache (StreetCLIP, et PLONK s'il est activé), on active le mode hors ligne AVANT d'importer transformers
 # (il lit la variable à l'import). Tant qu'un modèle manque, il reste possible de le télécharger.
+for _moved in migrate_legacy():  # ancien nom (GeoNesClick) : dossiers déplacés une fois, jamais supprimés
+    print(f"GeoNesClick : {_moved}", flush=True)
 _cfg = load_config()
 _models = [_cfg.streetclip.model] + ([_cfg.plonk.model] if _cfg.plonk.enabled else [])
 if all(_hf_model_cached(m) for m in _models):

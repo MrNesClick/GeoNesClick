@@ -68,3 +68,19 @@ def test_countries_can_be_excluded(tmp_path):
     user.write_text('[streetclip]\nexclude_countries = ["ru", "UA"]\n')
     codes = set(config.load_config(user).streetclip.countries.values())
     assert "RU" not in codes and "UA" not in codes and "SE" in codes
+
+
+def test_old_folders_are_moved_once_never_deleted(tmp_path, monkeypatch):
+    """Ancien nom (GeoNesClick) → GeoNesClick : tes données suivent, rien n'est effacé."""
+    from geonesclick import paths
+
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
+    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
+    (tmp_path / "config" / "geonesclick").mkdir(parents=True)
+    (tmp_path / "config" / "geonesclick" / "config.toml").write_text("[coach]\n")
+    (tmp_path / "data" / "geonesclick" / "plonkit").mkdir(parents=True)
+    (tmp_path / "data" / "geonesclick").mkdir()  # déjà là : on n'y touche pas
+    moved = paths.migrate_legacy()
+    assert (tmp_path / "config" / "geonesclick" / "config.toml").read_text() == "[coach]\n"
+    assert len(moved) == 1 and (tmp_path / "data" / "geonesclick" / "plonkit").is_dir()
+    assert paths.migrate_legacy() == []  # une seule fois
