@@ -3,7 +3,7 @@
 // se règle dans ~/.config/geonesclick/config.toml.
 import { onMounted, ref } from "vue";
 import type { Settings } from "../engine";
-import { engine, fr, getJSON, saveSettings, testModel } from "../engine";
+import { engine, fr, getJSON, refreshPlonkit, saveSettings, testModel } from "../engine";
 
 const emit = defineEmits<{ close: [] }>();
 
@@ -143,6 +143,39 @@ const check = "size-4 accent-[var(--color-foret)]";
           <span class="text-[0.85rem] text-courbe">Confusions affichées (0 = aucune)</span>
           <input v-model.number="s.dataset.max_confusions" type="number" min="0" max="10" :class="field" :disabled="!s.dataset.ask_guessed" />
         </label>
+      </fieldset>
+
+      <fieldset class="space-y-3">
+        <legend class="font-bold text-papier">Guides Plonk It</legend>
+        <p class="text-[0.85rem]" :class="engine.plonkit.status === 'error' ? 'text-alerte' : 'text-courbe'" role="status">
+          {{ engine.plonkit.status === "off" ? "Désactivés." : engine.plonkit.message || "En attente…" }}
+        </p>
+        <label class="flex items-start gap-3">
+          <input v-model="s.plonkit.enabled" type="checkbox" :class="check" class="mt-1" />
+          <span>Utiliser les guides Plonk It <span class="block text-[0.85rem] text-courbe">Collectés sur ta machine pour ton usage, jamais redistribués.</span></span>
+        </label>
+        <label class="flex items-center gap-3">
+          <input v-model="s.plonkit.similar_tips" type="checkbox" :class="check" :disabled="!s.plonkit.enabled" />
+          Montrer les astuces Plonk It des pays candidats
+        </label>
+        <div class="grid grid-cols-2 gap-3">
+          <label class="block">
+            <span class="text-[0.85rem] text-courbe">Astuces par pays</span>
+            <input v-model.number="s.plonkit.similar_per_country" type="number" min="1" max="5" :class="field" :disabled="!s.plonkit.enabled" />
+          </label>
+          <label class="block">
+            <span class="text-[0.85rem] text-courbe">Vérifier les mises à jour (jours)</span>
+            <input v-model.number="s.plonkit.refresh_days" type="number" min="1" max="365" :class="field" :disabled="!s.plonkit.enabled" />
+          </label>
+        </div>
+        <button
+          type="button"
+          class="rounded-md border border-foret/50 px-3 py-1.5 text-papier hover:bg-foret/10 disabled:opacity-50"
+          :disabled="!engine.plonkit.enabled || engine.plonkit.status === 'busy' || engine.busy"
+          @click="refreshPlonkit"
+        >
+          {{ engine.plonkit.status === "busy" ? "Mise à jour en cours…" : "Mettre à jour maintenant" }}
+        </button>
       </fieldset>
 
       <fieldset class="space-y-3">

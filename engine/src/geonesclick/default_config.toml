@@ -54,6 +54,20 @@ judge_buttons = true     # boutons « Juste » / « Faux » sur les indices de l
 category_looks = {}
 category_weights = {}
 
+[plonkit]
+# Guides Plonk It (plonkit.net), collectés poliment sur TA machine pour ton usage : la base n'est jamais
+# redistribuée. Construite en arrière-plan au premier démarrage (~3 min), puis seuls les guides modifiés
+# sont rechargés, au plus tous les refresh_days jours.
+enabled = true
+data_dir = ""            # vide = ~/.local/share/geonesclick/plonkit
+refresh_days = 30
+delay_s = 2.0            # pause entre deux pages (minimum 1 s)
+similar_tips = true      # « les astuces qui ressemblent à ta vue » pour chaque pays candidat
+similar_per_country = 2
+# Mots-clés de classement des astuces par catégorie (anglais), en remplacement de ceux par défaut :
+# keywords = { poteaux = ["pole", "poles", "pylon"] }
+keywords = {}
+
 [streetclip]
 enabled = true
 model = "geolocal/StreetCLIP"

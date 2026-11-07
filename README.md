@@ -35,8 +35,8 @@ Fonctionnalités :
 - **Changer de fenêtre** partagée à tout moment.
 
 À venir, dans l'ordre :
-1. **Source de metas** : décision en attente sur Plonk It, voir [Metas](#metas).
-2. Agrandir le jeu de test (20 à 30 captures, via « C'était où ? »), puis banc d'essai des modèles.
+1. Agrandir le jeu de test (20 à 30 captures via « C'était où ? », avec des vues urbaines pour le texte).
+2. Mesurer le texte visible (transcription par le niveau 2, domaines, indicatifs) et les questions fermées.
 3. Détection automatique de la vue Street View : **reportée**, voir ci-dessous.
 
 Moyenner StreetCLIP sur plusieurs recadrages (image entière, gauche, centre, droite) aide-t-il ?
@@ -191,10 +191,39 @@ ajoute une copie vérifiée à `mes-metas.toml` (elle devient « ta meta, vérif
 (bloc `[[rejected]]`, avec la catégorie et le texte de l'indice). Les verdicts sont ajoutés en fin de
 fichier, sans toucher au reste : tes commentaires sont conservés. Pour annuler, supprime le bloc.
 
-**Décision en attente sur Plonk It.** Son `robots.txt` déclare `Content-Signal: search=yes, ai-train=no,
-use=reference` et ne dit rien de l'usage `ai-input` (injecter le contenu dans un modèle, notre cas).
-Aucune collecte n'est faite tant que ce point n'est pas tranché. Limite constatée : si StreetCLIP classe
-le bon pays trop bas (la Serbie à 3 %, sous le seuil de 5 %), aucune meta ne peut le rattraper.
+### Guides Plonk It
+
+Le coach collecte les guides de [Plonk It](https://www.plonkit.net) **sur ta machine, pour ton usage** :
+la base n'est jamais redistribuée ni versionnée, chaque installation construit la sienne. Collecte polie :
+une page à la fois, 2 s de pause (plus un délai aléatoire), arrêt immédiat si le site répond 429, et la
+voie qu'indique Plonk It lui-même (le bloc `__PRELOADED_DATA__` des pages ; leur API ne sert que le guide
+débutant). Le `robots.txt` du site autorise l'accès (`Allow: /`) et n'interdit que l'entraînement d'IA,
+ce que le coach ne fait pas.
+
+- **Premier démarrage** : construction en arrière-plan (~3 min pour 84 pays, environ 4 000 astuces) ; le
+  coach fonctionne sans en attendant.
+- **Ensuite** : une requête sur la liste des guides au plus tous les `refresh_days` jours (30 par défaut),
+  et seuls les guides modifiés sont rechargés. Bouton « Mettre à jour maintenant » dans les Réglages.
+- **Stockage** : `~/.local/share/geonesclick/plonkit/` (pages brutes + `plonkit.sqlite` : astuces,
+  recherche plein texte FTS5, vecteurs CLIP en cache).
+- **Au niveau 1**, quand les pays sont révélés : pour chaque candidat, les astuces Plonk It classées par
+  ressemblance avec l'image, avec un lien vers le guide. C'est **une piste à vérifier** : la comparaison
+  capte l'allure générale de la vue, pas forcément un élément précis (voir les mesures ci-dessous).
+- Chaque astuce est rangée dans une catégorie de metas par ses étiquettes Plonk It, puis par mots-clés
+  (`[plonkit] keywords`) ; environ 25 % restent « autres » pour l'instant.
+
+Commande manuelle : `cd engine && .venv/bin/python -m geonesclick.plonkit collect`.
+
+**Quel moteur de recherche ?** Mesuré sur les 4 060 astuces (`spikes/search_bench.py`) : un dictionnaire
+en mémoire, SQLite FTS5 et Tantivy répondent tous en moins d'une milliseconde (StreetCLIP : 60 ms) ;
+Elasticsearch ou Meilisearch n'apporteraient qu'un serveur de plus. Retrouver le pays en cherchant le
+texte de la fiche du niveau 2 dans les astuces échoue avec tous les moteurs (rang moyen ~50ᵉ sur 84) ;
+comparer l'image aux astuces (vecteurs CLIP) classe le bon pays 1ᵉʳ ou 2ᵉ 4 fois sur 5, mais n'améliore
+pas StreetCLIP une fois fusionné (même modèle, signal redondant). D'où SQLite + vecteurs, sans moteur dédié.
+
+Limite constatée : si StreetCLIP classe le bon pays trop bas (la Serbie à 3 %, sous le seuil de 5 %),
+aucune meta ne peut le rattraper. Les prochains leviers sont indépendants de StreetCLIP : le texte visible
+et des questions fermées posées au niveau 2.
 
 ## Architecture
 
@@ -213,7 +242,7 @@ Raccourci GNOME ─► moteur Python (FastAPI, 127.0.0.1:47615) ◄─ WebSocket
 | Capture | Portail ScreenCast + PipeWire + GStreamer | recadrage, masques, notification, son |
 | Niveau 1 | StreetCLIP (`geolocal/StreetCLIP`) | modèle, prompt, liste de pays, top N |
 | Niveau 2 | `nvidia/nemotron-3.5-super-vl-120b-a12b` | modèle, prompt, raisonnement, délai |
-| Metas | Plonk It, mise à jour manuelle avec récapitulatif à valider (à venir) | — |
+| Metas | tes metas, amorce, guides Plonk It collectés en local (SQLite + vecteurs CLIP) | activation, rafraîchissement, mots-clés, nombre d'astuces |
 
 **Sécurité** : le moteur n'écoute que sur `127.0.0.1` et refuse toute origine web inconnue (un site
 ouvert dans le navigateur ne peut ni déclencher de capture ni lire les résultats). Le socket du

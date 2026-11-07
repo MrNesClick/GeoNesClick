@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .metas import CATEGORIES
+from .plonkit import DATA_DIR as PLONKIT_DATA_DIR
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "geonesclick"
 USER_CONFIG = CONFIG_DIR / "config.toml"
@@ -108,6 +109,27 @@ class MetasConfig(BaseModel):
         return Path(self.user_file).expanduser() if self.user_file else CONFIG_DIR / "mes-metas.toml"
 
 
+class PlonkitConfig(BaseModel):
+    enabled: bool  # collecter et utiliser les guides Plonk It (base locale, jamais redistribuée)
+    data_dir: str  # vide = ~/.local/share/geonesclick/plonkit
+    refresh_days: int = Field(ge=1, le=365)  # contrôle de la liste des guides au plus tous les N jours
+    delay_s: float = Field(ge=1.0, le=60.0)  # pause entre deux pages lors d'une collecte
+    similar_tips: bool  # « les astuces qui ressemblent à ta vue », pour chaque pays candidat
+    similar_per_country: int = Field(ge=1, le=5)
+    keywords: dict[str, list[str]] = {}  # remplace les mots-clés de classement d'une catégorie
+
+    @field_validator("keywords")
+    @classmethod
+    def _known_categories(cls, value: dict) -> dict:
+        if unknown := set(value) - set(CATEGORIES):
+            raise ValueError(f"catégories inconnues : {', '.join(sorted(unknown))}")
+        return value
+
+    @property
+    def path(self) -> Path:
+        return Path(self.data_dir).expanduser() if self.data_dir else PLONKIT_DATA_DIR
+
+
 class StreetClipConfig(BaseModel):
     enabled: bool
     model: str
@@ -145,6 +167,7 @@ class Config(BaseModel):
     coach: CoachConfig
     dataset: DatasetConfig
     metas: MetasConfig
+    plonkit: PlonkitConfig
     streetclip: StreetClipConfig
     vision: VisionConfig
 

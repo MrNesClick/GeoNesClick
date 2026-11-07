@@ -9,6 +9,7 @@ Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
   vision_error   niveau 2 en échec
   labelled       capture ajoutée au jeu de test (« C'était où ? »), avec la progression à jour
   lookfor        « où regarder » recalculé pour une capture, après un verdict « Juste » / « Faux »
+  (streetclip.similar : astuces Plonk It qui ressemblent à la vue, pour chaque pays candidat)
   error          capture impossible
 Déclencheurs : POST /capture (bouton de l'interface) ou socket Unix (raccourci GNOME, voir trigger.py).
 """
@@ -19,6 +20,7 @@ import asyncio
 import base64
 import io
 import os
+import sqlite3
 import time
 from collections import OrderedDict
 from contextlib import asynccontextmanager, suppress
@@ -40,6 +42,8 @@ from .dataset import Dataset, DatasetError, progress
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
 from .settings import SettingsError, current, save
 from .notify import Notifier
+from .plonkit import CHECKED_FILE, PlonkitError, collect, load_tips
+from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
@@ -99,6 +103,12 @@ class Engine:
         self.settings_lock = asyncio.Lock()
         # Références vers les tâches du niveau 2 : sans elles, asyncio peut les libérer en cours de route.
         self.background: set[asyncio.Task] = set()
+        self.plonkit_tips: list = []
+        self.plonkit_matrix = None
+        self.plonkit_status = "off" if not cfg.plonkit.enabled else "absent"  # absent, busy, ready, error, off
+        self.plonkit_message = ""
+        self.plonkit_task: asyncio.Task | None = None
+        self.plonkit_index: TipIndex | None = None
 
     def load_metas(self) -> None:
         self.metas, self.metas_message = [], "désactivées"
@@ -124,6 +134,11 @@ class Engine:
             if self.streetclip:
                 self.streetclip.cfg = new.streetclip  # seul top_k est modifiable : pas de rechargement
             self.load_metas()
+            if new.plonkit.enabled and self.plonkit_status == "off":
+                self.plonkit_status = "absent"
+                self.schedule_plonkit(check=self.plonkit_due())
+            elif not new.plonkit.enabled:
+                self.plonkit_status, self.plonkit_message = "off", ""
         await self.broadcast(self.state())
         return {"ok": True, "settings": current(self.cfg)}
 
@@ -148,6 +163,10 @@ class Engine:
                 "count": len(self.metas), "message": self.metas_message, "judge": self.cfg.metas.judge_buttons,
             },
             "dataset": {"enabled": self.dataset is not None, "ask_guessed": self.cfg.dataset.ask_guessed},
+            "plonkit": {
+                "enabled": self.cfg.plonkit.enabled, "status": self.plonkit_status, "message": self.plonkit_message,
+                "tips": len(self.plonkit_tips),
+            },
             "countries": sorted(self.cfg.streetclip.countries.values()),
         }
 
@@ -180,9 +199,87 @@ class Engine:
         else:
             self.streetclip_message = "désactivé"
         await self.broadcast(self.state())
+        if self.cfg.plonkit.enabled:
+            self.schedule_plonkit(check=self.plonkit_due())
 
     async def stop(self) -> None:
+        if self.plonkit_task:
+            self.plonkit_task.cancel()
         await asyncio.to_thread(self.capture.stop)
+
+    # --- Plonk It ------------------------------------------------------------------------------
+    def plonkit_due(self) -> bool:
+        """Le dernier contrôle de la liste des guides date-t-il de plus de refresh_days jours ?"""
+        try:
+            last = float((self.cfg.plonkit.path / CHECKED_FILE).read_text())
+        except (OSError, ValueError):
+            return True
+        return time.time() - last > self.cfg.plonkit.refresh_days * 86400
+
+    def schedule_plonkit(self, check: bool) -> bool:
+        """Lance la mise à jour en arrière-plan ; False si une est déjà en cours."""
+        if self.plonkit_task and not self.plonkit_task.done():
+            return False
+        self.plonkit_task = asyncio.create_task(self.refresh_plonkit(check))
+        return True
+
+    async def _plonkit_status(self, status: str, message: str) -> None:
+        self.plonkit_status, self.plonkit_message = status, message
+        await self.broadcast(self.state())
+
+    async def refresh_plonkit(self, check: bool) -> None:
+        """check : contrôler la liste en ligne et recharger les guides modifiés ; puis indexer et vectoriser."""
+        pc = self.cfg.plonkit
+        if self.streetclip is None:
+            await self._plonkit_status("error", "StreetCLIP est nécessaire pour comparer la vue aux astuces")
+            return
+        try:
+            fetched = None
+            if check:
+                await self._plonkit_status("busy", "mise à jour des guides Plonk It…")
+                countries = set(self.cfg.streetclip.countries.values())
+                stats = await asyncio.to_thread(collect, countries, pc.path, pc.delay_s, False, lambda *_: None)
+                fetched = stats["fetched"]
+            await self._plonkit_status("busy", "indexation des astuces…")
+            tips, matrix = await self._index_plonkit()
+            self.plonkit_tips, self.plonkit_matrix = tips, matrix
+            countries = len({t.country for t in tips})
+            done = f", {fetched} guides mis à jour" if fetched else ""
+            await self._plonkit_status("ready" if tips else "absent", f"{len(tips)} astuces, {countries} pays{done}")
+        except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # réseau, page changée, disque…
+            # On garde la base précédente si elle existe : le coach continue avec les astuces déjà connues.
+            await self._plonkit_status("ready" if self.plonkit_tips else "error", f"Plonk It : {exc}")
+        except Exception as exc:  # tâche de fond : ne jamais laisser l'interface sur « mise à jour en cours »
+            await self._plonkit_status("ready" if self.plonkit_tips else "error",
+                                       f"Plonk It : erreur inattendue ({type(exc).__name__})")
+            raise
+
+    async def _index_plonkit(self):
+        pc, model = self.cfg.plonkit, self.cfg.streetclip.model
+        if self.plonkit_index is None:
+            self.plonkit_index = TipIndex(pc.path / "plonkit.sqlite")
+        index = self.plonkit_index
+        tips = await asyncio.to_thread(load_tips, pc.path)
+        await asyncio.to_thread(index.rebuild, tips, pc.keywords)
+        missing = await asyncio.to_thread(index.missing_embeddings, model)
+        if missing:
+            async with self.gpu_lock:  # partage la carte graphique avec les captures
+                vectors = await asyncio.to_thread(self.streetclip.encode_texts, [text for _, text in missing])
+            await asyncio.to_thread(index.store_embeddings, model, zip([h for h, _ in missing], vectors, strict=True))
+        return await asyncio.to_thread(index.load, model)
+
+    def similar(self, emb, pairs: list[tuple[str, float]]) -> dict[str, list[dict[str, Any]]]:
+        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (vide si désactivé)."""
+        pc, m = self.cfg.plonkit, self.cfg.metas
+        if not (pc.enabled and pc.similar_tips and self.plonkit_tips and emb is not None):
+            return {}
+        codes = [c for c, _ in select_candidates(pairs, m.min_probability, m.max_candidates)]
+        found = similar_tips(emb, self.plonkit_tips, self.plonkit_matrix, codes, pc.similar_per_country)
+        return {
+            code: [{"text": t.text, "section": t.section, "category": t.category, "url": t.url,
+                    "score": round(score, 3)} for t, score in items]
+            for code, items in found.items() if items
+        }
 
     # --- analyse ---------------------------------------------------------------------------
     async def analyse(self) -> dict[str, Any]:
@@ -219,7 +316,7 @@ class Engine:
         if self.streetclip:
             try:
                 async with self.gpu_lock:
-                    scores, ms = await asyncio.to_thread(self.streetclip.predict, view)
+                    scores, ms, emb = await asyncio.to_thread(self.streetclip.analyse, view)
             except Exception as exc:  # mémoire GPU saturée, pilote…
                 await self.broadcast({"type": "error", "message": f"Niveau 1 indisponible : {exc}"})
                 return {"ok": False, "error": str(exc)}
@@ -230,6 +327,7 @@ class Engine:
                 "type": "streetclip", "id": capture_id, "ms": round(ms),
                 "scores": [s.__dict__ for s in scores],
                 "lookfor": [asdict(lf) for lf in self.look_for(pairs)],
+                "similar": self.similar(emb, pairs),
             })
         return {"ok": True, "id": capture_id}
 
@@ -409,6 +507,15 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def judge(req: JudgeRequest) -> dict[str, Any]:
         """Le joueur confirme (« Juste ») ou écarte (« Faux ») un indice de l'amorce."""
         return await engine.judge(req)
+
+    @app.post("/plonkit/refresh")
+    async def plonkit_refresh() -> dict[str, Any]:
+        """Bouton « Mettre à jour » : contrôle la liste des guides maintenant, sans attendre refresh_days."""
+        if not engine.cfg.plonkit.enabled:
+            raise HTTPException(409, "Plonk It désactivé dans la configuration")
+        if not engine.schedule_plonkit(check=True):
+            raise HTTPException(409, "mise à jour déjà en cours")
+        return {"ok": True}
 
     @app.get("/settings")
     async def get_settings() -> dict[str, Any]:

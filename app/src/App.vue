@@ -67,6 +67,7 @@ const showSettings = ref(false);
           <Candidates
             :scores="engine.current.scores"
             :lookfor="engine.current.lookfor"
+            :similar="engine.current.similar"
             :ms="engine.current.clipMs"
             :countries-shown="engine.current.countriesShown"
             @show-countries="engine.current.countriesShown = true"

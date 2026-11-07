@@ -62,6 +62,8 @@ fn stop_engine(child: &mut Child) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        // Ouvre les pages Plonk It dans le navigateur ; adresses limitées par capabilities/default.json.
+        .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             app.manage(Engine(Mutex::new(spawn_engine())));
             Ok(())

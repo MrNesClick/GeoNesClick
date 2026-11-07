@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
+import numpy as np
 import torch
 from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
@@ -35,6 +36,11 @@ class StreetClip:
             self.text_emb = emb / emb.norm(dim=-1, keepdim=True)
 
     def predict(self, img: Image.Image) -> tuple[list[CountryScore], float]:
+        scores, ms, _ = self.analyse(img)
+        return scores, ms
+
+    def analyse(self, img: Image.Image) -> tuple[list[CountryScore], float, np.ndarray]:
+        """Top des pays, durée (ms) et vecteur normalisé de l'image (réutilisé pour les astuces Plonk It)."""
         t0 = time.perf_counter()
         with torch.inference_mode():
             img_in = self.processor(images=img, return_tensors="pt").to(self.device, self.model.dtype)
@@ -46,4 +52,15 @@ class StreetClip:
             CountryScore(self.names[i], self.cfg.countries[self.names[i]], round(p, 4))
             for p, i in zip(top.values.tolist(), top.indices.tolist(), strict=True)
         ]
-        return scores, (time.perf_counter() - t0) * 1000
+        return scores, (time.perf_counter() - t0) * 1000, emb[0].float().cpu().numpy()
+
+    def encode_texts(self, texts: list[str], batch: int = 64) -> np.ndarray:
+        """Vecteurs normalisés de textes (tronqués aux 77 jetons de CLIP), par lots."""
+        out = []
+        with torch.inference_mode():
+            for i in range(0, len(texts), batch):
+                inp = self.processor(text=texts[i:i + batch], return_tensors="pt", padding=True,
+                                     truncation=True, max_length=77).to(self.device)
+                emb = self.model.get_text_features(**inp).pooler_output.float()
+                out.append(torch.nn.functional.normalize(emb, dim=-1).cpu().numpy())
+        return np.concatenate(out) if out else np.zeros((0, 0), dtype=np.float32)

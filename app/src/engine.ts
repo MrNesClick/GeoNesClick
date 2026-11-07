@@ -1,5 +1,6 @@
 // Connexion au moteur Python : WebSocket pour les résultats poussés, HTTP pour les commandes.
 import { reactive } from "vue";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
 const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
@@ -25,6 +26,15 @@ export interface LookFor {
   /** Quoi observer pour trancher, sans nommer de pays. */
   looks: string[];
   hints: Hint[];
+}
+
+/** Une astuce Plonk It dont le texte ressemble à la vue (comparaison CLIP, en local). */
+export interface SimilarTip {
+  text: string;
+  section: string;
+  category: string;
+  url: string;
+  score: number;
 }
 
 /** Un pays réel souvent pris pour un autre, avec les metas qui les séparent. */
@@ -53,6 +63,7 @@ export interface Analysis {
   captureMs: number;
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
+  similar: Record<string, SimilarTip[]> | null;
   clipMs: number | null;
   countriesShown: boolean;
   labelled: { country: string; guessed: string; found: boolean | null } | null;
@@ -70,6 +81,7 @@ export const engine = reactive({
   vision: { enabled: false, ready: false, model: "" },
   metas: { count: 0, message: "", judge: true },
   dataset: { enabled: false, ask_guessed: true },
+  plonkit: { enabled: false, status: "off", message: "", tips: 0 },
   countries: [] as string[],
   level: 1,
   revealCountries: false,
@@ -88,12 +100,13 @@ type Message =
       vision: typeof engine.vision;
       metas: typeof engine.metas;
       dataset: typeof engine.dataset;
+      plonkit: typeof engine.plonkit;
       countries: string[];
       level: number;
       reveal_countries: boolean;
     }
   | { type: "capture"; id: string; at: string; thumbnail: string; ms: number }
-  | { type: "streetclip"; id: string; ms: number; scores: CountryScore[]; lookfor: LookFor[] }
+  | { type: "streetclip"; id: string; ms: number; scores: CountryScore[]; lookfor: LookFor[]; similar: Record<string, SimilarTip[]> }
   | { type: "vision_pending"; id: string; model: string }
   | { type: "vision"; id: string; model: string; seconds: number; fiche: Fiche }
   | { type: "vision_error"; id: string; error: string }
@@ -110,6 +123,7 @@ function handle(msg: Message) {
       engine.vision = msg.vision;
       engine.metas = msg.metas;
       engine.dataset = msg.dataset;
+      engine.plonkit = msg.plonkit;
       engine.countries = msg.countries;
       engine.level = msg.level;
       engine.revealCountries = msg.reveal_countries;
@@ -124,6 +138,7 @@ function handle(msg: Message) {
         captureMs: msg.ms,
         scores: null,
         lookfor: null,
+        similar: null,
         clipMs: null,
         countriesShown: engine.revealCountries,
         labelled: null,
@@ -134,6 +149,7 @@ function handle(msg: Message) {
       if (cur?.id === msg.id) {
         cur.scores = msg.scores;
         cur.lookfor = msg.lookfor;
+        cur.similar = msg.similar;
         cur.clipMs = msg.ms;
       }
       break;
@@ -208,6 +224,39 @@ export const reselectWindow = () => request("/capture/reselect");
 /** « C'était où ? » : pays réel, et pays répondu (vide si tu ne sais plus) ou simple « trouvé ? ». */
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null) =>
   request("/label", { id, country, guessed, found });
+export const refreshPlonkit = () => request("/plonkit/refresh");
+
+/** Libellés des catégories de metas (mêmes clés que metas.py). */
+export const CATEGORY_LABELS: Record<string, string> = {
+  langue: "Langue et alphabet",
+  conduite: "Sens de circulation",
+  marquage: "Marquage au sol",
+  poteaux: "Poteaux",
+  bornes: "Bornes et délinéateurs",
+  plaques: "Plaques d'immatriculation",
+  panneaux: "Panneaux",
+  domaine: "Noms de domaine",
+  voiture: "Voiture et caméra Google",
+  vegetation: "Végétation et sol",
+  architecture: "Architecture",
+  autre: "Autres indices",
+};
+/** Ouvre une page Plonk It dans le navigateur (seules ces adresses sont autorisées par Tauri). */
+export async function openPlonkit(url: string) {
+  if (!url.startsWith("https://www.plonkit.net/")) return;
+  try {
+    await openUrl(url);
+  } catch {
+    engine.error = "Impossible d'ouvrir le navigateur.";
+  }
+}
+
+/** Texte Markdown d'une astuce en segments (gras ou non), sans jamais interpréter de HTML. */
+export function markdownSegments(md: string): { text: string; bold: boolean }[] {
+  const plain = md.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[_`#>]/g, "");
+  return plain.split("**").map((text, i) => ({ text, bold: i % 2 === 1 })).filter((s) => s.text);
+}
+
 /** Verdict du joueur sur un indice de l'amorce ; le moteur l'écrit dans mes-metas.toml. */
 export const judgeHint = (category: string, hint: string, verdict: "right" | "wrong") =>
   request("/metas/judge", { category, hint, verdict, id: engine.current?.id ?? "" });
