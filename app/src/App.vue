@@ -2,7 +2,7 @@
 import { computed } from "vue";
 import Candidates from "./components/Candidates.vue";
 import Observations from "./components/Observations.vue";
-import { engine, requestCapture, restartSharing } from "./engine";
+import { engine, requestCapture, reselectWindow, restartSharing } from "./engine";
 
 const status = computed(() => {
   if (!engine.connected) return { tone: "bg-courbe", text: "Démarrage du moteur…" };
@@ -77,5 +77,17 @@ const time = (iso: string) => new Date(iso).toLocaleTimeString("fr-FR");
         : le coach te montre d'abord les pays probables, puis ce qu'il observe dans la vue.
       </p>
     </main>
+
+    <footer class="mt-6 flex items-center justify-between gap-3 border-t border-courbe-fonce pt-3 text-[0.85rem] text-courbe">
+      <span>Autre navigateur, écran ou résolution ?</span>
+      <button
+        type="button"
+        class="shrink-0 rounded-md px-2 py-1 text-papier underline decoration-courbe underline-offset-4 hover:decoration-papier disabled:opacity-50"
+        :disabled="!engine.connected || engine.busy || engine.capture.starting"
+        @click="reselectWindow"
+      >
+        Changer de fenêtre
+      </button>
+    </footer>
   </div>
 </template>

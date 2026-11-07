@@ -138,8 +138,11 @@ class CaptureService:
         self._thread = threading.Thread(target=self._run, name="glib-capture", daemon=True)
         self._thread.start()
 
-    def restart(self) -> None:
+    def restart(self, forget_window: bool = False) -> None:
+        """Relance le partage ; avec forget_window, oublie la fenêtre mémorisée et rouvre le sélecteur GNOME."""
         self.stop()
+        if forget_window:
+            TOKEN_FILE.unlink(missing_ok=True)
         self.start()
 
     def stop(self) -> None:

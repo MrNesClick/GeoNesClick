@@ -3,6 +3,9 @@
 Coach d'entraînement GeoGuessr assisté par IA. Il analyse ce que tu vois à l'écran et te guide, selon un
 **niveau d'aide configurable**, vers les indices utiles : où regarder, ce qu'on y voit, ce que ça implique.
 
+> **Mode de jeu conseillé : la partie classique** (une carte, 5 manches). C'est le seul mode dont
+> l'interface est prise en charge pour l'instant ; les autres (défis, streaks…) pourront suivre.
+>
 > **Usage visé : l'entraînement** (parties solo, cartes non classées). Le coach ne lit jamais les données
 > du jeu, uniquement l'image affichée. Les règles de GeoGuessr interdisent les outils tiers en partie
 > classée : ne l'utilise pas en compétition.
@@ -16,13 +19,25 @@ affichés dans la fenêtre du coach.
 |---|---|
 | Raccourci → capture | environ 0,3 s, notification GNOME avec miniature et son |
 | Niveau 1 : StreetCLIP en local (RTX 3050 Ti) | environ 60 ms à chaud, 846 Mo de mémoire vidéo |
-| Niveau 2 : Nemotron 3.5 Super VL (NVIDIA), sans raisonnement | de 3 à 15 s selon la charge du service |
+| Niveau 2 : Nemotron 3.5 Super VL (NVIDIA), sans raisonnement | de 3 à 5 s en général, jusqu'à 15 s selon la charge |
 
 À venir, dans l'ordre :
-1. **Détection automatique de la vue Street View** (recadrage et masquage de l'interface du jeu).
-   Sans elle, l'écran entier est analysé et le niveau 1 est faussé (« France » sur une rue de Hongrie).
-2. **Base de metas** (Plonk It) pour le niveau 1 « où regarder pour départager ».
-3. Banc d'essai des modèles de vision sur un jeu de test étiqueté.
+1. **Base de metas** (Plonk It) pour le niveau 1 « où regarder pour départager ».
+2. Agrandir le jeu de test (20 à 30 captures), puis banc d'essai des modèles de vision.
+3. Détection automatique de la vue Street View : **reportée**, voir ci-dessous.
+
+Recadrer et masquer l'interface du jeu valent-ils la peine ? Mesuré le 2026-11-07 sur 5 captures de
+partie classique (`spikes/compare_views.py`) :
+
+| Variante | Bon pays 1ᵉʳ | Dans le top 3 | Probabilité moyenne | Noms de pays recopiés par l'IA |
+|---|---|---|---|---|
+| Fenêtre du navigateur entière | 3/5 | 4/5 | 49 % | 0/5 |
+| Vue recadrée | 2/5 | 4/5 | 47 % | 0/5 |
+| Vue recadrée et interface masquée | 2/5 | 4/5 | 44 % | 0/5 |
+
+Capturer la **fenêtre** (et non l'écran) suffit : aucun gain mesurable du recadrage, et les masques noirs
+semblent même gêner StreetCLIP. Le recadrage et les masques restent disponibles en configuration ; on
+remesurera avec un jeu de test plus grand.
 
 Enseignements de la phase 0 (tests de faisabilité) :
 - Sur le palier gratuit NVIDIA, la disponibilité varie : le 2026-11-07, `z-ai/glm-5.3-flash` et
@@ -73,7 +88,8 @@ cd app && pnpm tauri dev
 
 La fenêtre du coach démarre le moteur Python et l'arrête à sa fermeture. La première fois, GNOME demande
 quelle fenêtre partager : choisis la fenêtre du navigateur où tu joues. L'autorisation est mémorisée
-dans `~/.config/geonesclick/screencast.token` ; supprime ce fichier pour choisir une autre fenêtre.
+(`~/.config/geonesclick/screencast.token`). Pour en changer (autre navigateur, écran ou résolution),
+clique sur **Changer de fenêtre** en bas du coach : le sélecteur de GNOME se rouvre.
 
 Pendant une manche, appuie sur **Super+Maj+G** (ou sur « Capturer »). Le coach affiche :
 1. les **pays probables**, calculés en local et instantanément ;
@@ -145,7 +161,8 @@ app/                      interface Tauri + Vue
   src/components/         niveau 1 (Candidates), niveau 2 (Observations)
 engine/                   moteur Python
   src/geonesclick/     capture, StreetCLIP, vision, serveur, configuration
-  spikes/                 outils de mesure : StreetCLIP (streetclip_bench.py), modèle de vision (vlm_probe.py)
+  spikes/                 outils de mesure : StreetCLIP, modèle de vision, recadrage (compare_views.py)
+  dataset/labels.toml     jeu de test étiqueté (images locales dans dataset/images/, non versionnées)
   captures/               captures d'écran (ignorées par git)
 scripts/install.sh        installation
 ```

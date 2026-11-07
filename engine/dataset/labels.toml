@@ -1,0 +1,37 @@
+# Jeu de test étiqueté. Les images (engine/dataset/images/) restent locales et ne sont pas versionnées.
+# Une entrée par capture : pays réel (ISO 3166-1 alpha-2), zone si connue, mode de jeu et mise en page.
+
+[[capture]]
+file = "capture-20261107-080023-137.png"
+country = "LV"
+area = "côte ouest de Riga"
+mode = "classique"
+layout = "fenêtre navigateur 1920x1200"
+
+[[capture]]
+file = "capture-20261107-080103-604.png"
+country = "RS"
+area = "sud-est, près de la frontière bulgare"
+mode = "classique"
+layout = "fenêtre navigateur 1920x1200"
+
+[[capture]]
+file = "capture-20261107-080120-934.png"
+country = "SE"
+area = "côte ouest, vers Göteborg"
+mode = "classique"
+layout = "fenêtre navigateur 1920x1200"
+
+[[capture]]
+file = "capture-20261107-080139-261.png"
+country = "NO"
+area = "côte ouest, au nord d'Ålesund"
+mode = "classique"
+layout = "fenêtre navigateur 1920x1200"
+
+[[capture]]
+file = "capture-20261107-080158-646.png"
+country = "LT"
+area = "près de Vilnius"
+mode = "classique"
+layout = "fenêtre navigateur 1920x1200"

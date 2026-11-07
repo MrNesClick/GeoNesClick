@@ -114,3 +114,4 @@ async function post(path: string) {
 
 export const requestCapture = () => post("/capture");
 export const restartSharing = () => post("/capture/restart");
+export const reselectWindow = () => post("/capture/reselect");

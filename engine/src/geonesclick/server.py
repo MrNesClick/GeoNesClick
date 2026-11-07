@@ -230,13 +230,24 @@ def create_app(cfg: Config | None = None) -> FastAPI:
     async def capture() -> dict[str, Any]:
         return await engine.analyse()
 
+    restart_lock = asyncio.Lock()  # deux relances simultanées se disputeraient le thread GLib et le portail
+
+    async def _restart(message: str, forget_window: bool) -> dict[str, Any]:
+        async with restart_lock:
+            engine.capture_message = message
+            engine.capture_starting = True
+            await engine.broadcast(engine.state())
+            await asyncio.to_thread(engine.capture.restart, forget_window)
+        return {"ok": True}
+
     @app.post("/capture/restart")
     async def restart() -> dict[str, Any]:
-        engine.capture_message = "relance du partage d'écran…"
-        engine.capture_starting = True
-        await engine.broadcast(engine.state())
-        await asyncio.to_thread(engine.capture.restart)
-        return {"ok": True}
+        return await _restart("relance du partage d'écran…", forget_window=False)
+
+    @app.post("/capture/reselect")
+    async def reselect() -> dict[str, Any]:
+        """Changer de fenêtre (autre navigateur, écran, résolution) : rouvre le sélecteur de GNOME."""
+        return await _restart("choisis la fenêtre du jeu à partager…", forget_window=True)
 
     @app.websocket("/ws")
     async def ws(websocket: WebSocket) -> None:

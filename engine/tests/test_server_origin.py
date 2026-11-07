@@ -23,8 +23,9 @@ def client(tmp_path):
     return TestClient(create_app(load_config(user)), base_url="http://127.0.0.1:47615")
 
 
-def test_foreign_origin_cannot_trigger_capture(client):
-    assert client.post("/capture", headers={"Origin": EVIL_ORIGIN}).status_code == 403
+@pytest.mark.parametrize("path", ["/capture", "/capture/restart", "/capture/reselect"])
+def test_foreign_origin_cannot_trigger_actions(client, path):
+    assert client.post(path, headers={"Origin": EVIL_ORIGIN}).status_code == 403
 
 
 def test_foreign_origin_cannot_read_state(client):
