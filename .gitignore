@@ -1,0 +1,18 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Node / Tauri
+node_modules/
+dist/
+target/
+
+# Données locales (captures, modèles, base de metas)
+engine/captures/
+engine/data/cache/

@@ -1,0 +1,153 @@
+# Configuration par défaut de GeoNesClick.
+#
+# NE PAS MODIFIER CE FICHIER : surcharge les clés voulues dans ~/.config/geonesclick/config.toml
+# (même structure ; seules les clés présentes sont remplacées).
+
+[server]
+host = "127.0.0.1"   # ne jamais exposer sur le réseau : les captures d'écran transitent par ce serveur
+port = 47615
+# Origines autorisées à se connecter (fenêtre Tauri en dev et en production).
+allowed_origins = ["http://localhost:1420", "tauri://localhost", "http://tauri.localhost"]
+
+[capture]
+# Ce que le sélecteur de GNOME propose de partager : "window" (une fenêtre, recommandé),
+# "monitor" (un écran entier) ou "both". Après un changement, supprime
+# ~/.config/geonesclick/screencast.token pour refaire le choix.
+source = "window"
+notify = true            # notification GNOME à chaque capture
+sound = true             # son d'obturateur avec la notification
+save_to_disk = true      # garde une copie PNG de chaque capture
+directory = ""           # vide = engine/captures/
+# Zone analysée, en fractions de l'image capturée : [gauche, haut, droite, bas].
+# Vide = image entière. (La détection automatique de la vue Street View viendra plus tard.)
+crop = []
+# Zones masquées (rectangles en fractions, relatifs à la zone analysée), ex. la mini-carte de réponse.
+masks = []
+
+[coach]
+default_level = 1        # niveau d'aide affiché au départ : 1 = où regarder (local), 2 = ce qu'on voit
+
+[streetclip]
+enabled = true
+model = "geolocal/StreetCLIP"
+device = "auto"          # "auto", "cuda" ou "cpu"
+prompt = "A Street View photo in {}."
+top_k = 5
+
+# Pays candidats : nom anglais (utilisé dans le prompt) = code ISO 3166-1 alpha-2 (drapeau, metas).
+[streetclip.countries]
+Albania = "AL"
+Andorra = "AD"
+Argentina = "AR"
+Australia = "AU"
+Austria = "AT"
+Bangladesh = "BD"
+Belgium = "BE"
+Bhutan = "BT"
+Bolivia = "BO"
+Botswana = "BW"
+Brazil = "BR"
+Bulgaria = "BG"
+Cambodia = "KH"
+Canada = "CA"
+Chile = "CL"
+Colombia = "CO"
+Croatia = "HR"
+Czechia = "CZ"
+Denmark = "DK"
+"Dominican Republic" = "DO"
+Ecuador = "EC"
+Estonia = "EE"
+Eswatini = "SZ"
+Finland = "FI"
+France = "FR"
+Germany = "DE"
+Ghana = "GH"
+Greece = "GR"
+Guatemala = "GT"
+Hungary = "HU"
+Iceland = "IS"
+India = "IN"
+Indonesia = "ID"
+Ireland = "IE"
+Israel = "IL"
+Italy = "IT"
+Japan = "JP"
+Jordan = "JO"
+Kenya = "KE"
+Kyrgyzstan = "KG"
+Latvia = "LV"
+Lesotho = "LS"
+Lithuania = "LT"
+Luxembourg = "LU"
+Malaysia = "MY"
+Malta = "MT"
+Mexico = "MX"
+Mongolia = "MN"
+Montenegro = "ME"
+Netherlands = "NL"
+"New Zealand" = "NZ"
+Nigeria = "NG"
+"North Macedonia" = "MK"
+Norway = "NO"
+Panama = "PA"
+Peru = "PE"
+Philippines = "PH"
+Poland = "PL"
+Portugal = "PT"
+Romania = "RO"
+Russia = "RU"
+Rwanda = "RW"
+Senegal = "SN"
+Serbia = "RS"
+Singapore = "SG"
+Slovakia = "SK"
+Slovenia = "SI"
+"South Africa" = "ZA"
+"South Korea" = "KR"
+Spain = "ES"
+"Sri Lanka" = "LK"
+Sweden = "SE"
+Switzerland = "CH"
+Taiwan = "TW"
+Thailand = "TH"
+Tunisia = "TN"
+Turkey = "TR"
+Uganda = "UG"
+Ukraine = "UA"
+"United Arab Emirates" = "AE"
+"United Kingdom" = "GB"
+"United States" = "US"
+Uruguay = "UY"
+Vietnam = "VN"
+
+[vision]
+enabled = true
+base_url = "https://integrate.api.nvidia.com/v1"
+api_key_env = "NVAPI"    # variable lue dans l'environnement ou dans le .env du projet
+model = "nvidia/nemotron-3.5-super-vl-120b-a12b"
+thinking = false         # raisonnement du modèle : plus lent, pas forcément plus juste
+timeout_s = 90
+max_tokens = 2000
+temperature = 0.2
+max_side_px = 1280       # l'image est réduite à cette taille avant l'envoi
+prompt = '''
+Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue Street View,
+sans deviner de pays ni de région. Réponds par un objet JSON valide, en français, avec ces clés :
+- "sens_circulation": "droite" | "gauche" | "indéterminé" ; ne conclus que sur une preuve forte
+  (véhicules EN MOUVEMENT, panneaux orientés, marquage), jamais sur des voitures garées
+- "preuve_circulation": la preuve utilisée
+- "marquage_routier": lignes (couleur, continues/discontinues, centrales/de rive) ou "aucun"
+- "poteaux": matériau, forme, trous, marquages, couleurs
+- "bornes_et_glissieres": bornes kilométriques, délinéateurs, glissières
+- "panneaux_et_texte": textes lus mot pour mot, alphabet
+- "plaques_immatriculation": couleurs, forme, bande latérale
+- "architecture": style, toits, matériaux, clôtures
+- "vegetation_et_sol": végétation reconnaissable, couleur du sol, climat apparent
+- "relief": plat, collines, montagnes
+- "camera_et_voiture_google": génération de caméra, partie visible du véhicule, antenne
+- "autres_indices": tout autre détail discriminant
+- "confiance": "faible" | "moyenne" | "élevée"
+Si un élément n'est pas visible, écris "non visible". N'invente rien.
+Ignore l'interface du jeu (boutons, boussole, carte, logos).
+'''

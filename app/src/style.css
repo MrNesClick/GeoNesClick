@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Polices embarquées (aucun appel réseau) */
+@import "@fontsource/spectral/400-italic.css";
+@import "@fontsource/spectral/600-italic.css";
+@import "@fontsource/atkinson-hyperlegible/400.css";
+@import "@fontsource/atkinson-hyperlegible/700.css";
+
+/* Carte topographique de nuit : l'encre et le papier, deux accents porteurs de sens.
+   forêt = calculé en local, instantané (niveau 1) ; lac = IA distante (niveau 2). */
+@theme {
+  --color-encre: #15202b;
+  --color-relief: #1c2a37;
+  --color-courbe-fonce: #2b3d4f;
+  --color-courbe: #8a9aa6;
+  --color-papier: #e6e9e2;
+  --color-foret: #7db38a;
+  --color-lac: #7fb6d6;
+  --color-alerte: #e29a7e;
+
+  --font-atlas: "Spectral", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Atkinson Hyperlegible", "Noto Sans", system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    font-size: 15px;
+  }
+  body {
+    @apply bg-encre text-papier font-ui antialiased;
+    line-height: 1.5;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-lac);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+}
+
+/* Étiquette d'atlas : italique espacé, comme les noms de régions sur une carte. */
+.atlas {
+  font-family: var(--font-atlas);
+  font-style: italic;
+  letter-spacing: 0.06em;
+}
+
+/* Le seul moment animé : l'arrivée d'une nouvelle capture. */
+.arrivee-enter-active {
+  transition: opacity 260ms ease-out, transform 260ms ease-out;
+}
+.arrivee-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.jauge {
+  transition: width 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrivee-enter-active,
+  .jauge {
+    transition: none;
+  }
+}
