@@ -1,15 +1,19 @@
-//! Fenêtres du coach et des marques. Au démarrage, lance le moteur Python (engine/) et l'arrête à la fermeture.
+//! Fenêtres du coach et des marques. Au démarrage, lance le moteur Python et l'arrête à la fermeture.
 //!
-//! Le dossier du moteur se règle avec la variable GNC_ENGINE_DIR (par défaut : ../../engine
-//! relativement à ce crate). Si un moteur tourne déjà (lancé à la main), le nouveau échoue à
-//! ouvrir le port et l'interface se connecte simplement à celui qui existe.
+//! AppImage : le moteur est installé au premier lancement par l'assistant (setup.rs) dans
+//! ~/.local/share/geonesclick/engine/venv ; tant qu'il n'est pas installé (ou à mettre à jour), rien ne démarre.
+//! Développement : le moteur vient de engine/.venv (variable GNC_ENGINE_DIR, par défaut ../../engine relativement à
+//! ce crate). Si un moteur tourne déjà (lancé à la main), le nouveau échoue à ouvrir le port et l'interface se
+//! connecte simplement à celui qui existe.
+
+mod setup;
 
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
-use tauri::{Manager, RunEvent, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 struct Engine(Mutex<Option<Child>>);
 
@@ -19,9 +23,16 @@ fn engine_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../engine"))
 }
 
-fn spawn_engine() -> Option<Child> {
-    let dir = engine_dir();
-    let python = dir.join(".venv/bin/python");
+fn spawn_engine(app: &AppHandle) -> Option<Child> {
+    let (python, dir) = if setup::bundle_dir(app).is_some() {
+        if setup::needed(app) {
+            return None; // l'assistant de premier lancement installe d'abord le moteur
+        }
+        (setup::venv_python(), setup::data_dir())
+    } else {
+        let dir = engine_dir();
+        (dir.join(".venv/bin/python"), dir)
+    };
     let mut command = Command::new(&python);
     command.args(["-m", "geonesclick"]).current_dir(&dir);
     // Si l'application meurt sans passer par RunEvent::Exit (signal, plantage), le noyau envoie
@@ -62,13 +73,23 @@ fn stop_engine(child: &mut Child) {
 /// Relance le moteur (après « Tout effacer » : plus rien de valide en mémoire). Arrête l'ancien proprement, puis en
 /// démarre un neuf, qui repart des dossiers vides.
 #[tauri::command]
-fn restart_engine(state: tauri::State<'_, Engine>) -> Result<(), String> {
+fn restart_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
     let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
     if let Some(mut child) = slot.take() {
         stop_engine(&mut child);
     }
-    *slot = spawn_engine();
+    *slot = spawn_engine(&app);
     if slot.is_some() { Ok(()) } else { Err("moteur introuvable".into()) }
+}
+
+/// « Tout effacer » avec la case moteur : arrête le moteur puis retire son installation (AppImage seulement).
+#[tauri::command]
+fn erase_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
+    let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
+    if let Some(mut child) = slot.take() {
+        stop_engine(&mut child);
+    }
+    setup::remove_engine(&app)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -76,9 +97,17 @@ pub fn run() {
     let app = tauri::Builder::default()
         // Ouvre les pages Plonk It dans le navigateur ; adresses limitées par capabilities/default.json.
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![restart_engine])
+        .invoke_handler(tauri::generate_handler![
+            restart_engine,
+            erase_engine,
+            setup::setup_status,
+            setup::setup_install,
+            setup::setup_apply,
+            setup::setup_shortcuts
+        ])
         .setup(|app| {
-            app.manage(Engine(Mutex::new(spawn_engine())));
+            let child = spawn_engine(app.handle());
+            app.manage(Engine(Mutex::new(child)));
             Ok(())
         })
         // La fenêtre des marques reste ouverte (cachée) : fermer le coach doit quitter l'application.

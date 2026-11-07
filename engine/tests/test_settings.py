@@ -182,3 +182,18 @@ def test_restart_settings_are_reported(client):
     http, *_ = client
     res = http.post("/settings", json={"streetclip": {"device": "cpu"}}, headers=ORIGIN).json()
     assert res["restart"] == ["streetclip.device"]
+
+
+def test_first_launch_choices_are_saved_before_the_engine_starts(monkeypatch, tmp_path):
+    import io
+
+    from geonesclick import settings as s
+
+    target = tmp_path / "config.toml"
+    monkeypatch.setattr(s, "USER_CONFIG", target)
+    monkeypatch.setattr(s.save, "__defaults__", (target,))
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"rules": {"places": false}, "plonkit": {"enabled": false}}'))
+    assert s.main() == 0
+    assert "places = false" in target.read_text() and "enabled = false" in target.read_text()
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"server": {"port": 1}}'))  # réservé au fichier : refusé
+    assert s.main() == 1

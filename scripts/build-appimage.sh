@@ -56,6 +56,7 @@ ok "$(cut -d' ' -f1 "$TMP/sources.txt" | tr '\n' ' ')(empreintes vérifiées)"
 
 step "4. Dépendances figées et liste détaillée"
 "$ROOT/engine/.venv/bin/python" -I "$ROOT/scripts/bundle_meta.py" "$OUT"
+install -m 0755 "$ROOT/scripts/install-engine.sh" "$OUT/install-engine.sh"
 grep -m1 '^version' "$ROOT/engine/pyproject.toml" | cut -d'"' -f2 > "$OUT/VERSION"
 ok "version $(cat "$OUT/VERSION")"
 

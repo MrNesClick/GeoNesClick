@@ -56,3 +56,12 @@ def test_settings_route_saves_without_ever_returning_the_key(tmp_path):
     assert client.post("/settings/api-key", json={"key": "nvapi-secret-7777"},
                        headers={"Origin": "https://x.example"}).status_code == 403
     assert client.post("/settings/api-key", json={"key": ""}, headers=ORIGIN).json()["key"] is None
+
+
+def test_command_line_reads_the_key_from_stdin(monkeypatch):
+    import io
+
+    monkeypatch.setattr("sys.stdin", io.StringIO("nvapi-from-stdin-4242\n"))
+    assert apikey.main() == 0 and apikey.read("NVAPI") == "nvapi-from-stdin-4242"
+    monkeypatch.setattr("sys.stdin", io.StringIO("bad key\n"))
+    assert apikey.main() == 1

@@ -83,3 +83,22 @@ def migrate_env(name: str, env_file: Path) -> bool:
     kept = "".join(ln for ln in lines if ln.partition("=")[0].strip() != name)
     _write_private(env_file, kept)  # … puis seulement la ligne retirée
     return True
+
+
+def main() -> int:
+    """python -m geonesclick.apikey < clé : enregistre la clé lue sur l'entrée standard (jamais en argument, visible
+    par les autres programmes de la machine). Appelé par l'assistant de premier lancement."""
+    import sys
+
+    from .config import load_config
+
+    try:
+        save(load_config().vision.api_key_env, sys.stdin.readline())
+    except ApiKeyError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

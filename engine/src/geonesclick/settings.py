@@ -128,3 +128,24 @@ def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config
     tmp.write_text(tomlkit.dumps(doc))
     tmp.replace(path)  # écriture atomique : jamais de fichier à moitié écrit
     return cfg
+
+
+def main() -> int:
+    """python -m geonesclick.settings < choix.json : enregistre les choix de l'assistant de premier lancement AVANT
+    le premier démarrage du moteur (sinon il téléchargerait des options refusées). Mêmes contrôles que l'écran."""
+    import json
+    import sys
+
+    try:
+        changes = json.loads(sys.stdin.read() or "{}")
+        if not isinstance(changes, dict):
+            raise SettingsError("objet JSON attendu")
+        save(changes)
+    except (ValueError, SettingsError) as exc:
+        print(f"réglages refusés : {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

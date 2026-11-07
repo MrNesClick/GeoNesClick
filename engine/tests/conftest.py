@@ -1,12 +1,15 @@
 """Garde-fous communs à tous les tests."""
 
+import atexit
 import os
+import shutil
 import tempfile
 
 # AVANT tout import de l'application : ses dossiers (config, données, socket, modèles) pointent vers un dossier
 # temporaire. Constaté le 2026-11-07 : sans cela, les tests construisaient de faux villages GeoNames par-dessus les
 # vrais (~/.local/share/geonesclick/places), et leur dossier empêchait la migration de l'ancien nom.
 _SANDBOX = tempfile.mkdtemp(prefix="geonesclick-tests-")
+atexit.register(shutil.rmtree, _SANDBOX, ignore_errors=True)  # rien ne s'accumule dans /tmp (disque presque plein)
 for _var, _sub in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_RUNTIME_DIR", "run"),
                    ("HF_HOME", "hf")):
     os.environ[_var] = os.path.join(_SANDBOX, _sub)
