@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "engine-bundle/": "engine-bundle/"
+    }
+  }
+}

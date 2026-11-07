@@ -573,6 +573,10 @@ dans le cache Hugging Face. Il charge seulement le réseau et l'échantillonneur
 
 ## Outils et licences
 
+**Code de GeoNesClick : licence [Apache-2.0](LICENSE)** (© 2026 MrNesClick). Les modèles et données téléchargés au
+premier lancement gardent leur propre licence (voir « Ce que GeoNesClick télécharge ») : en particulier **StreetCLIP
+est sous CC BY-NC 4.0, usage non commercial**, ce qui s'applique à toute utilisation de l'application qui s'en sert.
+
 | Outil | Rôle | Licence ou conditions |
 |---|---|---|
 | [Tauri 2](https://v2.tauri.app), [Vue 3](https://vuejs.org), [Tailwind 4](https://tailwindcss.com) | fenêtre du coach | MIT / Apache-2.0 |

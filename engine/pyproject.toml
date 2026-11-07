@@ -1,7 +1,8 @@
 [project]
 name = "geonesclick"
 version = "0.1.0"
-description = "Moteur du coach GeoGuessr : capture, IA, metas"
+description = "Moteur de GeoNesClick : capture, IA locale et distante, règles locales, metas"
+license = "Apache-2.0"
 readme = "README.md"
 authors = [
     { name = "MrNesClick", email = "contact@mrnesclick.fr" }

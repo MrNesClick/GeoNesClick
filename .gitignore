@@ -21,3 +21,6 @@ engine/dataset/images/
 
 # Banc PLONK : code tiers, dépendances et frontières (scripts/setup-plonk-spike.sh)
 engine/spikes/.vendor/
+
+# Ressources de l AppImage, produites par scripts/build-appimage.sh
+app/src-tauri/engine-bundle/
