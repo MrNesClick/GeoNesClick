@@ -3,9 +3,7 @@
 // se règle dans ~/.config/geonesclick/config.toml.
 import { onMounted, ref } from "vue";
 import type { Settings } from "../engine";
-import { engine, fr, getJSON, refreshPlonkit, saveSettings, testModel } from "../engine";
-
-const emit = defineEmits<{ close: [] }>();
+import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveSettings, testModel } from "../engine";
 
 const s = ref<Settings | null>(null);
 const models = ref<string[]>([]);
@@ -48,12 +46,7 @@ const check = "size-4 accent-[var(--color-foret)]";
 
 <template>
   <section aria-labelledby="reglages-titre" class="pt-4">
-    <header class="flex items-baseline justify-between">
-      <h2 id="reglages-titre" class="atlas text-[1.6rem] text-papier">Réglages</h2>
-      <button type="button" class="text-[0.9rem] text-courbe underline underline-offset-4 hover:text-papier" @click="emit('close')">
-        Retour au coach
-      </button>
-    </header>
+    <h2 id="reglages-titre" class="atlas text-[1.6rem] text-papier">Réglages</h2>
 
     <p v-if="!s" class="mt-4 text-courbe">Chargement des réglages…</p>
 
@@ -206,7 +199,47 @@ const check = "size-4 accent-[var(--color-foret)]";
       </fieldset>
 
       <fieldset class="space-y-3">
+        <legend class="font-bold text-papier">Carte (niveau 3 et plus)</legend>
+        <label class="flex items-start gap-3">
+          <input v-model="s.map.enabled" type="checkbox" :class="check" class="mt-1" />
+          <span>Afficher la carte <span class="block text-[0.85rem] text-courbe">Fond OpenStreetMap en ligne : le serveur de tuiles voit ton adresse IP et les zones affichées.</span></span>
+        </label>
+        <label class="flex items-start gap-3">
+          <input v-model="s.plonk.enabled" type="checkbox" :class="check" class="mt-1" />
+          <span>Nuage des positions probables (PLONK)
+            <span class="block text-[0.85rem] text-courbe">Local, environ 120 Mo de mémoire vidéo. Une piste pour la carte, pas un vote sur le pays.</span>
+          </span>
+        </label>
+        <p class="text-[0.85rem] text-courbe" role="status">PLONK : {{ engine.plonk.message }}</p>
+        <div class="grid grid-cols-3 gap-3">
+          <label class="block">
+            <span class="text-[0.85rem] text-courbe">Pas (10 à 250)</span>
+            <input v-model.number="s.plonk.steps" type="number" min="10" max="250" :class="field" :disabled="!s.plonk.enabled" />
+          </label>
+          <label class="block">
+            <span class="text-[0.85rem] text-courbe">Points</span>
+            <input v-model.number="s.plonk.points" type="number" min="64" max="2048" :class="field" :disabled="!s.plonk.enabled" />
+          </label>
+          <label class="block">
+            <span class="text-[0.85rem] text-courbe">Zoom maximal</span>
+            <input v-model.number="s.map.max_zoom" type="number" min="2" max="19" :class="field" :disabled="!s.map.enabled" />
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset class="space-y-3">
         <legend class="font-bold text-papier">Captures</legend>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            class="rounded-md border border-courbe px-3 py-1.5 text-papier hover:bg-papier/10 disabled:opacity-50"
+            :disabled="!engine.connected || engine.busy || engine.capture.starting"
+            @click="reselectWindow"
+          >
+            Changer de fenêtre
+          </button>
+          <span class="text-[0.85rem] text-courbe">Autre navigateur, écran ou résolution : rouvre le sélecteur de GNOME.</span>
+        </div>
         <label class="flex items-center gap-3">
           <input v-model="s.capture.notify" type="checkbox" :class="check" />
           Notification à chaque capture
@@ -233,7 +266,8 @@ const check = "size-4 accent-[var(--color-foret)]";
       </div>
 
       <p class="text-[0.85rem] text-courbe">
-        Adresse de l'API, recadrage, prompts, liste des pays, consignes et poids des catégories se modifient dans
+        Adresse de l'API, serveur de tuiles de la carte, recadrage, prompts, liste des pays, consignes et poids
+        des catégories se modifient dans
         ~/.config/geonesclick/config.toml. Cet écran n'y écrit que les valeurs que tu changes, en
         conservant tes commentaires.
       </p>

@@ -19,3 +19,6 @@ engine/data/cache/
 
 # Jeu de test : images locales uniquement (captures du jeu)
 engine/dataset/images/
+
+# Banc PLONK : code tiers, dépendances et frontières (scripts/setup-plonk-spike.sh)
+engine/spikes/.vendor/

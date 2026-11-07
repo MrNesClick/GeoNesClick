@@ -16,12 +16,13 @@
         "width": 460,
         "height": 940,
         "minWidth": 360,
-        "minHeight": 520
+        "minHeight": 520,
+        "userAgent": "GeoNesClick/0.1 (desktop app, OpenStreetMap tiles for its coaching map)"
       }
     ],
     "security": {
-      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:47615 ws://127.0.0.1:47615; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'",
-      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:47615 ws://127.0.0.1:47615 ws://localhost:1420; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self'"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:47615 ws://127.0.0.1:47615; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; font-src 'self'",
+      "devCsp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost http://127.0.0.1:47615 ws://127.0.0.1:47615 ws://localhost:1420; img-src 'self' data: https://tile.openstreetmap.org; style-src 'self' 'unsafe-inline'; font-src 'self'"
     }
   },
   "bundle": {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import Activity from "./components/Activity.vue";
+import CoachMap from "./components/CoachMap.vue";
 import Countries from "./components/Countries.vue";
 import HelpLevel from "./components/HelpLevel.vue";
 import LabelForm from "./components/LabelForm.vue";
@@ -11,7 +12,7 @@ import PlonkitTips from "./components/PlonkitTips.vue";
 import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import Summary from "./components/Summary.vue";
-import { engine, requestCapture, reselectWindow, restartSharing, tipsByCountry } from "./engine";
+import { engine, requestCapture, restartSharing, tipsByCountry } from "./engine";
 import * as sum from "./summaries";
 
 const status = computed(() => {
@@ -21,12 +22,41 @@ const status = computed(() => {
   if (!engine.streetclip.ready) return { tone: "bg-courbe", text: "Chargement du modèle local…" };
   return { tone: "bg-foret", text: "Prêt. Capture avec Super+Maj+G." };
 });
-const showSettings = ref(false);
+// Vues de la fenêtre : le coach, la carte en grand (niveau 3 et plus), les réglages.
+const view = ref<"coach" | "map" | "settings">("coach");
+const showSettings = computed(() => view.value === "settings");
 const level = computed(() => engine.helpLevel);
+const mapAvailable = computed(() => engine.map.enabled && level.value >= 3);
+watch(mapAvailable, (ok) => {
+  if (!ok && view.value === "map") view.value = "coach"; // carte masquée aux niveaux 1 et 2 : rien à dévoiler
+});
+// Nouvelles zones prêtes mais pas encore vues : un point sur l'onglet Carte (le travail de fond se voit).
+const mapUnseen = ref(false);
+watch(
+  () => [engine.current?.id, engine.current?.cloud.status],
+  () => {
+    if (engine.current?.cloud.status === "done" && view.value !== "map") mapUnseen.value = true;
+    if (engine.current?.cloud.status !== "done") mapUnseen.value = false;
+  },
+);
+watch(view, (v) => {
+  if (v === "map") mapUnseen.value = false;
+});
+// Barre d'onglets du bas : la navigation ; les niveaux d'aide, en haut, dosent l'aide.
+const tabs = computed(() => [
+  { id: "coach" as const, label: "Coach", disabled: false, hint: "" },
+  ...(engine.map.enabled
+    ? [{ id: "map" as const, label: "Carte", disabled: !mapAvailable.value || !engine.current,
+         hint: !mapAvailable.value ? "À partir du niveau 3 (Pays) : la carte dévoile les pays."
+           : engine.current ? "" : "Fais d'abord une capture." }]
+    : []),
+  { id: "settings" as const, label: "Réglages", disabled: false, hint: "" },
+]);
 </script>
 
 <template>
-  <div class="mx-auto flex min-h-screen max-w-xl flex-col px-4 py-4">
+  <!-- La carte profite de toute la largeur si la fenêtre est agrandie ; le coach reste en colonne lisible. -->
+  <div class="mx-auto flex min-h-screen flex-col px-4 pt-4" :class="view === 'map' ? 'max-w-none' : 'max-w-xl'">
     <header class="flex items-center gap-3 border-b border-courbe-fonce pb-3">
       <span class="size-2.5 shrink-0 rounded-full" :class="status.tone" aria-hidden="true" />
       <p class="min-w-0 flex-1 truncate text-[0.9rem] text-courbe" role="status">{{ status.text }}</p>
@@ -58,7 +88,11 @@ const level = computed(() => engine.helpLevel);
     </p>
 
     <main v-if="showSettings" class="flex-1">
-      <SettingsPanel @close="showSettings = false" />
+      <SettingsPanel />
+    </main>
+
+    <main v-else-if="view === 'map' && engine.current && mapAvailable" class="flex min-h-0 flex-1 flex-col pt-3">
+      <CoachMap :key="engine.current.id" :analysis="engine.current" :level="level" />
     </main>
 
     <main v-else-if="engine.current" class="flex-1">
@@ -117,23 +151,28 @@ const level = computed(() => engine.helpLevel);
       </p>
     </main>
 
-    <footer class="mt-6 flex items-center justify-between gap-3 border-t border-courbe-fonce pt-3 text-[0.85rem] text-courbe">
+    <nav
+      class="sticky bottom-0 z-[1100] -mx-4 mt-6 grid border-t border-courbe-fonce bg-encre px-2 pb-[env(safe-area-inset-bottom)]"
+      :style="{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }"
+      aria-label="Vues du coach"
+    >
       <button
+        v-for="t in tabs"
+        :key="t.id"
         type="button"
-        class="rounded-md px-2 py-1 text-papier underline decoration-courbe underline-offset-4 hover:decoration-papier"
-        @click="showSettings = !showSettings"
+        class="border-t-2 py-2.5 text-[0.95rem] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+        :class="view === t.id ? 'border-papier text-papier' : 'border-transparent text-courbe hover:text-papier'"
+        :aria-current="view === t.id ? 'page' : undefined"
+        :disabled="t.disabled"
+        :title="t.hint"
+        @click="view = t.id"
       >
-        {{ showSettings ? "Retour au coach" : "Réglages" }}
+        {{ t.label }}<span
+          v-if="t.id === 'map' && mapUnseen && !t.disabled"
+          class="ml-1.5 inline-block size-2 rounded-full bg-lac align-middle"
+          aria-label="nouvelles zones"
+        />
       </button>
-      <button
-        title="Autre navigateur, écran ou résolution"
-        type="button"
-        class="shrink-0 rounded-md px-2 py-1 text-papier underline decoration-courbe underline-offset-4 hover:decoration-papier disabled:opacity-50"
-        :disabled="!engine.connected || engine.busy || engine.capture.starting"
-        @click="reselectWindow"
-      >
-        Changer de fenêtre
-      </button>
-    </footer>
+    </nav>
   </div>
 </template>

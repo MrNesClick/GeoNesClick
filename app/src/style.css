@@ -63,3 +63,34 @@
     transition: none;
   }
 }
+
+/* Carte (Leaflet) aux couleurs du coach : fond d'encre et boutons de zoom sombres. */
+.leaflet-container {
+  background: var(--color-encre);
+  font-family: var(--font-ui);
+}
+.leaflet-bar a,
+.leaflet-bar a:hover {
+  background: var(--color-relief);
+  color: var(--color-papier);
+  border-bottom-color: var(--color-courbe-fonce);
+}
+.leaflet-bar {
+  border: 1px solid var(--color-courbe-fonce) !important;
+  box-shadow: none !important;
+}
+
+/* Étiquettes des zones probables sur la carte. */
+.leaflet-tooltip.ggc-zone {
+  background: var(--color-encre);
+  border: 1px solid var(--color-lac);
+  border-radius: 4px;
+  box-shadow: none;
+  color: var(--color-papier);
+  font-family: var(--font-ui);
+  font-weight: 700;
+  padding: 1px 6px;
+}
+.leaflet-tooltip.ggc-zone::before {
+  display: none;
+}

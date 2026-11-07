@@ -11,6 +11,7 @@ Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
   lookfor        « où regarder » recalculé pour une capture, après un verdict « Juste » / « Faux »
   (streetclip.similar : astuces Plonk It qui ressemblent à la vue, pour chaque pays candidat)
   tips_translated traductions des astuces affichées, arrivées après coup ({empreinte: texte})
+  cloud          zones probables de la vue pour la carte (nuage PLONK regroupé), toutes et pays par pays
   error          capture impossible
 Déclencheurs : POST /capture (bouton de l'interface) ou socket Unix (raccourci GNOME, voir trigger.py).
 """
@@ -37,6 +38,7 @@ from fastapi.responses import JSONResponse
 from PIL import Image
 from pydantic import BaseModel, Field
 
+from .borders import Borders
 from .capture import CaptureError, CaptureService, apply_crop_and_masks, prune_captures, save_png
 from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, progress
@@ -48,6 +50,7 @@ from .plonkit_ai import classify as classify_tips
 from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
+from .plonk import PlonkCloud, summarise
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
@@ -114,6 +117,10 @@ class Engine:
         self.plonkit_message = ""
         self.plonkit_task: asyncio.Task | None = None
         self.plonkit_index: TipIndex | None = None
+        self.plonk: PlonkCloud | None = None  # nuage de la carte (PLONK), chargé après StreetCLIP
+        self.plonk_message = "désactivé" if not cfg.plonk.enabled else "en attente de StreetCLIP"
+        self.plonk_task: asyncio.Task | None = None
+        self.borders: Borders | None = None  # frontières Natural Earth : pays des points, contours de la carte
 
     def load_metas(self) -> None:
         self.metas, self.metas_message = [], "désactivées"
@@ -139,6 +146,12 @@ class Engine:
             if self.streetclip:
                 self.streetclip.cfg = new.streetclip  # seul top_k est modifiable : pas de rechargement
             self.load_metas()
+            if self.plonk:
+                self.plonk.cfg = new.plonk  # pas et points : lus à chaque nuage
+            if new.plonk.enabled and self.plonk is None:
+                self.schedule_plonk()
+            elif not new.plonk.enabled:
+                self.plonk, self.plonk_message = None, "désactivé"  # libère la mémoire vidéo
             if new.plonkit.enabled and self.plonkit_status == "off":
                 self.plonkit_status = "absent"
                 self.schedule_plonkit(check=self.plonkit_due())
@@ -172,6 +185,12 @@ class Engine:
                 "enabled": self.cfg.plonkit.enabled, "status": self.plonkit_status, "message": self.plonkit_message,
                 "tips": len(self.plonkit_tips),
             },
+            "plonk": {"enabled": self.cfg.plonk.enabled, "ready": self.plonk is not None, "message": self.plonk_message},
+            "map": {
+                "enabled": self.cfg.map.enabled, "tile_url": self.cfg.map.tile_url,
+                "attribution": self.cfg.map.attribution, "attribution_url": self.cfg.map.attribution_url,
+                "tile_filter": self.cfg.map.tile_filter, "max_zoom": self.cfg.map.max_zoom,
+            },
             "countries": sorted(self.cfg.streetclip.countries.values()),
         }
 
@@ -204,13 +223,58 @@ class Engine:
         else:
             self.streetclip_message = "désactivé"
         await self.broadcast(self.state())
+        if self.cfg.plonk.enabled:
+            self.schedule_plonk()
         if self.cfg.plonkit.enabled:
             self.schedule_plonkit(check=self.plonkit_due())
 
     async def stop(self) -> None:
-        if self.plonkit_task:
-            self.plonkit_task.cancel()
+        for task in (self.plonkit_task, self.plonk_task):
+            if task:
+                task.cancel()
         await asyncio.to_thread(self.capture.stop)
+
+    # --- PLONK : nuage de la carte -----------------------------------------------------------------
+    def schedule_plonk(self) -> None:
+        if self.plonk_task and not self.plonk_task.done():
+            return
+        self.plonk_task = asyncio.create_task(self.load_plonk())
+
+    async def load_plonk(self) -> None:
+        """Charge PLONK (et les frontières) sur la carte graphique de StreetCLIP, dont il lit le vecteur."""
+        if self.streetclip is None:
+            self.plonk_message = "StreetCLIP est nécessaire au nuage de la carte"
+            await self.broadcast(self.state())
+            return
+        self.plonk_message = "chargement…"
+        await self.broadcast(self.state())
+        try:
+            if self.borders is None:
+                self.borders = await asyncio.to_thread(Borders)
+            cfg, device = self.cfg.plonk, self.streetclip.device
+            async with self.gpu_lock:
+                plonk = await asyncio.to_thread(PlonkCloud, cfg, device)
+            if self.cfg.plonk.enabled:
+                self.plonk, self.plonk_message = plonk, f"prêt ({device})"
+            else:  # désactivé pendant le chargement : on ne le garde pas
+                self.plonk_message = "désactivé"
+        except Exception as exc:  # poids absents hors ligne, mémoire vidéo, fichier de frontières…
+            self.plonk, self.plonk_message = None, f"indisponible : {type(exc).__name__}: {exc}"[:300]
+        await self.broadcast(self.state())
+
+    async def _cloud(self, capture_id: str, cls) -> None:
+        """Nuage PLONK de la vue, en arrière-plan après StreetCLIP : il ne retarde jamais l'aide."""
+        plonk, borders = self.plonk, self.borders
+        if plonk is None or borders is None:
+            return
+        try:
+            async with self.gpu_lock:
+                cloud = await asyncio.to_thread(plonk.sample, cls)
+            countries = await asyncio.to_thread(borders.countries_of, cloud.lat, cloud.lon)
+            message = {"type": "cloud", "id": capture_id, **summarise(cloud, countries, plonk.cfg)}
+        except Exception as exc:  # mémoire vidéo saturée… : la carte reste au niveau des pays
+            message = {"type": "cloud", "id": capture_id, "error": f"nuage indisponible ({type(exc).__name__})"}
+        await self.broadcast(message)
 
     # --- Plonk It ------------------------------------------------------------------------------
     @property
@@ -379,7 +443,7 @@ class Engine:
         if self.streetclip:
             try:
                 async with self.gpu_lock:
-                    scores, ms, emb = await asyncio.to_thread(self.streetclip.analyse, view)
+                    scores, ms, emb, cls = await asyncio.to_thread(self.streetclip.analyse, view)
             except Exception as exc:  # mémoire GPU saturée, pilote…
                 await self.broadcast({"type": "error", "message": f"Niveau 1 indisponible : {exc}"})
                 return {"ok": False, "error": str(exc)}
@@ -395,7 +459,12 @@ class Engine:
                 "scores": [s.__dict__ for s in scores],
                 "lookfor": [asdict(lf) for lf in self.look_for(pairs)],
                 "similar": similar, "translating": bool(lang and missing),
+                "cloud": self.plonk is not None and cls is not None,  # nuage annoncé : la carte l'attend
             })
+            if self.plonk is not None and cls is not None:
+                task = asyncio.create_task(self._cloud(capture_id, cls))
+                self.background.add(task)
+                task.add_done_callback(self.background.discard)
             if lang and missing:  # en parallèle, comme le niveau 2 : l'anglais s'affiche d'abord
                 # Petits lots simultanés (~10 s chacun) : chaque traduction s'affiche dès qu'elle arrive.
                 for start in range(0, len(missing), TRANSLATE_BATCH):
@@ -590,6 +659,13 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
         if not engine.schedule_plonkit(check=True):
             raise HTTPException(409, "mise à jour déjà en cours")
         return {"ok": True}
+
+    @app.get("/map/countries")
+    async def map_countries() -> JSONResponse:
+        """Contours des pays (Natural Earth 1:50m, domaine public), avec leur seul code ISO."""
+        if engine.borders is None:
+            engine.borders = await asyncio.to_thread(Borders)
+        return JSONResponse(engine.borders.geojson, headers={"Cache-Control": "max-age=86400"})
 
     @app.get("/settings")
     async def get_settings() -> dict[str, Any]:

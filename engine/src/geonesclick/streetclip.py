@@ -36,23 +36,30 @@ class StreetClip:
             self.text_emb = emb / emb.norm(dim=-1, keepdim=True)
 
     def predict(self, img: Image.Image) -> tuple[list[CountryScore], float]:
-        scores, ms, _ = self.analyse(img)
+        scores, ms, _, _ = self.analyse(img)
         return scores, ms
 
-    def analyse(self, img: Image.Image) -> tuple[list[CountryScore], float, np.ndarray]:
-        """Top des pays, durée (ms) et vecteur normalisé de l'image (réutilisé pour les astuces Plonk It)."""
+    def analyse(self, img: Image.Image) -> tuple[list[CountryScore], float, np.ndarray, torch.Tensor]:
+        """Top des pays, durée (ms), vecteur normalisé de l'image (astuces Plonk It) et jeton [CLS] (PLONK).
+
+        Une seule passe du ViT : get_image_features() revient à projeter le pooler_output du vision_model,
+        et PLONK lit le jeton [CLS] de last_hidden_state de cette même passe (mesuré : cosinus 0,99998 entre
+        notre fp16 et le fp32 de son entraînement, spikes/plonk_bench.py).
+        """
         t0 = time.perf_counter()
         with torch.inference_mode():
             img_in = self.processor(images=img, return_tensors="pt").to(self.device, self.model.dtype)
-            emb = self.model.get_image_features(**img_in).pooler_output
+            vis = self.model.vision_model(pixel_values=img_in["pixel_values"])
+            emb = self.model.visual_projection(vis.pooler_output)
             emb = emb / emb.norm(dim=-1, keepdim=True)
             probs = (self.model.logit_scale.exp() * emb @ self.text_emb.T).softmax(dim=-1)[0].float()
+            cls = vis.last_hidden_state[:, 0]
         top = probs.topk(min(self.cfg.top_k, len(self.names)))
         scores = [
             CountryScore(self.names[i], self.cfg.countries[self.names[i]], round(p, 4))
             for p, i in zip(top.values.tolist(), top.indices.tolist(), strict=True)
         ]
-        return scores, (time.perf_counter() - t0) * 1000, emb[0].float().cpu().numpy()
+        return scores, (time.perf_counter() - t0) * 1000, emb[0].float().cpu().numpy(), cls
 
     def encode_texts(self, texts: list[str], batch: int = 64) -> np.ndarray:
         """Vecteurs normalisés de textes (tronqués aux 77 jetons de CLIP), par lots."""

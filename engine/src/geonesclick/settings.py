@@ -3,7 +3,8 @@
 Seuls les réglages qui s'appliquent à chaud sont exposés. Par sécurité, l'adresse de l'API
 (vision.base_url), le nom de la variable de la clé, les origines autorisées et le port ne sont
 modifiables que dans le fichier : une requête qui contournerait les contrôles ne pourrait pas
-rediriger la clé API vers un autre serveur.
+rediriger la clé API vers un autre serveur. De même, le serveur de tuiles de la carte, son attribution
+et le filtre CSS ne se changent que dans le fichier (le serveur doit en plus être autorisé dans la CSP).
 """
 
 from __future__ import annotations
@@ -29,6 +30,8 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     ),
     "plonkit": ("enabled", "refresh_days", "similar_tips", "similar_per_country", "ai_classify", "translate"),
     "streetclip": ("top_k",),
+    "plonk": ("enabled", "steps", "points"),
+    "map": ("enabled", "max_zoom"),
     "vision": ("enabled", "model", "thinking", "timeout_s", "max_tokens", "temperature", "max_side_px"),
 }
 

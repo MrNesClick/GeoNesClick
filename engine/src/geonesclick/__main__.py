@@ -12,9 +12,12 @@ def _hf_model_cached(model_id: str) -> bool:
     return snapshots.is_dir() and any(snapshots.iterdir())
 
 
-# Le niveau 1 doit fonctionner hors ligne et ne rien envoyer sur le réseau : une fois le modèle en cache,
-# on active le mode hors ligne AVANT d'importer transformers (il lit la variable à l'import).
-if _hf_model_cached(load_config().streetclip.model):
+# Le niveau 1 doit fonctionner hors ligne et ne rien envoyer sur le réseau : une fois les modèles locaux en
+# cache (StreetCLIP, et PLONK s'il est activé), on active le mode hors ligne AVANT d'importer transformers
+# (il lit la variable à l'import). Tant qu'un modèle manque, il reste possible de le télécharger.
+_cfg = load_config()
+_models = [_cfg.streetclip.model] + ([_cfg.plonk.model] if _cfg.plonk.enabled else [])
+if all(_hf_model_cached(m) for m in _models):
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
 from .server import main  # noqa: E402

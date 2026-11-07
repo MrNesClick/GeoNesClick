@@ -158,6 +158,30 @@ class StreetClipConfig(BaseModel):
         return self
 
 
+class PlonkConfig(BaseModel):
+    # Nuage de positions probables pour la carte (PLONK sur le vecteur de StreetCLIP), jamais un vote de pays.
+    enabled: bool
+    model: str
+    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # commit Hugging Face des poids : version mesurée, figée
+    steps: int = Field(ge=10, le=250)  # pas du flot : 50 suffisent (mesuré), 25 dégradent le nuage
+    points: int = Field(ge=64, le=2048)
+    zone_share: float = Field(gt=0.2, le=1.0)  # part des points (les plus denses) que les zones englobent
+    zone_link_km: float = Field(ge=20, le=1000)  # deux points plus proches que ça sont dans la même zone
+    zone_min_part: float = Field(ge=0.01, le=0.5)  # part minimale des points pour qu'une zone soit montrée
+
+
+class MapConfig(BaseModel):
+    # Carte du coach (niveau 3 et plus) : pays probables, nuage PLONK. Fond de carte en ligne.
+    enabled: bool
+    # Serveur de tuiles. Un autre serveur doit AUSSI être autorisé dans la CSP (img-src) de
+    # app/src-tauri/tauri.conf.json ; sinon ses tuiles sont bloquées.
+    tile_url: str = Field(pattern=r"^https://[^\s\"'<>]+\{z\}[^\s\"'<>]*$")
+    attribution: str = Field(min_length=1, max_length=200)  # texte simple, affiché en permanence sur la carte
+    attribution_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
+    tile_filter: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")  # filtre CSS des tuiles (thème sombre)
+    max_zoom: int = Field(ge=2, le=19)
+
+
 class VisionConfig(BaseModel):
     enabled: bool
     base_url: str
@@ -179,6 +203,8 @@ class Config(BaseModel):
     metas: MetasConfig
     plonkit: PlonkitConfig
     streetclip: StreetClipConfig
+    plonk: PlonkConfig
+    map: MapConfig
     vision: VisionConfig
 
 

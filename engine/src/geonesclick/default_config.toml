@@ -179,6 +179,35 @@ Ukraine = "UA"
 Uruguay = "UY"
 Vietnam = "VN"
 
+[plonk]
+# Nuage des positions probables de la vue, dessiné sur la carte (niveau 3 et plus). PLONK (MIT) lit le vecteur
+# déjà calculé par StreetCLIP : +119 Mo de mémoire vidéo, ~0,75 s en arrière-plan. Il ne sert qu'à la carte :
+# mesuré, il ne choisit pas mieux le pays que StreetCLIP. Poids téléchargés une fois (144 Mo).
+enabled = true
+model = "nicolas-dufour/PLONK_OSV_5M"
+revision = "e23229f4dd91d52560e8827f5bb2c68257fa162f"  # version des poids mesurée (README) ; à changer avec model
+steps = 50               # pas du flot (10 à 250) : 50 suffisent, en dessous de 25 le nuage se dégrade
+points = 512             # points tirés (64 à 2048)
+# Zones dessinées sur la carte : contours arrondis autour des points les plus denses du nuage.
+zone_share = 0.8         # les zones englobent les 80 % de points les plus denses
+zone_link_km = 150       # deux points à moins de 150 km appartiennent à la même zone
+zone_min_part = 0.05     # une zone doit réunir au moins 5 % des points pour être montrée
+
+[map]
+# Carte du coach, à partir du niveau 3 : pays probables colorés, pays écartés grisés, nuage PLONK.
+# Le fond vient d'un serveur de tuiles EN LIGNE : il voit ton adresse IP et les zones affichées. Sans réseau,
+# la carte garde les pays et le nuage, sans fond.
+enabled = true
+# Règles d'OpenStreetMap : https://operations.osmfoundation.org/policies/tiles/ (attribution visible, pas de
+# téléchargement à l'avance). Autre serveur : l'autoriser aussi dans la CSP (img-src) de
+# app/src-tauri/tauri.conf.json, sinon ses tuiles sont bloquées.
+tile_url = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+attribution = "© OpenStreetMap"
+attribution_url = "https://www.openstreetmap.org/copyright"
+# Filtre CSS appliqué aux tuiles pour le thème sombre du coach ("" = carte d'origine).
+tile_filter = "invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9)"
+max_zoom = 10            # zoom maximal (2 à 19) : le nuage est précis à ~100 km, inutile de charger les rues
+
 [vision]
 enabled = true
 base_url = "https://integrate.api.nvidia.com/v1"

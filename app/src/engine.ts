@@ -100,6 +100,33 @@ export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }
     .filter((c) => c.tips.length);
 }
 
+/** Zone où la vue se trouve probablement : contour arrondi autour des positions PLONK les plus denses. */
+export interface Zone {
+  /** Contour [latitude, longitude] en degrés. */
+  polygon: [number, number][];
+  /** Part des positions du nuage dans cette zone (0 à 1). */
+  part: number;
+  width_km: number;
+  height_km: number;
+  /** Pays principaux de la zone et leur part dans la zone (au plus deux). */
+  countries: [string, number][];
+}
+
+/** Nuage PLONK de la vue, résumé en zones par le moteur (une piste pour la carte, jamais un vote de pays). */
+export interface Cloud {
+  zones: Zone[];
+  /** Les mêmes zones calculées pays par pays (pays d'au moins 5 % des positions), pour suivre une preuve. */
+  zones_by_country: Record<string, Zone[]>;
+  ms: number;
+}
+
+/** Zones à dessiner : seules celles du pays prouvé quand la preuve est forte (les autres pays sont écartés). */
+export function visibleZones(a: Analysis): Zone[] {
+  if (a.cloud.status !== "done") return [];
+  const certain = certainProof(a);
+  return certain ? (a.cloud.data.zones_by_country[certain.country] ?? []) : a.cloud.data.zones;
+}
+
 export interface Analysis {
   id: string;
   at: string;
@@ -114,6 +141,8 @@ export interface Analysis {
   translation: "pending" | "done" | string | null;
   clipMs: number | null;
   labelled: { country: string; guessed: string; found: boolean | null } | null;
+  /** Nuage de la carte : off (PLONK désactivé ou absent), en cours, prêt, ou en échec. */
+  cloud: { status: "off" } | { status: "pending" } | { status: "done"; data: Cloud } | { status: "error"; error: string };
   vision:
     | { status: "off" }
     | { status: "pending"; model: string }
@@ -129,6 +158,8 @@ export const engine = reactive({
   metas: { count: 0, message: "", judge: true },
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
+  plonk: { enabled: false, ready: false, message: "" },
+  map: { enabled: false, tile_url: "", attribution: "", attribution_url: "", tile_filter: "", max_zoom: 10 },
   countries: [] as string[],
   /** Niveau d'aide : 1 où regarder, 2 + ce que voit l'IA, 3 + pays et indices, 4 + synthèse de la réponse. */
   helpLevel: 4,
@@ -149,6 +180,8 @@ type Message =
       metas: typeof engine.metas;
       dataset: typeof engine.dataset;
       plonkit: typeof engine.plonkit;
+      plonk: typeof engine.plonk;
+      map: typeof engine.map;
       countries: string[];
       help_level: number;
       trust_proof: boolean;
@@ -162,7 +195,9 @@ type Message =
       lookfor: LookFor[];
       similar: Record<string, SimilarTip[]>;
       translating: boolean;
+      cloud: boolean;
     }
+  | ({ type: "cloud"; id: string } & (Cloud | { error: string }))
   | { type: "tips_translated"; id: string; translations: Record<string, string>; error?: string }
   | { type: "vision_pending"; id: string; model: string }
   | { type: "vision"; id: string; model: string; seconds: number; fiche: Fiche }
@@ -181,6 +216,8 @@ function handle(msg: Message) {
       engine.metas = msg.metas;
       engine.dataset = msg.dataset;
       engine.plonkit = msg.plonkit;
+      engine.plonk = msg.plonk;
+      engine.map = msg.map;
       engine.countries = msg.countries;
       engine.helpLevel = msg.help_level;
       engine.trustProof = msg.trust_proof;
@@ -199,6 +236,7 @@ function handle(msg: Message) {
         translation: null,
         clipMs: null,
         labelled: null,
+        cloud: { status: "off" },
         vision: engine.vision.enabled ? { status: "pending", model: engine.vision.model } : { status: "off" },
       };
       break;
@@ -209,6 +247,12 @@ function handle(msg: Message) {
         cur.similar = msg.similar;
         cur.translation = msg.translating ? "pending" : null;
         cur.clipMs = msg.ms;
+        cur.cloud = msg.cloud ? { status: "pending" } : { status: "off" };
+      }
+      break;
+    case "cloud":
+      if (cur?.id === msg.id) {
+        cur.cloud = "error" in msg ? { status: "error", error: msg.error } : { status: "done", data: msg };
       }
       break;
     case "tips_translated":
@@ -333,6 +377,27 @@ export function markdownSegments(md: string): { text: string; bold: boolean }[] 
 /** Verdict du joueur sur un indice de l'amorce ; le moteur l'écrit dans mes-metas.toml. */
 export const judgeHint = (category: string, hint: string, verdict: "right" | "wrong") =>
   request("/metas/judge", { category, hint, verdict, id: engine.current?.id ?? "" });
+
+/** Contours des pays (Natural Earth, servis par le moteur), chargés une seule fois. */
+let outlines: Promise<GeoJSON.FeatureCollection | null> | null = null;
+export function countryOutlines(): Promise<GeoJSON.FeatureCollection | null> {
+  outlines ??= getJSON<GeoJSON.FeatureCollection>("/map/countries").then((g) => {
+    if (!g) outlines = null; // moteur pas encore prêt : on réessaiera à la prochaine carte
+    return g;
+  });
+  return outlines;
+}
+
+/** Ouvre la page d'attribution du fond de carte (seule l'adresse OpenStreetMap est autorisée par Tauri). */
+export async function openAttribution() {
+  const url = engine.map.attribution_url;
+  if (!url.startsWith("https://")) return;
+  try {
+    await openUrl(url);
+  } catch {
+    engine.error = "Impossible d'ouvrir le navigateur.";
+  }
+}
 
 // --- Pays : noms français et drapeaux ------------------------------------------------------------
 const regionNames = new Intl.DisplayNames(["fr"], { type: "region" });
