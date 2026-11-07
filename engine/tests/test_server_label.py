@@ -79,3 +79,43 @@ def test_confusions_can_be_hidden(setup):
     engine.cfg.dataset.max_confusions = 0
     res = client.post("/label", json={"id": CAPTURE_ID, "country": "RS", "guessed": "HR"}, headers=ORIGIN)
     assert res.json()["progress"]["confusions"] == []
+
+
+# --- vrai lieu : lien Google Maps de l'écran de fin (jamais ouvert, seulement lu) ---------------------
+from geonesclick.dataset import coords_of  # noqa: E402
+
+
+@pytest.mark.parametrize("text, expected", [
+    ("https://www.google.com/maps/@54.6512,43.2276,3a,75y,90t/data=!3m6", (54.6512, 43.2276)),
+    ("https://www.google.com/maps?q&layer=c&cbll=55.2724,10.1048&cbp=11,0,0,0,0", (55.2724, 10.1048)),
+    ("https://www.google.com/maps/place/X/@55.0,10.0,15z/data=!3d55.27!4d10.10", (55.27, 10.10)),
+    ("https://www.google.com/maps/search/?api=1&query=-33.86%2C151.21", (-33.86, 151.21)),
+    ("  43.4883, -0.7727 ", (43.4883, -0.7727)),
+    ("https://maps.app.goo.gl/AbCdEf", None),  # lien court : il faudrait l'ouvrir, on ne le fait pas
+    ("@95.0,10.0", None),
+])
+def test_coordinates_are_read_from_the_link(text, expected):
+    assert coords_of(text) == expected
+
+
+def test_label_with_a_link_stores_the_true_place_and_the_round(setup):
+    import json
+
+    client, engine, ds = setup
+    engine.recent[CAPTURE_ID].update(scores=[("RS", 0.6)], marks=[{"n": 1, "status": "done", "text": ["Ниш 12"]}])
+    link = "https://www.google.com/maps/@43.3209,21.8958,3a"  # Niš, Serbie
+    assert client.post("/label/preview", json={"link": link}, headers=ORIGIN).json()["country"] == "RS"
+    res = client.post("/label", json={"id": CAPTURE_ID, "link": link, "guessed": "HR"}, headers=ORIGIN)
+    assert res.status_code == 200
+    text = (ds / "labels.toml").read_text()
+    assert 'country = "RS"' in text and "lat = 43.3209" in text
+    round_ = json.loads((ds / "rounds" / f"{CAPTURE_ID}.json").read_text())
+    assert round_["marks"] == [{"n": 1, "text": ["Ниш 12"], "object": None, "unreadable": None}]
+
+
+def test_link_and_chosen_country_must_agree(setup):
+    client, *_ = setup
+    res = client.post("/label", json={"id": CAPTURE_ID, "country": "HR", "link": "43.3209, 21.8958"}, headers=ORIGIN)
+    assert res.status_code == 422 and "RS" in res.json()["detail"]
+    res = client.post("/label/preview", json={"link": "https://maps.app.goo.gl/x"}, headers=ORIGIN)
+    assert res.status_code == 422

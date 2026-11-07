@@ -3,21 +3,46 @@
 // surtout tes confusions (pays réel pris pour un autre) avec les metas qui les séparent.
 import { computed, ref, watch } from "vue";
 import type { Analysis, Progress } from "../engine";
-import { countryName, engine, flag, labelCapture } from "../engine";
+import { countryName, engine, flag, fr, labelCapture, previewTruth } from "../engine";
 
 const props = defineProps<{ analysis: Analysis; countries: string[]; progress: Progress | null }>();
 
 const country = ref("");
 const guessed = ref("");
 const found = ref<boolean | null>(null); // si le pays répondu n'est pas demandé (réglage)
+// Lien Google Maps du vrai lieu (écran de fin de GeoGuessr) : le banc mesure alors région et précision en km.
+const link = ref("");
+const truth = ref<{ lat: number; lon: number; country: string; region_name: string } | null>(null);
+const truthError = ref("");
+let timer: ReturnType<typeof setTimeout> | undefined;
 watch(
   () => props.analysis.id,
   () => {
     country.value = "";
     guessed.value = "";
     found.value = null;
+    link.value = "";
+    truth.value = null;
+    truthError.value = "";
   },
 );
+watch(link, (value) => {
+  clearTimeout(timer);
+  truth.value = null;
+  truthError.value = "";
+  if (!value.trim()) return;
+  timer = setTimeout(async () => {
+    const r = await previewTruth(value);
+    if (value !== link.value) return; // une saisie plus récente l'emporte
+    if ("error" in r) truthError.value = r.error;
+    else {
+      truth.value = r;
+      if (r.country && props.countries.includes(r.country)) country.value = r.country;
+    }
+  }, 300);
+});
+const coords = (lat: number, lon: number) =>
+  `${fr(Math.abs(lat))}° ${lat >= 0 ? "N" : "S"}, ${fr(Math.abs(lon))}° ${lon >= 0 ? "E" : "O"}`;
 
 const sorted = computed(() =>
   [...props.countries].sort((a, b) => countryName(a).localeCompare(countryName(b), "fr")),
@@ -33,8 +58,9 @@ const toWork = computed(() =>
 
 async function save() {
   if (!country.value) return;
-  if (engine.dataset.ask_guessed) await labelCapture(props.analysis.id, country.value, guessed.value);
-  else await labelCapture(props.analysis.id, country.value, "", found.value);
+  const url = truth.value ? link.value : "";
+  if (engine.dataset.ask_guessed) await labelCapture(props.analysis.id, country.value, guessed.value, null, url);
+  else await labelCapture(props.analysis.id, country.value, "", found.value, url);
 }
 
 const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 py-2 text-papier";
@@ -57,6 +83,19 @@ const field = "mt-1 w-full rounded-md border border-courbe-fonce bg-relief px-3 
     </p>
 
     <form v-else class="space-y-3" @submit.prevent="save">
+      <label class="block">
+        <span class="text-[0.85rem] text-courbe">Lien du vrai lieu (écran de fin du jeu → Google Maps), facultatif</span>
+        <input v-model="link" type="url" autocomplete="off" :class="field" placeholder="https://www.google.com/maps/@…" />
+        <span v-if="truth" class="mt-1 block text-[0.85rem] text-papier">
+          → {{ truth.country ? `${flag(truth.country)} ${countryName(truth.country)}` : "en mer ?" }}<template
+            v-if="truth.region_name"> › {{ truth.region_name }}</template> · {{ coords(truth.lat, truth.lon) }}
+        </span>
+        <span v-else-if="truthError" class="mt-1 block text-[0.85rem] text-alerte">{{ truthError }}</span>
+        <span v-else class="mt-1 block text-[0.8rem] text-courbe">
+          Le coach lit seulement les coordonnées du lien (il ne l'ouvre pas) : le banc mesure alors aussi la région
+          et la précision de la position.
+        </span>
+      </label>
       <label class="block">
         <span class="text-[0.85rem] text-courbe">Pays de la bonne réponse</span>
         <select v-model="country" :class="field">

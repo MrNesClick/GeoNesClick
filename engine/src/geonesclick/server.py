@@ -49,7 +49,7 @@ from .capture import CaptureError, CaptureService, apply_crop_and_masks, data_ur
 from .locks_engine import LockRequest, LocksMixin, PlaceSearchRequest, RejectRequest
 from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
-from .dataset import Dataset, DatasetError, progress
+from .dataset import Dataset, DatasetError, coords_of, progress
 from .marks import DeleteRequest, FrameRequest, MarksRequest, uses
 from .places import Places
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
@@ -76,10 +76,15 @@ class ModelTestRequest(BaseModel):
 
 class LabelRequest(BaseModel):
     id: str = Field(max_length=32)
-    country: str = Field(min_length=2, max_length=2)
+    country: str = Field(default="", max_length=2)  # facultatif si le lien donne la position
     found: bool | None = None  # ignoré si « guessed » est donné : il s'en déduit
     guessed: str = Field(default="", max_length=2)  # pays répondu par le joueur, facultatif
     area: str = Field(default="", max_length=200)
+    link: str = Field(default="", max_length=2000)  # lien Google Maps du vrai lieu (jamais ouvert : lu seulement)
+
+
+class TruthRequest(BaseModel):
+    link: str = Field(min_length=3, max_length=2000)
 
 
 class ClearRequest(BaseModel):
@@ -688,10 +693,44 @@ class Engine(MarksMixin, LocksMixin):
             await self.broadcast({"type": "lookfor", "id": req.id, "lookfor": lookfor})
         return {"ok": True}
 
+    async def truth(self, link: str) -> dict[str, Any]:
+        """Vrai lieu d'après un lien Google Maps : position, pays (frontières locales), région (lieu le plus proche)."""
+        found = coords_of(link)
+        if found is None:
+            raise HTTPException(422, "pas de coordonnées dans ce lien : colle le lien complet (pas un lien court "
+                                     "maps.app.goo.gl), ou « latitude, longitude »")
+        lat, lon = found
+        if self.borders is None:
+            self.borders = await asyncio.to_thread(Borders)
+        [country] = await asyncio.to_thread(self.borders.countries_of, [lat], [lon])
+        region, region_name = "", ""
+        if country and self.places is not None:
+            near = await asyncio.to_thread(self.places.around, lat, lon, 30.0, country)
+            region = next((r for _, _, r, *_ in near if r), "")
+            region_name = await asyncio.to_thread(self.places.region_name, region) if region else ""
+        return {"lat": lat, "lon": lon, "country": country, "region": region, "region_name": region_name}
+
+    def round_data(self, entry: dict[str, Any]) -> dict[str, Any]:
+        """Ce que le coach avait lu et conclu pendant la manche : rejoué ensuite par le banc (bench.py)."""
+        locks = entry.get("locks")
+        return {
+            "at": entry.get("at"),
+            "scores": [list(s) for s in (entry.get("scores") or [])[:5]],
+            "marks": [{k: m.get(k) for k in ("n", "text", "object", "unreadable")}
+                      for m in entry.get("marks", []) if m.get("status") == "done"],
+            "verdict": {k: (entry.get("verdict") or {}).get(k) for k in ("country", "level", "location")},
+            "locks": {**locks.as_dict(), "events": list(locks.events)} if locks else None,
+        }
+
     async def label(self, req: LabelRequest) -> dict[str, Any]:
         if self.dataset is None:
             raise HTTPException(409, "jeu de test désactivé dans la configuration")
         country, guessed = req.country.upper(), req.guessed.upper()
+        where = await self.truth(req.link) if req.link.strip() else None
+        if where and where["country"]:
+            if country and country != where["country"]:
+                raise HTTPException(422, f"le lien tombe en {where['country']}, pas en {country}")
+            country = where["country"]
         known = set(self.cfg.streetclip.countries.values())
         if country not in known or (guessed and guessed not in known):
             raise HTTPException(422, "pays inconnu")
@@ -702,10 +741,13 @@ class Engine(MarksMixin, LocksMixin):
             saved = await asyncio.to_thread(
                 self.dataset.add, req.id, entry["frame"], country,
                 found=req.found, predicted=entry["predicted"], guessed=guessed, area=req.area,
+                lat=where["lat"] if where else None, lon=where["lon"] if where else None,
+                region=where["region"] if where else "", round_data=self.round_data(entry),
             )
         except DatasetError as exc:
             raise HTTPException(422, str(exc)) from exc
-        await self._log(req.id, label={"country": country, "guessed": guessed, "found": saved.found, "area": req.area})
+        await self._log(req.id, label={"country": country, "guessed": guessed, "found": saved.found, "area": req.area,
+                                       "lat": saved.lat, "lon": saved.lon, "region": saved.region})
         prog = await self.progress()
         await self.broadcast({"type": "labelled", "id": req.id, "country": country, "guessed": guessed,
                               "found": saved.found, "progress": prog})
@@ -884,6 +926,11 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def label(req: LabelRequest) -> dict[str, Any]:
         """« C'était où ? » : ajoute la capture au jeu de test avec le pays réel."""
         return await engine.label(req)
+
+    @app.post("/label/preview")
+    async def label_preview(req: TruthRequest) -> dict[str, Any]:
+        """Ce que dit le lien collé dans « C'était où ? » (pays, région, position), avant d'enregistrer."""
+        return await engine.truth(req.link)
 
     @app.post("/metas/judge")
     async def judge(req: JudgeRequest) -> dict[str, Any]:

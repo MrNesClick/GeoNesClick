@@ -17,6 +17,16 @@ from pathlib import Path
 from PIL import Image
 
 CAPTURE_ID = re.compile(r"^\d{8}-\d{6}-\d{3}$")  # format produit par Engine.analyse()
+# Coordonnées du vrai lieu dans un lien Google Maps (écran de fin de GeoGuessr) ou tapées « 54.65, 43.22 ».
+# Le lien n'est JAMAIS ouvert : on lit seulement ses chiffres. Du plus précis au moins précis.
+_LAT, _LON = r"(-?\d{1,2}(?:\.\d+)?)", r"(-?\d{1,3}(?:\.\d+)?)"
+COORDS = [re.compile(p) for p in (
+    rf"!3d{_LAT}!4d{_LON}",  # repère d'un lieu
+    rf"[?&](?:cbll|viewpoint)={_LAT}(?:,|%2C){_LON}",  # position de la photo Street View
+    rf"@{_LAT},{_LON}",  # position de la vue
+    rf"[?&](?:q|query|ll)={_LAT}(?:,|%2C)\s*{_LON}",
+    rf"^\s*{_LAT}\s*[,;]\s*{_LON}\s*$",
+)]
 HEADER = (
     "# Jeu de test étiqueté. Les images (dataset/images/) restent locales et ne sont pas versionnées.\n"
     "# Une entrée par capture : pays réel (ISO 3166-1 alpha-2), zone si connue, mode de jeu et mise en page.\n"
@@ -25,6 +35,17 @@ HEADER = (
 
 class DatasetError(ValueError):
     pass
+
+
+def coords_of(text: str) -> tuple[float, float] | None:
+    """(latitude, longitude) lues dans un lien Google Maps ou « lat, lon » ; None si absentes ou impossibles."""
+    for pattern in COORDS:
+        found = pattern.search(text.strip())
+        if found:
+            lat, lon = float(found.group(1)), float(found.group(2))
+            if -90 <= lat <= 90 and -180 <= lon <= 180 and (lat, lon) != (0.0, 0.0):
+                return lat, lon
+    return None
 
 
 @dataclass
@@ -37,10 +58,13 @@ class Label:
     found: bool | None = None  # le joueur avait-il trouvé le pays ?
     predicted: str = ""  # premier pays proposé par StreetCLIP au moment de la capture
     guessed: str = ""  # pays répondu par le joueur ; s'il est connu, « found » en découle
+    lat: float | None = None  # vrai lieu (lien Google Maps de l'écran de fin) : le banc mesure l'erreur en km
+    lon: float | None = None
+    region: str = ""  # code GeoNames de sa région (« RU.46 »), déduit de la position
 
 
-def _toml_value(value: str | bool) -> str:
-    # Une chaîne ou un booléen JSON est une valeur TOML valide (mêmes échappements, true/false).
+def _toml_value(value: str | bool | float) -> str:
+    # Une chaîne, un nombre ou un booléen JSON est une valeur TOML valide (mêmes échappements, true/false).
     return json.dumps(value, ensure_ascii=False)
 
 
@@ -49,6 +73,7 @@ class Dataset:
         self.directory = directory
         self.images = directory / "images"
         self.labels_file = directory / "labels.toml"
+        self.rounds = directory / "rounds"  # une manche par fichier : marques lues, conclusion, choix du joueur
         self._lock = threading.Lock()
 
     def labels(self) -> list[Label]:
@@ -67,6 +92,10 @@ class Dataset:
         guessed: str = "",
         area: str = "",
         mode: str = "classique",
+        lat: float | None = None,
+        lon: float | None = None,
+        region: str = "",
+        round_data: dict | None = None,
     ) -> Label:
         """Enregistre (ou ré-étiquette) une capture. Lève DatasetError si l'identifiant est invalide."""
         if not CAPTURE_ID.fullmatch(capture_id):
@@ -82,10 +111,16 @@ class Dataset:
             found=found,
             predicted=predicted,
             guessed=guessed,
+            lat=round(lat, 6) if lat is not None else None,
+            lon=round(lon, 6) if lon is not None else None,
+            region=region,
         )
         with self._lock:
             self.images.mkdir(parents=True, exist_ok=True)
             frame.save(self.images / label.file)
+            if round_data is not None:  # ce que le coach avait lu et conclu : le corpus du banc (bench.py)
+                self.rounds.mkdir(parents=True, exist_ok=True)
+                (self.rounds / f"{capture_id}.json").write_text(json.dumps(round_data, ensure_ascii=False, indent=1))
             entries = [e for e in self.labels() if e.file != label.file] + [label]
             blocks = [
                 "[[capture]]\n"

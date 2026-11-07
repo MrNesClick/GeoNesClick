@@ -617,8 +617,21 @@ export const removeMark = (id: string, n: number) => request("/marks/remove", { 
 export const restartSharing = () => request("/capture/restart");
 export const reselectWindow = () => request("/capture/reselect");
 /** « C'était où ? » : pays réel, et pays répondu (vide si tu ne sais plus) ou simple « trouvé ? ». */
-export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null) =>
-  request("/label", { id, country, guessed, found });
+export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null, link = "") =>
+  request("/label", { id, country, guessed, found, link });
+/** Vrai lieu lu dans un lien Google Maps (jamais ouvert) : position, pays, région ; ou la raison du refus. */
+export async function previewTruth(link: string): Promise<
+  { lat: number; lon: number; country: string; region: string; region_name: string } | { error: string }> {
+  try {
+    const res = await fetch(ENGINE_URL + "/label/preview", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ link }),
+    });
+    const body = await res.json().catch(() => ({}));
+    return res.ok ? body : { error: typeof body.detail === "string" ? body.detail : `refusé (${res.status})` };
+  } catch {
+    return { error: "le moteur ne répond pas" };
+  }
+}
 export const refreshPlonkit = () => request("/plonkit/refresh");
 /** Verrouille un pays, une région ou une ville pour la capture (ou accepte la ville proposée). */
 export const setLock = (id: string, lock: Pick<Lock, "level" | "country"> & Partial<Lock>) =>

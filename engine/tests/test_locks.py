@@ -443,3 +443,29 @@ def test_a_short_rough_radius_fixes_the_region(bearn):
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
     assert verdict["location"]["kind"] == "rough" and verdict["location"]["radius_km"] == 3
     assert last_locks(sent)["held"]["region"]["region"] == "FR.75"
+
+
+# --- banc de relecture : rejoue le corpus dans les règles actuelles -----------------------------------
+def test_bench_replays_rounds_and_counts_false_certainties(tmp_path, monkeypatch, index):
+    import json as _json
+
+    from geonesclick import bench
+    from geonesclick.config import load_config
+    from geonesclick.dataset import Dataset
+    from PIL import Image
+
+    cfg = load_config(tmp_path / "absent.toml")
+    cfg.dataset.directory = str(tmp_path / "ds")
+    ds = Dataset(cfg.dataset.path)
+    frame = Image.new("RGB", (8, 8))
+    good = {"marks": [{"n": 1, "text": SIGN_KM}], "scores": [["FR", 0.6]]}
+    ds.add("20261107-190000-001", frame, "FR", lat=43.39, lon=-0.86, region="FR.75", round_data=good)
+    ds.add("20261107-190000-002", frame, "BE", lat=50.85, lon=4.35, round_data=good)  # en vérité en Belgique
+    ds.add("20261107-190000-003", frame, "FR", round_data={"marks": [], "scores": []})
+    monkeypatch.setattr(bench, "open_places", lambda _cfg: index)
+    rounds = {r.id[-1]: r for r in bench.run(cfg)}
+    assert (rounds["1"].verdict, rounds["1"].region, rounds["1"].promise) == ("juste", "juste", "tenue")
+    assert rounds["2"].verdict == "FAUX" and rounds["2"].level == "certain"
+    s = bench.summary(list(rounds.values()))
+    assert s["FAUSSES CERTITUDES"] >= 1 and s["avec marques"] == 2 and s["manches"] == 3
+    assert _json.loads(_json.dumps(bench.summary(list(rounds.values()))))  # sortie --json possible

@@ -515,6 +515,17 @@ Les bancs sont dans `engine/spikes/` et se lancent depuis `engine/` :
 | `streetclip_tta.py` | moyenne sur plusieurs recadrages | `.venv/bin/python spikes/streetclip_tta.py` |
 | `search_bench.py` | moteurs de recherche sur les astuces Plonk It | `uv run --with tantivy==0.26.2 python spikes/search_bench.py` |
 | `plonk_bench.py` | nuage GPS de PLONK, pays, dispersion, coût | voir ci-dessous |
+| `geonesclick.bench` | règles des marques rejouées sur tes manches : fausses certitudes, région, km | `.venv/bin/python -m geonesclick.bench [--json]` |
+
+**Banc de relecture des marques** (`python -m geonesclick.bench`, depuis `engine/`). Décidé le 2026-11-07 : on
+ne règle plus les règles locales au cas par cas sur la dernière manche (la règle écrite pour un panneau russe a
+cassé un panneau danois vingt minutes plus tard), mais sur l'ensemble. À chaque « C'était où ? », le coach garde
+dans `engine/dataset/rounds/<id>.json` le texte de tes marques et ce qu'il avait conclu ; si tu colles le lien
+Google Maps du vrai lieu (écran de fin du jeu), il en lit les coordonnées (sans jamais l'ouvrir) et en déduit pays
+et région. Le banc rejoue toutes ces manches dans les règles ACTUELLES (même code que le moteur, index local, aucun
+réseau) et compte : pays certain juste / faux, très probable, région juste / fausse, erreur de position en km, et
+si le vrai lieu est dans le rayon annoncé. Une règle ou un seuil ne change que si le banc s'améliore sans casser une
+manche qui marchait ; la cible est **zéro fausse certitude**. `--json` pour comparer deux versions.
 
 **Banc PLONK.** PLONK n'est pas une dépendance du coach : son code et ses dépendances sont installés à
 part, dans `engine/spikes/.vendor/` (ignoré par git), sans toucher au venv du moteur.
@@ -645,6 +656,7 @@ engine/                   moteur Python
   spikes/                 bancs d'essai : StreetCLIP, modèle de vision, recadrage, multi-recadrage,
                           recherche, PLONK (code tiers du banc PLONK dans spikes/.vendor/, ignoré)
   dataset/labels.toml     jeu de test étiqueté (images locales dans dataset/images/, non versionnées)
+  dataset/rounds/         corpus du banc : texte des marques et conclusion du coach, par manche
   captures/               captures d'écran (ignorées par git)
 scripts/install.sh        installation
 scripts/setup-plonk-spike.sh  dépendances du banc PLONK, à part du venv du moteur

@@ -11,7 +11,7 @@ from __future__ import annotations
 import asyncio
 import sqlite3
 from contextlib import suppress
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from fastapi import HTTPException
@@ -19,9 +19,9 @@ from PIL import Image
 
 from . import storage
 from .capture import data_url, new_id, save_png
-from .evidence import Evidence, as_dict, from_dict, text_evidence, verdict
+from .evidence import Evidence, Verdict, as_dict, from_dict, text_evidence, verdict
 from .locate import keep_nearby, locate
-from .locks import NO_SCOPE, restrict
+from .locks import NO_SCOPE, Scope, restrict
 from .marks import MAX_PER_ANALYSIS, DeleteRequest, FrameRequest, MarksRequest, crop_mark, reading
 from .places import DB_NAME as PLACES_DB
 from .places import COUNTRY, OLD_DBS, VERSION, Places, PlacesError, detail_name
@@ -30,6 +30,47 @@ from .vision import VisionError
 
 FROZEN_FRAMES = 3  # vues figées en attente de marques
 MARK_THUMB_SIDE = 360
+
+
+@dataclass
+class Conclusion:
+    verdict: Verdict
+    result: dict[str, Any]  # message « verdict » : conclusion, position, homonymes écartés, lieux hors de tes choix
+    target: str  # pays où situer la vue : le tien s'il y en a un, sinon celui des marques
+    cited: list[tuple[int, list[Evidence]]]  # preuves qui situent la vue (sous tes choix)
+
+
+def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[str, float]], rules: Any,
+             scope: Scope = NO_SCOPE) -> Conclusion:
+    """Conclusion des marques lues (numéro, preuves), sans réseau : utilisée par le moteur ET par le banc (bench.py),
+    pour que le banc mesure exactement ce que fait le coach.
+
+    La conclusion (pays, certitude) ne tient PAS compte de tes choix ni de tes rejets (décidé avec l'utilisateur le
+    2026-11-07) : elle confirme ou contredit ce que tu as dit, au lieu d'en être l'écho. Tes choix (scope)
+    restreignent seulement la suite : homonymes retenus pour la position, région, ville proposée.
+    """
+    spread = rules.place_max_spread_km
+    read, ignored = keep_nearby([(n, from_dict(ev)) for n, ev in done], spread)
+    v = verdict(read, dict(scores), rules.prior_min)
+    result = asdict(v)
+    result["ignored"] = ignored  # homonymes lointains écartés
+    # Position estimée, dans ton pays s'il y en a un (et ses homonymes seulement), sinon dans celui des marques :
+    # lieux des marques qui le prouvent, et distances d'un panneau directionnel.
+    target = scope[0] or v.country
+    near = read
+    if scope != NO_SCOPE:
+        near, _ = keep_nearby([(n, restrict(from_dict(ev), scope)) for n, ev in done], spread)
+    cited = {n for n, _ in near} if scope[0] else {c["n"] for c in v.cites}
+    places = [(n, e) for n, found in near if n in cited for e in found if e.kind == "lieu" and target in e.countries]
+    result["location"] = locate(places, target) if places else None
+    # Lieux lus que tes choix écartent (« ③ Rötz » hors de ta Basse-Saxe) : grisés sur la carte, jamais effacés.
+    kept = {(n, e.value) for n, found in near for e in found if e.kind == "lieu" and e.points}
+    result["outside"] = [{"n": n, "name": e.value, "label": e.points[0][3], "lat": e.points[0][0],
+                          "lon": e.points[0][1]}
+                         for n, found in read for e in found
+                         if scope != NO_SCOPE and e.kind == "lieu" and e.points and len(e.points[0]) > 3
+                         and (n, e.value) not in kept]
+    return Conclusion(v, result, target, [(n, f) for n, f in near if n in cited])
 
 
 class MarksMixin:
@@ -149,45 +190,21 @@ class MarksMixin:
         return found
 
     async def _verdict(self, capture_id: str) -> None:
-        """Conclusion des marques lues, recalculée à chaque lecture, retrait ou choix, poussée à l'interface.
-
-        La conclusion (pays, certitude) ne tient PAS compte de tes choix ni de tes rejets (décidé avec l'utilisateur
-        le 2026-11-07) : elle confirme ou contredit ce que tu as dit, au lieu d'en être l'écho. Tes choix restreignent
-        seulement la suite : homonymes retenus pour la position, région, ville proposée.
-        """
+        """Conclusion des marques lues (conclude), recalculée à chaque lecture, retrait ou choix, poussée à
+        l'interface ; puis ce que le coach verrouille."""
         entry = self.recent.get(capture_id)
         if entry is None:
             return
-        done = [m for m in entry["marks"] if m.get("status") == "done"]
-        spread = self.cfg.rules.place_max_spread_km
-        read, ignored = keep_nearby([(m["n"], from_dict(m.get("evidence", []))) for m in done], spread)
-        v = verdict(read, dict(entry.get("scores") or []), self.cfg.rules.prior_min)
-        result = asdict(v)
-        result["ignored"] = ignored  # homonymes lointains écartés
-        # Position estimée, dans le pays que tu as choisi s'il y en a un (et ses homonymes seulement), sinon dans
-        # celui des marques : lieux des marques qui le prouvent, et distances d'un panneau directionnel.
-        scope = self.lock_scope(capture_id)
-        target = scope[0] or v.country
-        near = read
-        if scope != NO_SCOPE:
-            near, _ = keep_nearby([(m["n"], restrict(from_dict(m.get("evidence", [])), scope)) for m in done], spread)
-        cited = {n for n, _ in near} if scope[0] else {c["n"] for c in v.cites}
-        places = [(n, e) for n, found in near if n in cited for e in found
-                  if e.kind == "lieu" and target in e.countries]
-        result["location"] = await asyncio.to_thread(locate, places, target) if places else None
-        # Lieux lus que tes choix écartent (« ③ Rötz » hors de ta Basse-Saxe) : grisés sur la carte, jamais effacés.
-        kept = {(n, e.value) for n, found in near for e in found if e.kind == "lieu" and e.points}
-        result["outside"] = [{"n": n, "name": e.value, "label": e.points[0][3], "lat": e.points[0][0],
-                              "lon": e.points[0][1]}
-                             for n, found in read for e in found
-                             if scope != NO_SCOPE and e.kind == "lieu" and e.points and len(e.points[0]) > 3
-                             and (n, e.value) not in kept]
+        done = [(m["n"], m.get("evidence", [])) for m in entry["marks"] if m.get("status") == "done"]
+        c = await asyncio.to_thread(conclude, done, entry.get("scores") or [], self.cfg.rules,
+                                    self.lock_scope(capture_id))
+        v, result, target = c.verdict, c.result, c.target
         if target:
             self.ensure_detail(target)
         entry["verdict"] = result
         await self._log(capture_id, verdict=result)
         await self.broadcast({"type": "verdict", "id": capture_id, **result})
-        await self.coach_locks(capture_id, v, [(n, f) for n, f in near if n in cited], result["location"], target)
+        await self.coach_locks(capture_id, v, c.cited, result["location"], target)
 
     async def remove_mark(self, req: DeleteRequest) -> dict[str, Any]:
         """Le joueur retire une marque (lecture fausse) : elle ne compte plus, les autres gardent leur numéro."""
