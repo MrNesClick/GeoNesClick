@@ -47,6 +47,19 @@ light (~100 MB: the UI and uv) and bundles the engine as a wheel, PyGObject and 
 dependencies with their hashes (CUDA and CPU variants) and the list of downloads. The engine itself is installed by
 the first-launch assistant, with `install-engine.sh`, once the user has accepted the list.
 
+## Publish a release
+
+Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
+machine. Bump the version in the four manifests (`engine/pyproject.toml`, `app/package.json`,
+`app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`), commit, then push a tag:
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+The workflow checks that the tag matches the four versions, runs the tests, builds the AppImage on Ubuntu 24.04
+and publishes the release with the AppImage and its SHA-256 checksum.
+
 ## Tests
 
 ```bash

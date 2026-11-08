@@ -30,10 +30,8 @@ The interface is in French for now.
 
 ## Install
 
-> The first release is on its way: the AppImage will be available on the
-> [Releases](https://github.com/MrNesClick/GeoNesClick/releases) page.
-
-1. Download `GeoNesClick_<version>_amd64.AppImage` from the Releases page.
+1. Download `GeoNesClick_<version>_amd64.AppImage` from the [Releases](https://github.com/MrNesClick/GeoNesClick/releases)
+   page.
 2. Make it executable (right click › Properties › *Executable as Program*, or `chmod +x GeoNesClick_*.AppImage`),
    then open it.
 3. On first launch, an assistant checks your system and lists everything it will download, with the size and the

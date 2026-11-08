@@ -1,0 +1,90 @@
+# Builds the AppImage and publishes the GitHub release when a version tag is pushed:
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Runs on Ubuntu 24.04, the oldest target (what is compiled there works on the later versions). The tag must match
+# the version of the four manifests; the tests must pass before anything is built. Actions are pinned to a commit,
+# not a tag (a tag can be moved), and the job only gets the right to write the release.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions: {}
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: write  # create the release and upload the AppImage
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: "1"  # linuxdeploy is an AppImage itself: no FUSE on the runners
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tag matches the version of every manifest
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for found in \
+            "$(grep -m1 '^version' engine/pyproject.toml | cut -d'"' -f2)" \
+            "$(grep -m1 '"version"' app/package.json | cut -d'"' -f4)" \
+            "$(grep -m1 '^version' app/src-tauri/Cargo.toml | cut -d'"' -f2)" \
+            "$(grep -m1 '"version"' app/src-tauri/tauri.conf.json | cut -d'"' -f4)"; do
+            if [ "$found" != "$tag" ]; then
+              echo "::error::tag v$tag but a manifest says $found"
+              exit 1
+            fi
+          done
+
+      # Same versions as the machine where the AppImage was built and tested.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "26.13.0"
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413  # v6.1.0
+        with:
+          version: "11.8.0"
+      - uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8  # master, 2026-10-15
+        with:
+          toolchain: "1.95.0"
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e  # v10.3.2
+        with:
+          version: "0.9.17"
+
+      - name: Dependencies (system packages, engine venv, front end)
+        run: scripts/install.sh --with-apt
+
+      - name: Tests
+        run: |
+          (cd engine && .venv/bin/python -m pytest -q)
+          (cd app && pnpm exec vue-tsc --noEmit)
+          (cd app/src-tauri && cargo test --lib)
+
+      - name: AppImage
+        run: |
+          df -h /
+          scripts/build-appimage.sh
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}  # this repository's token on the runner, valid for this job only
+        run: |
+          cd app/src-tauri/target/release/bundle/appimage
+          appimage="$(ls GeoNesClick_*.AppImage)"
+          sha256sum "$appimage" > "$appimage.sha256"
+          cat > notes.md <<EOF
+          AI-assisted geolocation coach for OSINT and GeoGuessr training, for Ubuntu 24.04 or later with GNOME.
+
+          **Install**: download \`$appimage\`, make it executable, open it. On first launch, an installer lists
+          everything it will download (about 5 GB with an NVIDIA card) before installing the engine in
+          \`~/.local/share/geonesclick/\`. See the [README](https://github.com/${GITHUB_REPOSITORY}#install).
+
+          **Check the download**: \`sha256sum -c $appimage.sha256\`
+
+          Code under Apache-2.0. The StreetCLIP model is under CC BY-NC 4.0: no commercial use.
+          EOF
+          gh release create "$GITHUB_REF_NAME" "$appimage" "$appimage.sha256" \
+            --repo "$GITHUB_REPOSITORY" --title "GeoNesClick ${GITHUB_REF_NAME}" --notes-file notes.md --verify-tag

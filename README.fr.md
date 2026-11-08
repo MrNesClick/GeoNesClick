@@ -32,10 +32,8 @@ tu le souhaites.
 
 ## Installer
 
-> La première version arrive : l'AppImage sera disponible sur la page
-> [Releases](https://github.com/MrNesClick/GeoNesClick/releases).
-
-1. Télécharge `GeoNesClick_<version>_amd64.AppImage` depuis la page Releases.
+1. Télécharge `GeoNesClick_<version>_amd64.AppImage` depuis la page
+   [Releases](https://github.com/MrNesClick/GeoNesClick/releases).
 2. Rends-la exécutable (clic droit › Propriétés › *Exécutable comme un programme*, ou
    `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
 3. Au premier lancement, un assistant vérifie ton système et liste tout ce qu'il va télécharger, avec la taille et
