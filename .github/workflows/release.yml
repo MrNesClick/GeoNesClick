@@ -6,6 +6,7 @@
 # the version of the four manifests; the tests must pass before anything is built. Actions are pinned to a commit,
 # not a tag (a tag can be moved), and the job only gets the right to write the release.
 name: Release
+run-name: Release ${{ github.ref_name }}  # otherwise the run is named after the tagged commit's message
 
 on:
   push:
