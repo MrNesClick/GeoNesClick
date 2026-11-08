@@ -22,6 +22,14 @@ jobs:
     env:
       APPIMAGE_EXTRACT_AND_RUN: "1"  # linuxdeploy is an AppImage itself: no FUSE on the runners
     steps:
+      # The runner image leaves too little room for the engine venv (CUDA torch) and the Rust build: the disk was at
+      # 97% before the AppImage step of v0.1.0. None of these preinstalled SDKs is used by this job.
+      - name: Free disk space
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
