@@ -16,7 +16,15 @@ class Notifier:
         self.sound = sound
         self._last_id = 0
         self._lock = threading.Lock()
-        self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)  # opened even when disabled: can be turned back on live
+        self._bus: Gio.DBusConnection | None = None  # opened on the first notification: no session bus, no crash
+
+    def _session_bus(self) -> Gio.DBusConnection | None:
+        if self._bus is None:
+            try:
+                self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            except GLib.Error as exc:  # no graphical session (SSH, CI): notifications are skipped, retried next time
+                print(f"[notification] pas de bus de session : {exc.message}")
+        return self._bus
 
     def send(self, summary: str, body: str = "", image: Path | None = None, error: bool = False) -> None:
         if not self.enabled:
@@ -28,8 +36,11 @@ class Notifier:
             hints["sound-name"] = GLib.Variant("s", "dialog-error" if error else "camera-shutter")
         icon = "dialog-error-symbolic" if error else "camera-photo-symbolic"
         with self._lock:
+            bus = self._session_bus()
+            if bus is None:
+                return
             try:
-                reply = self._bus.call_sync(
+                reply = bus.call_sync(
                     "org.freedesktop.Notifications", "/org/freedesktop/Notifications",
                     "org.freedesktop.Notifications", "Notify",
                     GLib.Variant("(susssasa{sv}i)", (
