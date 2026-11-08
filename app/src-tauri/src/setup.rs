@@ -7,16 +7,47 @@
 //! its progress to the UI, installs the GNOME shortcuts and removes the engine on request ("Erase everything").
 //! In development (no engine-bundle), none of this: the engine comes from engine/.venv.
 
+use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::time::Duration;
 
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
+
+/// Variables that the AppImage launcher (AppRun, GTK hook) points into the AppImage. A program of the host
+/// system must not inherit them: with PYTHONHOME set, the installed Python cannot find its standard library
+/// ("No module named 'encodings'"); with LD_LIBRARY_PATH or GI_TYPELIB_PATH, the engine would load the
+/// AppImage's GTK and GStreamer files instead of the system ones.
+const APPIMAGE_VARS: [&str; 16] = [
+    "PYTHONHOME", "PYTHONPATH", "PYTHONDONTWRITEBYTECODE", "LD_LIBRARY_PATH", "QT_PLUGIN_PATH",
+    "GST_PLUGIN_SYSTEM_PATH", "GST_PLUGIN_SYSTEM_PATH_1_0", "GI_TYPELIB_PATH", "GIO_MODULE_DIR",
+    "GSETTINGS_SCHEMA_DIR", "GTK_DATA_PREFIX", "GTK_THEME", "GTK_EXE_PREFIX", "GTK_PATH", "GTK_IM_MODULE_FILE",
+    "GDK_PIXBUF_MODULE_FILE",
+];
+
+/// A path list without the entries inside the AppImage (PATH, XDG_DATA_DIRS).
+fn without_appdir(value: &OsStr, appdir: &Path) -> OsString {
+    std::env::join_paths(std::env::split_paths(value).filter(|p| !p.starts_with(appdir))).unwrap_or_default()
+}
+
+/// A command for a program of the host system (engine, install script, gsettings), with the environment the
+/// session had before the AppImage changed it. Outside an AppImage (development), nothing changes.
+pub fn host_command(program: impl AsRef<OsStr>) -> Command {
+    let mut command = Command::new(program);
+    if let Some(appdir) = std::env::var_os("APPDIR").filter(|d| !d.is_empty()).map(PathBuf::from) {
+        for var in APPIMAGE_VARS {
+            command.env_remove(var);
+        }
+        for var in ["PATH", "XDG_DATA_DIRS"] {
+            if let Some(value) = std::env::var_os(var) {
+                command.env(var, without_appdir(&value, &appdir));
+            }
+        }
+    }
+    command
+}
 
 /// Resources bundled in the AppImage (None in development).
 pub fn bundle_dir(app: &AppHandle) -> Option<PathBuf> {
@@ -103,6 +134,8 @@ pub struct Status {
     needed: bool,
     version: Option<String>,
     installed: Option<String>,
+    /// Installed for this version, but the choices are not written yet (window closed before the end).
+    engine_ready: bool,
     gpu: bool,
     checks: Vec<Check>,
     downloads: Value,
@@ -119,6 +152,10 @@ pub fn setup_status(app: AppHandle) -> Status {
         needed: needed(&app),
         version: bundle.as_ref().and_then(|b| read_version(&b.join("VERSION"))),
         installed: read_version(&engine_home().join("VERSION")),
+        engine_ready: venv_python().is_file()
+            && bundle.as_ref().and_then(|b| read_version(&b.join("VERSION"))).is_some_and(|v| {
+                read_version(&engine_home().join("INSTALLED")).as_deref() == Some(v.as_str())
+            }),
         gpu: has_nvidia(),
         checks: system_checks(),
         downloads: file("downloads.json"),
@@ -131,27 +168,13 @@ pub fn setup_status(app: AppHandle) -> Status {
 struct Progress {
     phase: Option<String>,
     line: Option<String>,
-    bytes: Option<u64>,
     done: bool,
     ok: bool,
 }
 
-fn dir_size(path: &Path) -> u64 {
-    let Ok(entries) = std::fs::read_dir(path) else { return 0 };
-    entries
-        .flatten()
-        .map(|e| match e.file_type() {
-            Ok(t) if t.is_dir() => dir_size(&e.path()),
-            Ok(t) if t.is_file() => e.metadata().map(|m| m.len()).unwrap_or(0),
-            _ => 0,
-        })
-        .sum()
-}
-
 /// Runs install-engine.sh ("cuda" or "cpu" variant), after your consent to the required block. Your options are
 /// chosen meanwhile and applied afterwards by setup_apply, BEFORE the engine's first start.
-/// Progress arrives as "setup-progress" events: script phases, output lines, downloaded bytes
-/// (size of the uv and Hugging Face caches).
+/// Progress arrives as "setup-progress" events: script phases and output lines.
 #[tauri::command]
 pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
     let bundle = bundle_dir(&app).ok_or("pas d'AppImage : rien à installer")?;
@@ -160,7 +183,7 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
     }
     std::fs::create_dir_all(engine_home()).map_err(|e| e.to_string())?;
 
-    let mut child = Command::new("/bin/sh")
+    let mut child = host_command("/bin/sh")
         .arg(bundle.join("install-engine.sh"))
         .arg(&variant)
         .stdout(Stdio::piped())
@@ -168,28 +191,12 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("installation impossible à lancer : {e}"))?;
 
-    // Downloaded bytes: uv and Hugging Face caches (packages and the model land there first).
-    let running = Arc::new(AtomicBool::new(true));
-    {
-        let (app, running) = (app.clone(), running.clone());
-        let hf = std::env::var_os("HF_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".cache/huggingface"));
-        let start = dir_size(&hf);
-        std::thread::spawn(move || {
-            while running.load(Ordering::Relaxed) {
-                let bytes = dir_size(&engine_home().join("cache")) + dir_size(&hf).saturating_sub(start);
-                let _ = app.emit("setup-progress", Progress { phase: None, line: None, bytes: Some(bytes), done: false, ok: true });
-                std::thread::sleep(Duration::from_secs(1));
-            }
-        });
-    }
     // Script errors (stderr) relayed as is, like its output.
     if let Some(err) = child.stderr.take() {
         let app = app.clone();
         std::thread::spawn(move || {
             for line in BufReader::new(err).lines().map_while(Result::ok) {
-                let _ = app.emit("setup-progress", Progress { phase: None, line: Some(line), bytes: None, done: false, ok: true });
+                let _ = app.emit("setup-progress", Progress { phase: None, line: Some(line), done: false, ok: true });
             }
         });
     }
@@ -197,11 +204,10 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
     std::thread::spawn(move || {
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             let phase = line.strip_prefix("PHASE ").map(str::to_string);
-            let _ = app.emit("setup-progress", Progress { phase, line: Some(line), bytes: None, done: false, ok: true });
+            let _ = app.emit("setup-progress", Progress { phase, line: Some(line), done: false, ok: true });
         }
         let ok = child.wait().map(|s| s.success()).unwrap_or(false);
-        running.store(false, Ordering::Relaxed);
-        let _ = app.emit("setup-progress", Progress { phase: None, line: None, bytes: None, done: true, ok });
+        let _ = app.emit("setup-progress", Progress { phase: None, line: None, done: true, ok });
     });
     Ok(())
 }
@@ -209,8 +215,8 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
 /// Your options (settings accepted or declined) and your API key, written by the installed engine BEFORE its first
 /// start: it will never download a declined option. Same checks as the Settings screen.
 #[tauri::command]
-pub fn setup_apply(choices: Value, api_key: Option<String>) -> Result<(), String> {
-    let mut child = Command::new(venv_python())
+pub fn setup_apply(app: AppHandle, choices: Value, api_key: Option<String>) -> Result<(), String> {
+    let mut child = host_command(venv_python())
         .args(["-m", "geonesclick.settings"])
         .stdin(Stdio::piped())
         .stderr(Stdio::piped())
@@ -225,14 +231,17 @@ pub fn setup_apply(choices: Value, api_key: Option<String>) -> Result<(), String
     }
     if let Some(key) = api_key.filter(|k| !k.trim().is_empty()) {
         if !store_key(&key) {
-            return Err("clé API refusée (8 à 300 caractères, sans espace) : corrige-la ou passe cette étape".into());
+            return Err("clé API refusée : une clé NVIDIA commence par « nvapi- »".into());
         }
     }
+    // Only now may the engine start: it follows these choices, never the defaults.
+    let bundle = bundle_dir(&app).ok_or("pas d'AppImage")?;
+    std::fs::copy(bundle.join("VERSION"), engine_home().join("VERSION")).map_err(|e| e.to_string())?;
     Ok(())
 }
 
 fn store_key(key: &str) -> bool {
-    let Ok(mut child) = Command::new(venv_python())
+    let Ok(mut child) = host_command(venv_python())
         .args(["-m", "geonesclick.apikey"])
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
@@ -251,7 +260,7 @@ const MEDIA_KEYS: &str = "org.gnome.settings-daemon.plugins.media-keys";
 const KEY_ROOT: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings";
 
 fn gsettings(args: &[&str]) -> Result<String, String> {
-    let out = Command::new("/usr/bin/gsettings").args(args).output().map_err(|e| format!("gsettings : {e}"))?;
+    let out = host_command("/usr/bin/gsettings").args(args).output().map_err(|e| format!("gsettings : {e}"))?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
@@ -297,4 +306,15 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
         std::fs::remove_dir_all(&home).map_err(|e| e.to_string())?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn appimage_entries_are_dropped_from_path_lists() {
+        let value = OsString::from("/tmp/.mount_GeoNes/usr/bin:/usr/local/bin:/usr/bin:/tmp/.mount_GeoNes/bin");
+        assert_eq!(without_appdir(&value, Path::new("/tmp/.mount_GeoNes")), OsString::from("/usr/local/bin:/usr/bin"));
+    }
 }

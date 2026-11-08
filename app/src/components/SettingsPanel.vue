@@ -51,6 +51,10 @@ const invalid = (f: Field, text: string) => (status[fieldId(f)] = { tone: "error
 const keyInput = ref("");
 const keyStatus = ref<{ tone: "ok" | "error"; text: string } | null>(null);
 async function storeKey(value: string) {
+  if (value && !value.trim().startsWith("nvapi-")) {
+    keyStatus.value = { tone: "error", text: "Une clé NVIDIA commence par « nvapi- »." };
+    return;
+  }
   const error = await saveApiKey(value);
   keyStatus.value = error ? { tone: "error", text: error } : { tone: "ok", text: value ? "Clé enregistrée." : "Clé oubliée." };
   if (!error) keyInput.value = "";

@@ -25,7 +25,7 @@ def test_key_is_saved_private_and_only_its_end_is_shown(monkeypatch):
     assert apikey.read("NVAPI") is None
 
 
-@pytest.mark.parametrize("bad", ["court", "avec espace 123", "a" * 301, "ligne\nnouvelle"])
+@pytest.mark.parametrize("bad", ["court", "avec espace 123", "a" * 301, "ligne\nnouvelle", "abcdefgh12345678"])
 def test_invalid_keys_are_refused(bad):
     with pytest.raises(apikey.ApiKeyError):
         apikey.save("NVAPI", bad)

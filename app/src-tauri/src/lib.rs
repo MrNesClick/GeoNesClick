@@ -10,7 +10,7 @@ mod setup;
 
 use std::os::unix::process::CommandExt;
 use std::path::PathBuf;
-use std::process::{Child, Command};
+use std::process::Child;
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
@@ -33,7 +33,7 @@ fn spawn_engine(app: &AppHandle) -> Option<Child> {
         let dir = engine_dir();
         (dir.join(".venv/bin/python"), dir)
     };
-    let mut command = Command::new(&python);
+    let mut command = setup::host_command(&python);
     command.args(["-m", "geonesclick"]).current_dir(&dir);
     // If the app dies without going through RunEvent::Exit (signal, crash), the kernel sends
     // SIGTERM to the engine: it is never left orphaned with the screen share still open.

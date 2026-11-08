@@ -56,6 +56,8 @@ def save(name: str, value: str) -> None:
     value = value.strip()
     if not VALUE.fullmatch(value):
         raise ApiKeyError("clé invalide : 8 à 300 caractères, sans espace")
+    if name == "NVAPI" and not value.startswith("nvapi-"):
+        raise ApiKeyError("clé NVIDIA invalide : elle commence par « nvapi- »")
     _write_private(key_file(name), value + "\n")
 
 

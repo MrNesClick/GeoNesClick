@@ -51,6 +51,9 @@ echo "PHASE modele"
 echo "PHASE finition"
 rm -rf "$HOME_DIR/venv"
 mv "$NEW" "$HOME_DIR/venv"
-cp "$B/VERSION" "$HOME_DIR/VERSION"
+cp "$B/VERSION" "$HOME_DIR/INSTALLED"  # complete installation
+# The engine may start only once the choices are written (otherwise it would follow the defaults and download
+# options the user declined): here if they were given, otherwise the assistant writes VERSION after applying them.
+if [ -n "$CHOICES" ]; then cp "$B/VERSION" "$HOME_DIR/VERSION"; fi
 "$B/uv" cache clean --quiet || true  # the packages are installed: their cached copy is no longer needed
 echo "PHASE fini"
