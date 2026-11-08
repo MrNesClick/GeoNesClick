@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Un réglage de l'écran Réglages, rendu selon son type (settingsSchema.ts). Il ne sauve rien lui-même :
-// il émet la nouvelle valeur (« save ») ou une erreur de saisie (« invalid »), et l'écran s'en charge.
+// One setting of the Settings screen, rendered according to its type (settingsSchema.ts). It saves nothing itself:
+// it emits the new value ("save") or an input error ("invalid"), and the screen handles it.
 import { computed, reactive } from "vue";
 import type { Settings } from "../engine";
 import { CATEGORY_LABELS, countryName, flag } from "../engine";
@@ -29,7 +29,7 @@ function number(raw: string) {
   save(n);
 }
 
-// --- Rectangles en fractions [gauche, haut, droite, bas] ------------------------------------------------
+// --- Rectangles as fractions [left, top, right, bottom] ------------------------------------------------
 const rectText = (r: unknown) => (Array.isArray(r) && r.length ? r.join(", ") : "");
 function parseRect(text: string): number[] | null {
   const parts = text.split(/[,;\s]+/).filter(Boolean).map(Number);
@@ -45,7 +45,7 @@ function saveRects(text: string) {
   return rects.every((r) => r) ? save(rects) : emit("invalid", "Chaque ligne : quatre nombres (gauche, haut, droite, bas).");
 }
 
-// --- Une valeur par catégorie de metas ----------------------------------------------------------------
+// --- One value per metas category ---------------------------------------------------------------------
 const CATEGORIES = Object.entries(CATEGORY_LABELS);
 const dict = computed(() => (value.value ?? {}) as Record<string, unknown>);
 const categoryValue = (c: string) => {
@@ -65,7 +65,7 @@ function saveCategory(c: string, raw: string) {
   save(next);
 }
 
-// --- Pays candidats : cocher pour garder, décocher pour écarter, ajouter -------------------------------
+// --- Candidate countries: tick to keep, untick to rule out, add ---------------------------------------
 const countries = computed(() =>
   Object.entries((props.settings.streetclip?.countries ?? {}) as Record<string, string>)
     .map(([name, code]) => ({ name, code }))
@@ -92,14 +92,14 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
 
 <template>
   <div :class="disabled ? 'opacity-60' : ''">
-    <!-- Case à cocher -->
+    <!-- Checkbox -->
     <label v-if="f.kind === 'bool'" class="flex items-start gap-3">
       <input type="checkbox" :class="check" :checked="!!value" :disabled="disabled"
              @change="save(($event.target as HTMLInputElement).checked)" />
       <span>{{ f.label }}<span v-if="f.hint" class="block text-[0.85rem] text-courbe">{{ f.hint }}</span></span>
     </label>
 
-    <!-- Choix exclusif -->
+    <!-- Exclusive choice -->
     <fieldset v-else-if="f.kind === 'radio'" class="space-y-2" :disabled="disabled">
       <legend>{{ f.label }}<span v-if="f.hint" class="block text-[0.85rem] text-courbe">{{ f.hint }}</span></legend>
       <label v-for="o in f.options" :key="o.value" class="flex items-start gap-3">
@@ -108,7 +108,7 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
       </label>
     </fieldset>
 
-    <!-- Pays candidats -->
+    <!-- Candidate countries -->
     <div v-else-if="f.kind === 'countries'">
       <p>{{ f.label }} <span class="text-courbe">({{ countries.length - excluded.length }} / {{ countries.length }})</span></p>
       <p v-if="f.hint" class="text-[0.85rem] text-courbe">{{ f.hint }}</p>
@@ -137,7 +137,7 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
       </details>
     </div>
 
-    <!-- Une valeur par catégorie -->
+    <!-- One value per category -->
     <div v-else-if="f.kind === 'categoryText' || f.kind === 'categoryNumber' || f.kind === 'categoryList'">
       <p>{{ f.label }}</p>
       <p v-if="f.hint" class="text-[0.85rem] text-courbe">{{ f.hint }}</p>
@@ -150,7 +150,7 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
       </div>
     </div>
 
-    <!-- Champs simples -->
+    <!-- Simple fields -->
     <label v-else class="block">
       <span>{{ f.label }}</span>
       <span v-if="f.hint" class="block text-[0.85rem] text-courbe">{{ f.hint }}</span>

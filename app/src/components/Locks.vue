@@ -1,13 +1,13 @@
 <script setup lang="ts">
-// « Tu sais où tu es ? Dis-le au coach » : les verrous pays › région › ville, en tête du coach (décidés avec
-// l'utilisateur le 2026-11-07 ; version « phrase + liste » choisie le même soir, le mot « verrou » n'était pas clair).
-// - Rien de sûr : une phrase et la liste des pays (candidats de StreetCLIP d'abord, dès le niveau 3 ; aux niveaux 1
-//   et 2 elle ne s'ouvre qu'au clic, sans pourcentages, pour ne rien dévoiler).
-// - Choisi : « C'est sûr : 🇨🇿 Tchéquie (toi) ✕ », puis Région et Ville à choisir de la même façon (index local).
-// - ✕ = « pas ça » pour toute la capture : le coach ne le reposera pas.
-// - Ce que le coach a fixé seul n'est nommé qu'au niveau d'aide qui le dévoile (pays au 3, le reste au 4) ;
-//   en dessous : « le coach en est sûr (caché à ce niveau d'aide) ».
-// - Les avis indépendants qui contredisent le pays choisi sont signalés : c'est ce qui révèle une erreur.
+// "Do you know where you are? Tell the coach": the country › region › city locks, at the top of the coach (decided
+// with the user on 2026-11-07; "sentence + list" version chosen the same evening, the word "lock" was not clear).
+// - Nothing certain: a sentence and the list of countries (StreetCLIP candidates first, from level 3; at levels 1
+//   and 2 it only opens on click, without percentages, so as to reveal nothing).
+// - Chosen: "C'est sûr : 🇨🇿 Tchéquie (toi) ✕", then Region and City to choose the same way (local index).
+// - ✕ = "not that" for the whole capture: the coach will not set it again.
+// - What the coach set on its own is named only at the help level that reveals it (country at 3, the rest at 4);
+//   below that: "the coach is sure of it (hidden at this help level)".
+// - Independent opinions that contradict the chosen country are flagged: that is what reveals a mistake.
 import { computed, nextTick, ref, watch } from "vue";
 import type { Analysis, Lock, PlaceFound } from "../engine";
 import { circled, conclusionOf, countryName, engine, flag, normalise, rejectLock, removeMark, searchPlaces, setLock } from "../engine";
@@ -22,13 +22,13 @@ const shown = (l: Lock) => l.by === "user" || level.value >= (l.level === "count
 const label = (l: Lock) => (l.level === "country" ? `${flag(l.country)} ${countryName(l.country)}` : l.name);
 const proposal = computed(() => (level.value >= 4 ? props.analysis.locks?.proposal ?? null : null));
 const rejected = computed(() => (props.analysis.locks?.rejected ?? []).filter(shown));
-// Régions des lieux lus (hors celles que tu as écartées) : un clic pour choisir, surtout quand elles divergent.
+// Regions of the places read (except those you ruled out): one click to choose, especially when they disagree.
 const readRegions = computed(() => (props.analysis.locks?.read_regions ?? [])
   .filter((r) => !props.analysis.locks?.rejected.some((x) => x.level === "region" && x.region === r.code)));
 const sure = computed(() => [held.value.country, held.value.region, held.value.city].filter((x): x is Lock => !!x));
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 
-// Lignes à choisir sous le pays : jamais sous un choix caché (les résultats dévoileraient le pays).
+// Rows to choose under the country: never under a hidden choice (the results would reveal the country).
 const country = computed(() => held.value.country ?? null);
 const pickable = computed<Level[]>(() => {
   const c = country.value;
@@ -39,7 +39,7 @@ const pickable = computed<Level[]>(() => {
   return out;
 });
 
-// --- choix d'un lieu --------------------------------------------------------------------------
+// --- choosing a place -------------------------------------------------------------------------
 const active = ref<Level | null>(null);
 const query = ref("");
 const found = ref<PlaceFound[]>([]);
@@ -47,7 +47,7 @@ const fields: Partial<Record<Level, HTMLInputElement | null>> = {};
 let timer: ReturnType<typeof setTimeout> | undefined;
 let asked = 0;
 
-/** Pays proposés : ceux de StreetCLIP d'abord (avec leur %, à partir du niveau 3), puis les autres. */
+/** Countries offered: StreetCLIP's first (with their %, from level 3), then the others. */
 const countries = computed(() => {
   const key = normalise(query.value);
   const scores = level.value >= 3 ? props.analysis.scores ?? [] : [];
@@ -59,7 +59,7 @@ const countries = computed(() => {
     .filter((c) => match(c.name))
     .sort((a, b) => (b.p ?? -1) - (a.p ?? -1) || a.name.localeCompare(b.name, "fr"));
 });
-// Sans clic, dès le niveau 3 : les 3 pays les plus probables, prêts à être choisis.
+// Without a click, from level 3: the 3 most likely countries, ready to be chosen.
 const quick = computed(() => (level.value >= 3 && active.value !== "country"
   ? countries.value.filter((c) => c.p !== undefined).slice(0, 3) : []));
 
@@ -81,7 +81,7 @@ function close() {
 async function find() {
   const lv = active.value;
   if (!lv || lv === "country" || !country.value) return;
-  const ticket = ++asked; // une réponse lente ne remplace pas une plus récente
+  const ticket = ++asked; // a slow response does not replace a more recent one
   const res = await searchPlaces(lv, query.value.trim(), country.value.country,
                                  lv === "city" ? held.value.region?.region ?? "" : "");
   if (ticket === asked) found.value = res;
@@ -108,10 +108,10 @@ function enter(lv: Level) {
     if (countries.value[0]) void chooseCountry(countries.value[0].code);
   } else if (found.value[0]) void choosePlace(found.value[0]);
 }
-watch(() => props.analysis.id, close); // nouvelle capture : aucune liste ouverte de la précédente
+watch(() => props.analysis.id, close); // new capture: no list left open from the previous one
 const placeLabel = (r: PlaceFound) => (r.region_name && !held.value.region ? `${r.name} · ${r.region_name}` : r.name);
 
-// --- désaccords : avis indépendants contre le pays choisi -----------------------------------------
+// --- disagreements: independent opinions against the chosen country -----------------------------------
 const disagreements = computed(() => {
   const c = country.value;
   if (!c || level.value < 3) return [];
@@ -131,15 +131,16 @@ const disagreements = computed(() => {
   return out;
 });
 
-// Ce que tes marques concluent SANS tenir compte de ton choix (moteur) : elles le confirment ou le contredisent.
-// Contradiction FORTE (autre pays « certain », ou alphabet qui exclut ton pays) : alerte en tête et deux sorties en
-// un clic, car l'erreur peut venir de ton choix OU d'une lecture fausse (« PALERMO » lu « PILIERNO ») ; le coach ne
-// remplace jamais ton choix lui-même (décidé avec l'utilisateur le 2026-11-07). Faible (« très probable ») : une ligne.
+// What your marks conclude WITHOUT taking your choice into account (engine): they confirm or contradict it.
+// STRONG contradiction (another "certain" country, or an alphabet that excludes your country): alert at the top and
+// two one-click ways out, since the mistake may come from your choice OR from a misreading ("PALERMO" read
+// "PILIERNO"); the coach never replaces your choice itself (decided with the user on 2026-11-07). Weak ("very
+// likely"): one line.
 interface MarksSay { kind: "ok" | "weak" | "strong"; text: string; other: string | null; marks: number[] }
 const marksSay = computed<MarksSay | null>(() => {
   const c = country.value;
   const v = props.analysis.verdict;
-  if (!c || c.by !== "user" || !v) return null; // un pays fixé par le coach vient déjà de tes marques
+  if (!c || c.by !== "user" || !v) return null; // a country set by the coach already comes from your marks
   const cites = v.cites.map((x) => `${circled(x.n)} ${x.items.join(", ")}`).join(" · ");
   if (v.country === c.country && v.level) {
     return { kind: "ok", other: null, marks: [],
@@ -152,7 +153,7 @@ const marksSay = computed<MarksSay | null>(() => {
     return { kind: strong ? "strong" : "weak", text: named, other: level.value >= 3 ? v.country : null,
              marks: v.cites.map((x) => x.n) };
   }
-  if (v.allowed && !v.allowed.includes(c.country)) { // l'alphabet d'une marque exclut ton pays
+  if (v.allowed && !v.allowed.includes(c.country)) { // a mark's alphabet excludes your country
     const marks = props.analysis.marks
       .filter((m) => m.evidence?.some((e) => e.kind === "alphabet" && !e.countries.includes(c.country))).map((m) => m.n);
     return { kind: "strong", other: null, marks,
@@ -170,7 +171,7 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
 
 <template>
   <section aria-label="Ce qui est sûr" class="mt-3 rounded-md border border-courbe-fonce px-3 py-2 text-[0.9rem]">
-    <!-- Rien de sûr : la phrase, le champ et les pays probables -->
+    <!-- Nothing certain: the sentence, the field and the likely countries -->
     <template v-if="!country">
       <p class="text-papier">Tu sais où tu es ? Dis-le au coach :</p>
       <div class="mt-1.5 flex items-center gap-2">
@@ -192,7 +193,7 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
       </ul>
     </template>
 
-    <!-- Ce qui est sûr, niveau par niveau -->
+    <!-- What is certain, level by level -->
     <template v-else>
       <p v-for="l in sure" :key="l.level" class="flex flex-wrap items-center gap-x-2"
          :class="l.level === 'country' ? '' : 'mt-1 ml-4'">
@@ -232,7 +233,7 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
         </div>
       </div>
 
-      <!-- Ville proposée par le coach (jamais choisie sans toi) -->
+      <!-- City suggested by the coach (never chosen without you) -->
       <p v-if="proposal" class="mt-1 ml-4 flex flex-wrap items-center gap-2">
         <span class="text-courbe">› Ville :</span>
         <span class="text-papier">{{ proposal.name }} ?</span>
@@ -246,7 +247,7 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
         </button>
       </p>
 
-      <!-- Région et ville : à choisir, cherchées dans l'index local -->
+      <!-- Region and city: to choose, searched in the local index -->
       <div v-for="lv in pickable" :key="lv" class="mt-1 ml-4">
         <div v-if="lv === 'region' && readRegions.length" class="mb-1 flex flex-wrap items-center gap-1.5">
           <span class="w-16 shrink-0 text-courbe">› Région</span>

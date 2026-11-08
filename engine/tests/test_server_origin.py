@@ -1,7 +1,7 @@
-"""Le moteur ne doit répondre qu'à la fenêtre du coach, jamais à un site web ouvert dans le navigateur.
+"""The engine must only answer the coach window, never a website open in the browser.
 
-Le TestClient est utilisé sans bloc `with` : la phase de démarrage (partage d'écran, StreetCLIP) n'est
-pas lancée, seules les règles d'accès HTTP et WebSocket sont testées.
+The TestClient is used without a `with` block: the startup phase (screen sharing, StreetCLIP) is not
+run, only the HTTP and WebSocket access rules are tested.
 """
 
 import pytest
@@ -13,7 +13,7 @@ from geonesclick.server import create_app
 
 APP_ORIGIN = "http://localhost:1420"
 EVIL_ORIGIN = "https://site-malveillant.example"
-WS_URL = "ws://127.0.0.1:47615/ws"  # URL complète : le client de test ignore base_url pour les WebSockets
+WS_URL = "ws://127.0.0.1:47615/ws"  # full URL: the test client ignores base_url for WebSockets
 
 
 @pytest.fixture
@@ -55,7 +55,7 @@ def test_websocket_sends_state_to_app(client):
 
 
 def test_foreign_host_is_rejected(client):
-    """Défense contre le DNS rebinding : la requête arrive sur 127.0.0.1 mais avec le Host du domaine piégé."""
+    """Defence against DNS rebinding: the request arrives on 127.0.0.1 but with the booby-trapped domain's Host."""
     assert client.get("/health", headers={"Host": "piege.example:47615"}).status_code == 400
 
 

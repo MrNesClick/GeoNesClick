@@ -1,16 +1,16 @@
 <script setup lang="ts">
-// Marques : chaque indice entouré sur la vue figée, avec sa découpe et ce que l'IA y a lu mot pour mot.
-// Ce sont des éléments de preuve : les conclusions du coach les citeront par leur numéro.
+// Marks: each clue circled on the frozen view, with its crop and what the AI read there word for word.
+// They are pieces of evidence: the coach's conclusions will cite them by number.
 import type { Evidence, Mark, Verdict } from "../engine";
 import { engine, flag, fr, removeMark, setLock } from "../engine";
 
 const props = defineProps<{ marks: Mark[]; analysisId: string; verdict: Verdict | null }>();
 
-// Ce que les règles locales tirent d'une marque, en une ligne : « Благоевград → Blagoevgrad 🇧🇬 ».
+// What the local rules draw from a mark, in one line: "Благоевград → Blagoevgrad 🇧🇬".
 const flags = (codes: string[]) => (codes.length > 6 ? `${codes.length} pays` : codes.map(flag).join(" "));
 const describe = (e: Evidence) =>
   e.kind === "alphabet" ? `${e.label} : ${flags(e.countries)}` : `${e.value} → ${e.label} ${flags(e.countries)}`;
-/** Ce qui retire une preuve du calcul, dit en clair (vide : elle compte). */
+/** What removes a proof from the computation, in plain words (empty: it counts). */
 function status(n: number, e: Evidence): string {
   if (e.kind === "rue") return "nom de rue, ne situe pas la vue";
   if (e.note) return e.note;
@@ -21,7 +21,7 @@ function status(n: number, e: Evidence): string {
   }
   return "";
 }
-/** Lieu retenu : le nom GeoNames de l'homonyme voisin (Laàs du Béarn, pas Laas du Gers). */
+/** Place kept: the GeoNames name of the nearby namesake (Laàs in Béarn, not Laas in Gers). */
 const placeLabel = (n: number, e: Evidence) =>
   props.verdict?.location?.places.find((p) => p.n === n && p.name === e.value)?.label ?? e.label;
 function text(n: number, e: Evidence): string {
@@ -29,7 +29,7 @@ function text(n: number, e: Evidence): string {
   if (e.kind === "lieu") return `${e.value} → ${placeLabel(n, e)} ${flags(e.countries)}`.trim();
   return describe(e);
 }
-/** Ville à verrouiller depuis un lieu lu : l'homonyme retenu (celui de la carte), sinon le plus peuplé. */
+/** City to lock from a place read: the namesake kept (the one on the map), otherwise the most populous. */
 function cityOf(n: number, e: Evidence) {
   if (!engine.locks.enabled || e.kind !== "lieu" || status(n, e) || e.countries.length !== 1 || !e.points?.length) return null;
   const where = props.verdict?.location?.places.find((p) => p.n === n && p.name === e.value);

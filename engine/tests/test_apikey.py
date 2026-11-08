@@ -1,4 +1,4 @@
-"""Clé API hors du dépôt : fichier lisible par toi seul, jamais renvoyée en entier, ancien .env migré."""
+"""API key outside the repository: file readable by you only, never sent back in full, old .env migrated."""
 
 import stat
 
@@ -19,7 +19,7 @@ def test_key_is_saved_private_and_only_its_end_is_shown(monkeypatch):
     assert apikey.read("NVAPI") == "nvapi-abcdef123456"
     assert apikey.hint("NVAPI") == {"source": "fichier", "end": "3456"}
     monkeypatch.setenv("NVAPI", "nvapi-from-env-9999")
-    assert apikey.hint("NVAPI") == {"source": "variable d'environnement", "end": "9999"}  # prioritaire
+    assert apikey.hint("NVAPI") == {"source": "variable d'environnement", "end": "9999"}  # takes priority
     apikey.forget("NVAPI")
     monkeypatch.delenv("NVAPI")
     assert apikey.read("NVAPI") is None
@@ -41,8 +41,8 @@ def test_old_env_file_is_migrated_then_cleaned(tmp_path):
     env.write_text("# Clé API NVIDIA\nNVAPI=nvapi-old-key-0001\nAUTRE=garde\n")
     assert apikey.migrate_env("NVAPI", env) is True
     assert apikey.read("NVAPI") == "nvapi-old-key-0001"
-    assert env.read_text() == "# Clé API NVIDIA\nAUTRE=garde\n"  # le reste du .env est gardé
-    assert apikey.migrate_env("NVAPI", env) is False  # une seule fois
+    assert env.read_text() == "# Clé API NVIDIA\nAUTRE=garde\n"  # the rest of the .env is kept
+    assert apikey.migrate_env("NVAPI", env) is False  # only once
 
 
 def test_settings_route_saves_without_ever_returning_the_key(tmp_path):

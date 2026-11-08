@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
-# Fabrique l'AppImage de GeoNesClick. À lancer sur Ubuntu 24.04 (la plus ancienne cible : ce qui est compilé ici
-# fonctionne sur les versions suivantes), après scripts/install.sh.
+# Builds the GeoNesClick AppImage. To run on Ubuntu 24.04 (the oldest target: what is compiled here
+# works on the later versions), after scripts/install.sh.
 #
-# Décidé avec l'utilisateur le 2026-11-07 : une AppImage LÉGÈRE (~100 Mo : l'interface + uv) qui installe le moteur
-# au premier lancement, avec un assistant qui montre d'abord TOUT ce qui sera téléchargé. Elle embarque :
-#   - uv (version figée, empreinte vérifiée) : il installe Python et les dépendances, sans rien toucher au système ;
-#   - le moteur en wheel, et PyGObject + pycairo compilés ici (ils n'existent qu'en sources : sans cela, chaque
-#     utilisateur devrait avoir un compilateur) ;
-#   - les dépendances figées AVEC empreintes, en deux variantes (PyTorch CUDA si carte NVIDIA, sinon CPU) ;
-#   - la liste des téléchargements et la liste détaillée des paquets (nom, version, taille, licence).
+# Decided with the user on 2026-11-07: a LIGHT AppImage (~100 MB: the UI + uv) that installs the engine
+# on first launch, with an assistant that first shows EVERYTHING that will be downloaded. It bundles:
+#   - uv (pinned version, hash checked): it installs Python and the dependencies, without touching the system;
+#   - the engine as a wheel, and PyGObject + pycairo compiled here (they only exist as sources: without this, every
+#     user would need a compiler);
+#   - the pinned dependencies WITH hashes, in two variants (PyTorch CUDA if there is an NVIDIA card, otherwise CPU);
+#   - the list of downloads and the detailed list of packages (name, version, size, licence).
 #
-# Usage : scripts/build-appimage.sh                 → app/src-tauri/target/release/bundle/appimage/GeoNesClick_*.AppImage
-#         scripts/build-appimage.sh --engine-only   → seulement app/src-tauri/engine-bundle/ (étapes 1 à 4)
+# Usage: scripts/build-appimage.sh                 → app/src-tauri/target/release/bundle/appimage/GeoNesClick_*.AppImage
+#        scripts/build-appimage.sh --engine-only   → only app/src-tauri/engine-bundle/ (steps 1 to 4)
 set -euo pipefail
 ENGINE_ONLY=0
 [[ "${1:-}" == "--engine-only" ]] && ENGINE_ONLY=1
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OUT="$ROOT/app/src-tauri/engine-bundle"      # ressources de l'AppImage (ignorées par git)
-UV_VERSION="0.9.17"                          # celle des tests ; à changer avec soin (README, Maintenance)
+OUT="$ROOT/app/src-tauri/engine-bundle"      # AppImage resources (ignored by git)
+UV_VERSION="0.9.17"                          # the one used by the tests; change with care (README, Maintenance)
 UV_ARCHIVE="uv-x86_64-unknown-linux-gnu.tar.gz"
 UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_ARCHIVE}"
 
@@ -43,7 +43,7 @@ step "2. Moteur (wheel)"
 ok "$(cd "$OUT/wheels" && ls geonesclick-*.whl)"
 
 step "3. PyGObject et pycairo, compilés ici"
-# Sources de PyPI vérifiées par les empreintes de uv.lock (les mêmes que le développement) avant compilation.
+# PyPI sources checked against the uv.lock hashes (the same as in development) before compiling.
 python3 - "$ROOT/engine/uv.lock" > "$TMP/sources.txt" <<'PY'
 import sys, tomllib
 for p in tomllib.load(open(sys.argv[1], "rb"))["package"]:

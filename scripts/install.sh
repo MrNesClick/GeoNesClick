@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Installation de GeoNesClick (Ubuntu 24.04+ / GNOME / Wayland ou Xorg).
+# Installation of GeoNesClick (Ubuntu 24.04+ / GNOME / Wayland or Xorg).
 #
-# Usage :
-#   scripts/install.sh                  vérifie les prérequis et installe les dépendances du projet
-#   scripts/install.sh --with-apt       installe aussi les paquets système manquants (sudo apt)
-#   scripts/install.sh --setup-shortcut ajoute les raccourcis GNOME : capture (défaut : Super+Maj+G,
-#                                       modifiable avec GNC_SHORTCUT="<Super><Shift>g") et marques
-#                                       (défaut : Super+Maj+Z, modifiable avec GNC_MARK_SHORTCUT)
+# Usage:
+#   scripts/install.sh                  checks the prerequisites and installs the project's dependencies
+#   scripts/install.sh --with-apt       also installs the missing system packages (sudo apt)
+#   scripts/install.sh --setup-shortcut adds the GNOME shortcuts: capture (default: Super+Shift+G,
+#                                       can be changed with GNC_SHORTCUT="<Super><Shift>g") and marks
+#                                       (default: Super+Shift+Z, can be changed with GNC_MARK_SHORTCUT)
 #
-# Le script est idempotent : on peut le relancer sans risque après chaque mise à jour du dépôt.
+# The script is idempotent: it can safely be run again after each update of the repository.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,12 +31,12 @@ step() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 # ---------------------------------------------------------------------------
 step "1. Paquets système"
 APT_PACKAGES=(
-  # Tauri 2 : https://v2.tauri.app/start/prerequisites/#linux
+  # Tauri 2: https://v2.tauri.app/start/prerequisites/#linux
   build-essential curl wget file libxdo-dev libssl-dev
   libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
-  # Compilation de PyGObject (liaisons GStreamer) dans le venv : https://pygobject.gnome.org/getting_started.html
+  # Compiling PyGObject (GStreamer bindings) in the venv: https://pygobject.gnome.org/getting_started.html
   pkg-config libcairo2-dev libgirepository-2.0-dev
-  # Capture : descriptions GStreamer (typelibs), conversion vidéo, source PipeWire, portail ScreenCast
+  # Capture: GStreamer descriptions (typelibs), video conversion, PipeWire source, ScreenCast portal
   gir1.2-gstreamer-1.0 gir1.2-gst-plugins-base-1.0 gstreamer1.0-plugins-base gstreamer1.0-pipewire
   xdg-desktop-portal xdg-desktop-portal-gnome
 )
@@ -57,7 +57,7 @@ fi
 
 # ---------------------------------------------------------------------------
 step "2. Outils de développement"
-need_tool() {  # nom, commande de version, aide d'installation
+need_tool() {  # name, version command, installation help
   if command -v "$1" >/dev/null 2>&1; then ok "$1 $($2 2>/dev/null | head -1)"; else fail "$1 absent → $3"; return 1; fi
 }
 TOOLS_OK=1
@@ -69,8 +69,8 @@ need_tool uv "uv --version" "curl -LsSf https://astral.sh/uv/install.sh | sh" ||
 
 # ---------------------------------------------------------------------------
 step "3. Moteur Python (engine/)"
-# Venv isolé : Python 3.12 géré par uv, aucun paquet système visible. PyGObject est compilé depuis
-# PyPI ; seuls les typelibs GStreamer (fichiers de description) viennent du système.
+# Isolated venv: Python 3.12 managed by uv, no system package visible. PyGObject is compiled from
+# PyPI; only the GStreamer typelibs (description files) come from the system.
 cd "$ROOT/engine"
 if [[ -f .venv/pyvenv.cfg ]] && grep -q "include-system-site-packages = true" .venv/pyvenv.cfg; then
   warn "ancien venv non isolé détecté : recréation"
@@ -83,8 +83,8 @@ ok "venv isolé à jour"
 .venv/bin/python -c "import torch, sys; sys.exit(0 if torch.cuda.is_available() else 1)" \
   && ok "PyTorch voit le GPU" || warn "PyTorch ne voit pas de GPU CUDA : StreetCLIP tournera sur CPU (lent)"
 
-# Répertoire des lieux (GeoNames, CC BY 4.0, ~11 Mo) pour les règles des marques ; sinon, le coach le
-# télécharge à son premier démarrage. Un échec (hors ligne) n'empêche pas l'installation.
+# Places directory (GeoNames, CC BY 4.0, ~11 MB) for the marks' rules; otherwise, the coach
+# downloads it on its first start. A failure (offline) does not prevent the installation.
 if [[ -f "${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/places/places-v4.sqlite" ]]; then
   ok "répertoire des lieux GeoNames présent"
 else
@@ -101,8 +101,8 @@ ok "dépendances front installées"
 # ---------------------------------------------------------------------------
 step "5. Configuration"
 cd "$ROOT"
-# Clé API : saisie dans l'app (Réglages › Analyse), rangée dans ~/.config/geonesclick/nvapi.key (0600), jamais
-# dans le dépôt. Une clé restée dans l'ancien .env y est déplacée au premier démarrage du moteur.
+# API key: entered in the app (Settings › Analysis), stored in ~/.config/geonesclick/nvapi.key (0600), never
+# in the repository. A key left in the old .env is moved there on the engine's first start.
 KEY_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/geonesclick/nvapi.key"
 if [[ -n "${NVAPI:-}" ]]; then
   ok "clé API fournie par la variable NVAPI"
@@ -117,11 +117,11 @@ fi
 # ---------------------------------------------------------------------------
 if ((SETUP_SHORTCUT)); then
   step "6. Raccourcis GNOME"
-  # Toujours le gsettings du système : un gsettings tiers (Linuxbrew, conda…) peut ne pas avoir le
-  # module dconf et écrire dans un fichier que GNOME ne lit jamais.
+  # Always the system's gsettings: a third-party gsettings (Linuxbrew, conda…) may lack the
+  # dconf module and write to a file that GNOME never reads.
   gsettings() { /usr/bin/gsettings "$@"; }
   SCHEMA="org.gnome.settings-daemon.plugins.media-keys"
-  add_shortcut() {  # identifiant, nom, commande du déclencheur, combinaison
+  add_shortcut() {  # identifier, name, trigger command, key combination
     local key_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$1/" current new
     current="$(gsettings get "$SCHEMA" custom-keybindings)"
     if [[ "$current" != *"$key_path"* ]]; then
@@ -134,7 +134,7 @@ if ((SETUP_SHORTCUT)); then
     gsettings set "$rel" binding "$4"
     ok "raccourci $4 → $3"
   }
-  # Raccourcis de l'ancien nom (GeoNesClick) : retirés, leur commande n'existe plus.
+  # Shortcuts of the old name (GeoNesClick): removed, their command no longer exists.
   for old in geonesclick geonesclick-mark; do
     old_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$old/"
     current="$(gsettings get "$SCHEMA" custom-keybindings)"
@@ -148,4 +148,4 @@ if ((SETUP_SHORTCUT)); then
   add_shortcut geonesclick-mark "GeoNesClick – marques" mark "${GNC_MARK_SHORTCUT:-<Super><Shift>z}"
 fi
 
-step "Installation terminée ✔  (voir README.md, section « Lancer »)"
+step "Installation terminée ✔  (voir README.fr.md, section « Lancer »)"

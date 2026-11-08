@@ -1,8 +1,8 @@
-"""Marques : indices que le joueur entoure sur la vue figée (panneau, plaque de rue, enseigne…).
+"""Marks: clues the player circles on the frozen view (road sign, street sign, shop sign…).
 
-Chaque marque est un élément de preuve : sa zone dans l'image brute, sa découpe agrandie si elle est petite,
-et ce que le modèle de vision y a lu, mot pour mot. Le modèle transcrit seulement ; les conclusions viendront
-des règles locales du coach, qui citeront les marques qui les justifient.
+Each mark is a piece of evidence: its zone in the raw image, its crop enlarged if small,
+and what the vision model read there, word for word. The model only transcribes; the conclusions will come
+from the coach's local rules, which will cite the marks that justify them.
 """
 
 from __future__ import annotations
@@ -15,20 +15,20 @@ from pydantic import BaseModel, Field, field_validator
 
 from .config import Rect, _check_rect
 
-MAX_PER_ANALYSIS = 20  # numérotation ① à ⑳, toutes images figées confondues
-MAX_LINES, MAX_CHARS = 30, 300  # une réponse démesurée du modèle est tronquée, jamais affichée en entier
+MAX_PER_ANALYSIS = 20  # numbering ① to ⑳, across all frozen images
+MAX_LINES, MAX_CHARS = 30, 300  # an oversized model response is truncated, never shown in full
 
 
 
 class DeleteRequest(BaseModel):
-    """Retirer une marque (lecture fausse, découpe ratée) : elle ne compte plus dans la conclusion."""
+    """Remove a mark (wrong reading, failed crop): it no longer counts in the conclusion."""
 
-    id: str = Field(max_length=32)  # analyse
+    id: str = Field(max_length=32)  # analysis
     n: int = Field(ge=1, le=1000)
 
 
 def uses(scripts: bool, letters: bool, places: bool) -> tuple[list[str], list[str]]:
-    """Ce que le coach tire d'une marque, et ce qu'il n'en tire pas (encore), selon les règles actives."""
+    """What the coach draws from a mark, and what it does not draw (yet), according to the active rules."""
     on = ["le texte, lu mot pour mot : panneaux, plaques de rue, enseignes, plaques d'immatriculation"]
     off = []
     for active, text in (
@@ -43,9 +43,9 @@ def uses(scripts: bool, letters: bool, places: bool) -> tuple[list[str], list[st
 
 
 class MarksRequest(BaseModel):
-    """Rectangles tracés sur une image figée, en fractions [gauche, haut, droite, bas] de l'image brute."""
+    """Rectangles drawn on a frozen image, as fractions [left, top, right, bottom] of the raw image."""
 
-    id: str = Field(max_length=32)  # image figée
+    id: str = Field(max_length=32)  # frozen image
     rects: list[Rect] = Field(min_length=1, max_length=MAX_PER_ANALYSIS)
 
     @field_validator("rects")
@@ -59,9 +59,9 @@ class FrameRequest(BaseModel):
 
 
 def crop_mark(frame: Image.Image, rect: Rect, upscale_to: int, max_upscale: float) -> tuple[Image.Image, float]:
-    """Découpe la zone en pleine résolution, puis l'agrandit si son plus grand côté est sous upscale_to.
+    """Crops the zone at full resolution, then enlarges it if its longest side is below upscale_to.
 
-    Mesuré : un panneau de 140×130 px est lu déformé tel quel, exact une fois agrandi ×3.
+    Measured: a 140×130 px sign is read distorted as is, exact once enlarged ×3.
     """
     w, h = frame.size
     left, top, right, bottom = rect
@@ -80,7 +80,7 @@ def _text(value: Any, limit: int = MAX_CHARS) -> str:
 
 
 def reading(fiche: dict[str, Any]) -> dict[str, Any]:
-    """Lecture d'une marque, dans une forme fixe quelle que soit la réponse du modèle."""
+    """Reading of a mark, in a fixed shape whatever the model's response."""
     raw = fiche.get("texte")
     lines = raw if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
     text = [t for t in (_text(line) for line in lines[:MAX_LINES]) if t]

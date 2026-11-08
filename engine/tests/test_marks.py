@@ -1,4 +1,4 @@
-"""Marques : vue figée, découpe agrandie dans l'image brute, transcription par le modèle de vision."""
+"""Marks: frozen view, enlarged crop from the raw image, transcription by the vision model."""
 
 import asyncio
 import json
@@ -22,7 +22,7 @@ class FakeClip:
 
 
 class FakeVision:
-    """Note la taille des images reçues ; répond comme le modèle (texte lu mot pour mot)."""
+    """Records the size of the images received; answers like the model (text read word for word)."""
 
     ready, client = True, None
 
@@ -41,11 +41,11 @@ class FakeVision:
 
 def frame() -> Image.Image:
     img = Image.new("RGB", (1000, 500), (40, 40, 40))
-    img.paste((255, 0, 0), (100, 100, 240, 230))  # le « panneau » : 140×130 px
+    img.paste((255, 0, 0), (100, 100, 240, 230))  # the "sign": 140×130 px
     return img
 
 
-# --- découpe ---------------------------------------------------------------------------------------
+# --- crop ------------------------------------------------------------------------------------------
 def test_small_mark_is_cropped_from_the_raw_frame_and_enlarged():
     crop, scale = crop_mark(frame(), [0.1, 0.2, 0.24, 0.46], upscale_to=420, max_upscale=4)
     assert scale == pytest.approx(3.0)
@@ -70,7 +70,7 @@ def test_reading_has_a_fixed_shape_whatever_the_model_says():
     assert reading({})["text"] == []
 
 
-# --- moteur ----------------------------------------------------------------------------------------
+# --- engine ----------------------------------------------------------------------------------------
 @pytest.fixture
 def setup(tmp_path):
     user = tmp_path / "config.toml"
@@ -86,7 +86,7 @@ def setup(tmp_path):
         sent.append(message)
 
     engine.broadcast = broadcast
-    engine.app = app  # pour les tests de routes
+    engine.app = app  # for the route tests
     return engine, sent, tmp_path / "captures"
 
 
@@ -112,12 +112,12 @@ def test_marks_complete_the_current_analysis(setup):
     done = [m for m in sent if m["type"] == "mark" and m["status"] == "done"]
     assert sorted(m["n"] for m in done) == [1, 2]
     assert done[0]["text"] == ["Monumentul Eroilor Neamului"]
-    assert (420, 390) in engine.vision.sizes  # le petit panneau est envoyé agrandi
-    # Mode débogage : découpes et lectures gardées pour mesurer.
+    assert (420, 390) in engine.vision.sizes  # the small sign is sent enlarged
+    # Debug mode: crops and readings kept for measuring.
     assert (folder / f"mark-{capture_id}-1.png").exists()
     log = json.loads((folder / f"capture-{capture_id}.json").read_text())
     assert [m["status"] for m in log["marks"]] == ["done", "done"]
-    assert frozen["id"] not in engine.frozen  # une vue figée ne sert qu'une fois
+    assert frozen["id"] not in engine.frozen  # a frozen view is only used once
 
 
 def test_numbering_continues_across_frozen_views(setup):
@@ -134,14 +134,14 @@ def test_marking_needs_a_capture_first(setup):
     result = run(engine, engine.freeze())
     assert result["ok"] is False and "capture" in result["error"]
     assert not engine.frozen and not [m for m in sent if m["type"] == "freeze"]
-    assert any(m["type"] == "error" for m in sent)  # visible dans le coach, pas seulement en notification
+    assert any(m["type"] == "error" for m in sent)  # visible in the coach, not only as a notification
 
 
 def test_marks_go_to_the_round_that_was_frozen(setup):
     engine, sent, _ = setup
     first = run(engine, engine.analyse())["id"]
     frozen = run(engine, engine.freeze())
-    run(engine, engine.analyse())  # nouvelle capture entre-temps : la vue figée reste celle de la 1ʳᵉ manche
+    run(engine, engine.analyse())  # new capture meanwhile: the frozen view stays the one of the 1st round
     result = run(engine, engine.add_marks(MarksRequest(id=frozen["id"], rects=[[0, 0, 0.5, 0.5]])))
     assert result["id"] == first
 
@@ -182,7 +182,7 @@ def client(setup):
 
 def frozen_id(client_engine):
     client, _ = client_engine
-    client.post("/capture", headers=ORIGIN)  # les marques complètent une manche : capture d'abord
+    client.post("/capture", headers=ORIGIN)  # the marks complete a round: capture first
     return client.post("/marks/freeze", headers=ORIGIN).json()["id"]
 
 
@@ -217,9 +217,9 @@ def test_unknown_frozen_view_is_404(client):
     assert res.status_code == 404
 
 
-# --- règles locales et retrait d'une marque ----------------------------------------------------------
+# --- local rules and removal of a mark ----------------------------------------------------------------
 class ReaderVision(FakeVision):
-    """Lit ce qu'on lui dit, marque par marque (ordre d'envoi)."""
+    """Reads what it is told, mark by mark (sending order)."""
 
     def __init__(self, readings):
         super().__init__()
@@ -237,8 +237,8 @@ def test_marks_feed_a_verdict_and_removing_the_wrong_one_updates_it(setup):
     frozen = run(engine, engine.freeze())
     run(engine, engine.add_marks(MarksRequest(id=frozen["id"], rects=[[0, 0, 0.5, 0.5], [0.5, 0.5, 1, 1]])))
     last = [m for m in sent if m["type"] == "verdict"][-1]
-    assert (last["country"], last["level"]) == ("BG", "probable")  # « ъ » devant une consonne
-    assert "FR" not in last["allowed"]  # cyrillique : la France est écartée
+    assert (last["country"], last["level"]) == ("BG", "probable")  # "ъ" before a consonant
+    assert "FR" not in last["allowed"]  # Cyrillic: France is ruled out
 
     from geonesclick.marks import DeleteRequest
 
@@ -249,7 +249,7 @@ def test_marks_feed_a_verdict_and_removing_the_wrong_one_updates_it(setup):
     frozen = run(engine, engine.freeze())
     engine.vision = ReaderVision([["Repkény utca"]])
     result = run(engine, engine.add_marks(MarksRequest(id=frozen["id"], rects=[[0, 0, 0.5, 0.5]])))
-    assert result["marks"] == [3]  # les numéros ne sont jamais réutilisés
+    assert result["marks"] == [3]  # the numbers are never reused
 
 
 def test_rules_can_be_disabled(setup):
@@ -266,7 +266,7 @@ def test_removing_an_unknown_mark_is_404(client):
 
 
 def test_country_detail_is_loaded_once_and_marks_are_reread(setup, monkeypatch, tmp_path):
-    """Un pays mène : son répertoire complet (villages) est chargé une fois, puis les marques sont relues."""
+    """A country leads: its full directory (villages) is loaded once, then the marks are re-read."""
     import test_evidence as te
 
     from geonesclick import places
@@ -288,7 +288,7 @@ def test_country_detail_is_loaded_once_and_marks_are_reread(setup, monkeypatch, 
     asyncio.run(go())
     last = [m for m in sent if m["type"] == "verdict"][-1]
     assert (last["country"], last["level"]) == ("FR", "certain") and last["ignored"] == []
-    assert {c["n"] for c in last["cites"]} == {1, 2}  # « LAAS » trouvé en France après le détail
+    assert {c["n"] for c in last["cites"]} == {1, 2}  # "LAAS" found in France after the detail
     assert "FR" in engine.places.details and "villages : FR" in engine.places_message
 
 
@@ -302,7 +302,7 @@ def test_countries_outside_the_candidates_do_not_count(setup, monkeypatch, tmp_p
     engine.cfg.rules.places_dir = str(tmp_path / "places")
     engine.places = places.Places(places.build(engine.cfg.rules.places_url, engine.cfg.rules.places_path))
     [manto] = [e for e in engine.evidence_of(["Manto 5"]) if e.kind == "lieu"]
-    assert manto.countries == [] and "HN" in manto.note  # le Honduras n'est pas un pays candidat
+    assert manto.countries == [] and "HN" in manto.note  # Honduras is not a candidate country
 
 
 def test_a_mark_removed_while_being_read_does_not_come_back(setup):

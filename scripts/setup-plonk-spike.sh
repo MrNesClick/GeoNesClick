@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Prépare le banc d'essai PLONK (engine/spikes/plonk_bench.py), sans rien installer dans le venv du moteur.
+# Prepares the PLONK benchmark (engine/spikes/plonk_bench.py), without installing anything in the engine's venv.
 #
-# Usage : scripts/setup-plonk-spike.sh      (après scripts/install.sh ; relançable sans risque)
+# Usage: scripts/setup-plonk-spike.sh      (after scripts/install.sh; safe to run again)
 #
-# Tout va dans engine/spikes/.vendor/ (ignoré par git) :
-#   plonk/   code de PLONK (MIT) figé sur un commit précis
-#   deps/    einops, geoopt, torchdiffeq, scipy, installés sans leurs dépendances (torch et numpy
-#            viennent du venv du moteur)
-#   ne_50m_admin_0_countries.geojson   frontières Natural Earth 1:50m (domaine public)
-# Les poids PLONK_OSV_5M (safetensors, 144 Mo) sont téléchargés par le banc dans le cache Hugging Face.
-# Pour tout retirer : rm -rf engine/spikes/.vendor
+# Everything goes to engine/spikes/.vendor/ (ignored by git):
+#   plonk/   PLONK code (MIT) pinned to a precise commit
+#   deps/    einops, geoopt, torchdiffeq, scipy, installed without their dependencies (torch and numpy
+#            come from the engine's venv)
+#   ne_50m_admin_0_countries.geojson   Natural Earth 1:50m borders (public domain)
+# The PLONK_OSV_5M weights (safetensors, 144 MB) are downloaded by the bench into the Hugging Face cache.
+# To remove everything: rm -rf engine/spikes/.vendor
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -27,7 +27,7 @@ fail() { printf '  \033[31m✘\033[0m %s\n' "$1"; exit 1; }
 [[ -x "$PY" ]] || fail "venv du moteur absent : lance d'abord scripts/install.sh"
 mkdir -p "$VENDOR"
 
-# Code PLONK, figé : on vérifie que le commit obtenu est bien celui attendu.
+# PLONK code, pinned: we check that the commit obtained is indeed the expected one.
 if [[ "$(git -C "$VENDOR/plonk" rev-parse HEAD 2>/dev/null)" != "$PLONK_COMMIT" ]]; then
   rm -rf "$VENDOR/plonk"
   git init -q "$VENDOR/plonk"

@@ -1,13 +1,13 @@
-# Tout ce que GeoNesClick télécharge ou envoie sur le réseau : la liste unique, affichée par le tunnel de premier
-# lancement AVANT le moindre octet, et reprise dans le README (décidé avec l'utilisateur le 2026-11-07 : « 100 %
-# transparent, indiquer CLAIREMENT tout ce qu'on télécharge »). Un test (tests/test_downloads.py) vérifie que chaque
-# adresse écrite dans le code figure ici, contactée ou seulement affichée.
+# Everything GeoNesClick downloads or sends over the network: the single list, shown by the first-launch
+# flow BEFORE a single byte, and repeated in the README (decided with the user on 2026-11-07: "100 %
+# transparent, state CLEARLY everything we download"). A test (tests/test_downloads.py) checks that every
+# address written in the code is listed here, whether contacted or only displayed.
 #
-# when : installation (une fois, au premier lancement) · option (une fois, si tu l'acceptes) · demande (au fil de
-#        l'usage, quand c'est utile) · continu (à chaque usage de la fonction)
-# required : sans lui, l'app ne fonctionne pas (bloc « obligatoire » du tunnel, un seul accord)
-# sends : ce qui part de ta machine, au-delà de la simple requête de téléchargement
-# Tailles mesurées le 2026-11-07 (paquets Python : calculées depuis uv.lock à la fabrication de l'AppImage).
+# when: installation (once, on first launch) · option (once, if you accept it) · demande (on demand, during
+#        use, when useful) · continu (continuous, on every use of the feature)
+# required: without it, the app does not work ("required" block of the flow, a single consent)
+# sends: what leaves your machine, beyond the plain download request
+# Sizes measured on 2026-11-07 (Python packages: computed from uv.lock when building the AppImage).
 
 [[download]]
 id = "python"
@@ -23,7 +23,7 @@ required = true
 id = "packages"
 what = "Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte"
 hosts = ["pypi.org", "files.pythonhosted.org"]
-size_mb = 3060  # avec carte NVIDIA (PyTorch CUDA) ; sans carte NVIDIA, voir « pytorch-cpu »
+size_mb = 3060  # with an NVIDIA card (PyTorch CUDA); without an NVIDIA card, see "pytorch-cpu"
 license = "variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet dans le tunnel"
 why = "le moteur : analyse locale de la vue, serveur de l'interface, lecture des réponses de l'IA"
 when = "installation"
@@ -64,7 +64,7 @@ option = "rules.places"
 id = "villages"
 what = "Villages d'un pays (répertoire complet GeoNames du pays en tête)"
 hosts = ["download.geonames.org"]
-size_mb = 8  # par pays : France 7,3 Mo, Danemark 1,2 Mo
+size_mb = 8  # per country: France 7.3 MB, Denmark 1.2 MB
 license = "CC BY 4.0 (GeoNames)"
 why = "trouver les petits villages lus sur un panneau ; GeoNames voit quel pays est consulté"
 when = "demande"
@@ -117,19 +117,19 @@ required = false
 option = "map.enabled"
 sends = "ton adresse IP et les zones de carte affichées"
 
-# Adresses écrites dans le code mais JAMAIS contactées par l'application : liens affichés (sources d'une règle,
-# attributions, pages d'aide), liens que tu colles (lus, jamais ouverts), ou outils de développement d'install.sh.
+# Addresses written in the code but NEVER contacted by the app: displayed links (sources of a rule,
+# attributions, help pages), links you paste (read, never opened), or install.sh development tools.
 [shown]
 hosts = [
-  "en.wikipedia.org",           # source d'une règle (alphabets, mots de rue)
-  "build.nvidia.com",           # où obtenir ta clé API
-  "www.openstreetmap.org",      # attribution de la carte
-  "operations.osmfoundation.org",  # politique des tuiles (commentaire)
-  "www.geonames.org",           # attribution des lieux
-  "www.naturalearthdata.com",   # attribution des frontières (fichier livré avec l'app)
-  "raw.githubusercontent.com",  # provenance du fichier des frontières livré avec l'app (commentaire)
-  "github.com",                 # code source de PLONK (commentaire)
-  "www.google.com",             # lien Google Maps que tu colles dans « C'était où ? » : lu, jamais ouvert
+  "en.wikipedia.org",           # source of a rule (alphabets, street words)
+  "build.nvidia.com",           # where to get your API key
+  "www.openstreetmap.org",      # map attribution
+  "operations.osmfoundation.org",  # tile policy (comment)
+  "www.geonames.org",           # places attribution
+  "www.naturalearthdata.com",   # borders attribution (file shipped with the app)
+  "raw.githubusercontent.com",  # origin of the borders file shipped with the app (comment)
+  "github.com",                 # PLONK source code (comment)
+  "www.google.com",             # Google Maps link you paste into "Where was it?": read, never opened
   "schema.tauri.app", "v2.tauri.app", "pygobject.gnome.org",  # documentation
-  "rustup.rs", "nodejs.org", "pnpm.io", "astral.sh",          # outils de développement (install.sh)
+  "rustup.rs", "nodejs.org", "pnpm.io", "astral.sh",          # development tools (install.sh)
 ]

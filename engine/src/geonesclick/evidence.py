@@ -1,19 +1,19 @@
-"""Règles locales : ce que le texte des marques prouve, sans demander au modèle d'interpréter.
+"""Local rules: what the text of the marks proves, without asking the model to interpret.
 
-Le modèle de vision transcrit ; ces règles concluent, chacune avec sa source :
-1. l'ALPHABET écarte les pays qui ne l'écrivent pas (du cyrillique exclut la France), règle robuste même quand
-   le modèle invente les mots, car il ne change pas d'alphabet ;
-2. les LETTRES PROPRES à une langue désignent ses pays (« ъ » devant une consonne : bulgare) ;
-3. les NOMS DE LIEUX (répertoire GeoNames, voir places.py) désignent un pays.
+The vision model transcribes; these rules conclude, each with its source:
+1. the ALPHABET rules out the countries that do not write it (Cyrillic excludes France), a robust rule even when
+   the model invents the words, since it does not change alphabet;
+2. the LETTERS SPECIFIC to a language point to its countries ("ъ" before a consonant: Bulgarian);
+3. PLACE NAMES (GeoNames directory, see places.py) point to a country.
 
-Un pays n'est « certain » qu'avec au moins un nom de lieu ET une autre preuve concordante, sans aucune marque qui
-en désigne un autre : mesuré le 2026-11-07, le modèle a inventé « Казань » sur une découpe floue.
+A country is "certain" only with at least one place name AND another concurring proof, with no mark
+pointing to another: measured on 2026-11-07, the model invented "Казань" on a blurry crop.
 
-Un LIEU SEUL ne conclut rien (décidé avec l'utilisateur le 2026-11-07) : mesuré le même jour, les lieux seuls se
-sont trompés 4 fois (Gare → FR/LU, Laas → IT, Orion → PH/US, « Lo Manto » d'un nom de rue → Honduras, contre
-StreetCLIP à 96 % pour l'Italie), alors que les conclusions justes venaient de lieux groupés. Il faut une
-confirmation : un 2ᵉ lieu, une lettre ou un mot de la langue du pays, ou StreetCLIP qui donne ce pays à 10 % ou plus.
-Les mots d'un NOM DE RUE (après « via », « rue »… ou avant « utca », « street »…) ne sont pas des lieux.
+A LONE PLACE concludes nothing (decided with the user on 2026-11-07): measured the same day, lone places were
+wrong 4 times (Gare → FR/LU, Laas → IT, Orion → PH/US, "Lo Manto" from a street name → Honduras, against
+StreetCLIP at 96 % for Italy), whereas the right conclusions came from grouped places. A confirmation is
+needed: a 2nd place, a letter or a word of the country's language, or StreetCLIP giving that country 10 % or more.
+The words of a STREET NAME (after "via", "rue"… or before "utca", "street"…) are not places.
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ from typing import Any
 
 WIKI = "https://en.wikipedia.org/wiki/"
 
-# Alphabet → pays qui l'écrivent sur leurs panneaux (écriture officielle ou co-officielle).
-# Le latin n'écarte personne : on le trouve partout (translittérations, enseignes, marques).
+# Alphabet → countries that write it on their signs (official or co-official script).
+# Latin rules out nobody: it is found everywhere (transliterations, shop signs, brands).
 SCRIPTS: dict[str, tuple[str, set[str], str]] = {
     "CYRILLIC": ("cyrillique", {"RU", "UA", "BY", "BG", "RS", "MK", "ME", "BA", "KZ", "KG", "MN", "TJ"},
                  WIKI + "Cyrillic_script"),
@@ -59,15 +59,15 @@ SCRIPTS: dict[str, tuple[str, set[str], str]] = {
     "MYANMAR": ("birman", {"MM"}, WIKI + "Burmese_alphabet"),
     "THAANA": ("thâna", {"MV"}, WIKI + "Thaana"),
 }
-MIN_SCRIPT_LETTERS = 2  # une lettre isolée (symbole, reflet mal lu) ne suffit pas à fixer un alphabet
+MIN_SCRIPT_LETTERS = 2  # a single letter (symbol, misread reflection) is not enough to set an alphabet
 
 _SPANISH = {"ES", "MX", "GT", "PA", "DO", "CO", "EC", "PE", "BO", "CL", "AR", "UY", "PY", "CR", "HN", "SV", "NI",
             "VE", "CU", "PR"}
 
-# Lettres propres à une langue : (motif, lettre affichée, langue, pays, source). Prudence : une lettre partagée
-# par plusieurs langues liste tous leurs pays (« ā » est aussi maori : pas retenu pour le letton).
+# Letters specific to a language: (pattern, displayed letter, language, countries, source). Caution: a letter shared
+# by several languages lists all their countries ("ā" is also Maori: not kept for Latvian).
 LETTERS: list[tuple[str, str, str, set[str], str]] = [
-    # En russe, « ъ » ne précède que е, ё, ю, я ; en bulgare c'est une voyelle (Гърмен, България).
+    # In Russian, "ъ" only precedes е, ё, ю, я; in Bulgarian it is a vowel (Гърмен, България).
     (r"ъ(?=[бвгджзйклмнпрстфхцчшщ])", "ъ devant une consonne", "bulgare", {"BG"}, WIKI + "Bulgarian_alphabet"),
     (r"[ыэ]", "ы, э", "russe ou langue d'Asie centrale", {"RU", "BY", "KZ", "KG", "MN"}, WIKI + "Yery"),
     (r"[їєґ]", "ї, є, ґ", "ukrainien", {"UA"}, WIKI + "Ukrainian_alphabet"),
@@ -91,8 +91,8 @@ LETTERS: list[tuple[str, str, str, set[str], str]] = [
 ]
 _LETTERS = [(re.compile(p), *rest) for p, *rest in LETTERS]
 
-# Mots de rue et d'adresse, en mot entier (« utca » : mesuré, le modèle en a conclu Slovaquie). Source commune :
-# les noms de voies par langue, https://en.wikipedia.org/wiki/Street_name et les articles de chaque langue.
+# Street and address words, as whole words ("utca": measured, the model concluded Slovakia from it). Common source:
+# street names by language, https://en.wikipedia.org/wiki/Street_name and each language's articles.
 WORDS: list[tuple[str, str, set[str]]] = [
     ("utca", "hongrois", {"HU"}),
     ("út", "hongrois", {"HU"}),
@@ -128,9 +128,9 @@ WORDS: list[tuple[str, str, set[str]]] = [
     ("rua", "portugais", {"PT", "BR"}),
 ]
 
-# Mots qui annoncent un NOM DE RUE : les mots qui les suivent (« Via Paolo Lo Manto », « Rue de Paris ») ou les
-# précèdent (« Repkény utca », « Main Street ») nomment la rue, souvent d'après une personne ou une autre ville :
-# ils ne situent pas la vue. Formes normalisées (minuscules, sans accents latins), comparées mot à mot.
+# Words that announce a STREET NAME: the words that follow them ("Via Paolo Lo Manto", "Rue de Paris") or
+# precede them ("Repkény utca", "Main Street") name the street, often after a person or another city:
+# they do not locate the view. Normalised forms (lower case, without Latin accents), compared word by word.
 STREET_BEFORE = {
     "via", "viale", "vicolo", "piazza", "piazzale", "corso", "largo", "rue", "avenue", "boulevard", "place", "chemin",
     "allee", "impasse", "quai", "calle", "avenida", "avda", "plaza", "paseo", "carrer", "rua", "travessa", "praca",
@@ -141,8 +141,8 @@ STREET_AFTER = {
     "utca", "ut", "ter", "iela", "gatve", "tanav", "gatan", "vagen", "gade", "vej", "veien", "gata", "strasse",
     "straat", "weg", "laan", "sokak", "sokagi", "caddesi", "street", "road", "lane", "drive", "avenue",
 }
-# Langues qui soudent le mot au nom (Mannerheimintie, Storgatan, Vesterbrogade) : aussi reconnu en fin de mot,
-# précédé d'au moins 3 lettres (« tie » seul serait l'anglais).
+# Languages that weld the word to the name (Mannerheimintie, Storgatan, Vesterbrogade): also recognised at the end
+# of a word, preceded by at least 3 letters ("tie" alone would be English).
 SUFFIXES = {"katu", "tie", "gatan", "vägen", "gade", "vej", "veien", "straße", "strasse", "straat", "iela", "tänav"}
 WORDS.append(("tie", "finnois", {"FI"}))
 _WORDS = [(re.compile(rf"(?<!\w)(?:\w{{3,}})?{re.escape(word)}(?!\w)" if word in SUFFIXES
@@ -152,18 +152,18 @@ _WORDS = [(re.compile(rf"(?<!\w)(?:\w{{3,}})?{re.escape(word)}(?!\w)" if word in
 
 @dataclass
 class Evidence:
-    kind: str  # "alphabet" (écarte), "lettres" ou "mot" (langue), "lieu" (nom de lieu), "rue" (ne compte pas)
-    value: str  # ce qui a été lu : « ъ devant une consonne », « Благоевград »
-    label: str  # ce que ça veut dire : « bulgare », « ville de Bulgarie »
+    kind: str  # "alphabet" (rules out), "lettres" or "mot" (language), "lieu" (place name), "rue" (does not count)
+    value: str  # what was read: "ъ devant une consonne", "Благоевград"
+    label: str  # what it means: "bulgare", "ville de Bulgarie"
     countries: list[str]
     source: str = ""
-    km: float | None = None  # lieu : distance lue juste après le nom (panneau directionnel)
-    points: list[list[Any]] = field(default_factory=list)  # lieu : [latitude, longitude, pays, nom] des homonymes
-    note: str = ""  # pourquoi elle ne compte pas (« hors de tes pays candidats »), affiché tel quel
+    km: float | None = None  # place: distance read right after the name (direction sign)
+    points: list[list[Any]] = field(default_factory=list)  # place: namesakes as [latitude, longitude, country, name]
+    note: str = ""  # why it does not count ("hors de tes pays candidats"), shown as is
 
 
 def scripts_of(text: str) -> Counter[str]:
-    """Nombre de lettres de chaque écriture (premier mot du nom Unicode : CYRILLIC, LATIN, GREEK…)."""
+    """Number of letters of each script (first word of the Unicode name: CYRILLIC, LATIN, GREEK…)."""
     found: Counter[str] = Counter()
     for ch in text:
         if ch.isalpha():
@@ -172,14 +172,14 @@ def scripts_of(text: str) -> Counter[str]:
 
 
 def text_evidence(lines: list[str]) -> list[Evidence]:
-    """Alphabets et lettres propres d'une marque (les noms de lieux sont ajoutés par places.py)."""
+    """Alphabets and specific letters of a mark (place names are added by places.py)."""
     text = unicodedata.normalize("NFC", " ".join(lines))
     lower = text.lower()
     out = []
     for script, count in scripts_of(text).most_common():
         if script in SCRIPTS and count >= MIN_SCRIPT_LETTERS:
             label, countries, source = SCRIPTS[script]
-            if not any(e.kind == "alphabet" and e.value == label for e in out):  # kana : hiragana + katakana
+            if not any(e.kind == "alphabet" and e.value == label for e in out):  # kana: hiragana + katakana
                 out.append(Evidence("alphabet", label, f"alphabet {label}", sorted(countries), source))
     for pattern, shown, language, countries, source in _LETTERS:
         if pattern.search(lower):
@@ -193,23 +193,24 @@ def text_evidence(lines: list[str]) -> list[Evidence]:
 
 @dataclass
 class Verdict:
-    """Ce que les marques prouvent, toutes ensemble."""
+    """What the marks prove, all together."""
 
     country: str = ""
-    level: str = ""  # "certain", "probable" (très probable) ou "" (rien ne se détache)
-    allowed: list[str] | None = None  # pays que l'alphabet laisse possibles ; None : aucun écarté
-    scripts: list[str] = field(default_factory=list)  # alphabets lus (« cyrillique »)
-    cites: list[dict[str, Any]] = field(default_factory=list)  # [{n, items}] : marques qui le prouvent
-    against: list[dict[str, Any]] = field(default_factory=list)  # [{n, country, items}] : marques contraires
-    conflict: str = ""  # alphabets incompatibles entre marques
-    unconfirmed: list[dict[str, Any]] = field(default_factory=list)  # [{n, value, country}] : lieux seuls, indices
+    level: str = ""  # "certain", "probable" (very likely) or "" (nothing stands out)
+    allowed: list[str] | None = None  # countries the alphabet leaves possible; None: none ruled out
+    scripts: list[str] = field(default_factory=list)  # alphabets read ("cyrillique")
+    cites: list[dict[str, Any]] = field(default_factory=list)  # [{n, items}]: marks that prove it
+    against: list[dict[str, Any]] = field(default_factory=list)  # [{n, country, items}]: contrary marks
+    conflict: str = ""  # incompatible alphabets between marks
+    unconfirmed: list[dict[str, Any]] = field(default_factory=list)  # [{n, value, country}]: lone places, clues
 
 
 def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | None = None,
             prior_min: float = 0.10) -> Verdict:
-    """Combine les preuves de chaque marque (numéro, preuves) en une conclusion prudente.
+    """Combines the proofs of each mark (number, proofs) into a cautious conclusion.
 
-    prior : probabilités de StreetCLIP (allure de la vue) ; un lieu seul est confirmé si son pays y atteint prior_min.
+    prior: StreetCLIP's probabilities (look of the view); a lone place is confirmed if its country reaches prior_min
+    there.
     """
     v = Verdict()
     allowed: set[str] | None = None
@@ -219,12 +220,12 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
                 if e.value not in v.scripts:
                     v.scripts.append(e.value)
                 allowed = set(e.countries) if allowed is None else allowed & set(e.countries)
-    if allowed is not None and not allowed:  # ex. grec sur une marque, cyrillique sur l'autre
+    if allowed is not None and not allowed:  # e.g. Greek on one mark, Cyrillic on the other
         v.conflict = f"alphabets incompatibles : {', '.join(v.scripts)}"
         allowed = None
     v.allowed = sorted(allowed) if allowed is not None else None
 
-    # Preuves qui désignent UN pays (lettre propre à un seul pays, nom de lieu unique), marque par marque.
+    # Proofs that point to ONE country (letter specific to a single country, unique place name), mark by mark.
     exclusive: dict[str, list[tuple[int, Evidence]]] = {}
     for n, evidence in marks:
         for e in evidence:
@@ -232,7 +233,7 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
                 exclusive.setdefault(e.countries[0], []).append((n, e))
     if allowed is not None:
         exclusive = {c: items for c, items in exclusive.items() if c in allowed}
-    # Lettres et mots partagés par plusieurs pays (« via » : Italie, Suisse) : ils confirment un lieu de l'un d'eux.
+    # Letters and words shared by several countries ("via": Italy, Switzerland): they confirm a place in one of them.
     shared = {c for _, evidence in marks for e in evidence
               if e.kind in ("lettres", "mot") and len(e.countries) > 1 for c in e.countries}
 

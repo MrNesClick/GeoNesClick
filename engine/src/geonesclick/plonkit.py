@@ -1,11 +1,11 @@
-"""Collecte locale des guides Plonk It (https://www.plonkit.net), pour l'usage personnel du joueur.
+"""Local collection of the Plonk It guides (https://www.plonkit.net), for the player's personal use.
 
-Plonk It indique lui-même la voie à suivre : son API ne sert que le guide débutant, et les autres guides se
-lisent dans le bloc <script id="__PRELOADED_DATA__"> de chaque page. Règles de politesse appliquées :
-une requête à la fois, un délai entre deux requêtes, un User-Agent explicite, et seuls les guides modifiés
-(date « updatedAt » de la liste) sont rechargés. Les données restent sur la machine, hors du dépôt.
+Plonk It itself shows the way: its API only serves the beginner's guide, and the other guides are
+read from the <script id="__PRELOADED_DATA__"> block of each page. Politeness rules applied:
+one request at a time, a delay between two requests, an explicit User-Agent, and only the modified guides
+("updatedAt" date in the list) are reloaded. The data stays on the machine, outside the repository.
 
-Usage : python -m geonesclick.plonkit collect [--delay 2] [--dest DOSSIER] [--all]
+Usage: python -m geonesclick.plonkit collect [--delay 2] [--dest FOLDER] [--all]
 """
 
 from __future__ import annotations
@@ -26,9 +26,9 @@ from typing import Any
 BASE_URL = "https://www.plonkit.net"
 USER_AGENT = "GeoNesClick/0.1 (outil d'entrainement personnel)"
 DATA_DIR = APP_DATA / "plonkit"
-CHECKED_FILE = "checked_at"  # date du dernier contrôle de la liste des guides
-MAX_BYTES = 5_000_000  # une page de guide fait ~30 Ko : au-delà, quelque chose ne va pas
-SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")  # sert de nom de fichier : jamais de « / » ni de « .. »
+CHECKED_FILE = "checked_at"  # date of the last check of the guides list
+MAX_BYTES = 5_000_000  # a guide page is ~30 KB: beyond that, something is wrong
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")  # used as a file name: never a "/" or a ".."
 PRELOADED = re.compile(r'<script[^>]*id="__PRELOADED_DATA__"[^>]*>(.*?)</script>', re.S)
 
 
@@ -46,7 +46,7 @@ class GuideRef:
 
 @dataclass
 class Tip:
-    """Une astuce d'un guide : texte (Markdown), image d'exemple, étiquettes éventuelles."""
+    """A tip from a guide: text (Markdown), example image, optional tags."""
 
     country: str
     slug: str
@@ -64,7 +64,7 @@ class Tip:
 
 def _get(url: str, timeout: float = 20.0) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as res:  # noqa: S310 (URL construite à partir de BASE_URL)
+    with urllib.request.urlopen(req, timeout=timeout) as res:  # noqa: S310 (URL built from BASE_URL)
         body = res.read(MAX_BYTES + 1)
     if len(body) > MAX_BYTES:
         raise PlonkitError(f"réponse trop volumineuse : {url}")
@@ -84,7 +84,7 @@ def parse_guide_list(payload: bytes) -> list[GuideRef]:
 
 
 def extract_guide(html: str) -> dict[str, Any]:
-    """Le guide publié, tel que la page l'embarque."""
+    """The published guide, as the page embeds it."""
     m = PRELOADED.search(html)
     if not m:
         raise PlonkitError("bloc __PRELOADED_DATA__ introuvable : la page a peut-être changé de forme")
@@ -115,20 +115,20 @@ def tips_of(guide: dict[str, Any]) -> list[Tip]:
 
 
 def load_tips(dest: Path = DATA_DIR) -> list[Tip]:
-    """Toutes les astuces collectées (lecture locale uniquement)."""
+    """All the collected tips (local reading only)."""
     tips = []
     for path in sorted((dest / "raw").glob("*.json")):
         try:
             tips += tips_of(json.loads(path.read_text()))
         except (OSError, ValueError, KeyError, TypeError, AttributeError):
-            continue  # fichier abîmé : ignoré, il sera rechargé à la prochaine mise à jour du guide
+            continue  # damaged file: ignored, it will be reloaded at the guide's next update
     return tips
 
 
 def collect(
     countries: set[str] | None, dest: Path = DATA_DIR, delay_s: float = 2.0, force: bool = False, log=print
 ) -> dict[str, int]:
-    """Télécharge les guides (des pays donnés, ou tous) qui ont changé depuis la dernière collecte."""
+    """Downloads the guides (of the given countries, or all) that changed since the last collection."""
     raw = dest / "raw"
     raw.mkdir(parents=True, exist_ok=True)
     index_file = dest / "index.json"
@@ -139,11 +139,11 @@ def collect(
         if not force and index.get(ref.slug) == ref.updated_at and (raw / f"{ref.slug}.json").exists():
             stats["unchanged"] += 1
             continue
-        time.sleep(delay_s * random.uniform(1.0, 1.5))  # aléatoire : les clients ne se synchronisent pas
+        time.sleep(delay_s * random.uniform(1.0, 1.5))  # random: clients do not synchronise
         try:
             guide = extract_guide(_get(f"{BASE_URL}/{ref.slug}").decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            if exc.code == 429:  # le site demande de ralentir : on arrête là, la suite attendra
+            if exc.code == 429:  # the site asks to slow down: we stop there, the rest will wait
                 raise PlonkitError(f"Plonk It demande de ralentir (429), réessai après {exc.headers.get('Retry-After', '?')} s") from exc
             stats["failed"] += 1
             log(f"  échec {ref.slug} : {exc}")
@@ -154,10 +154,10 @@ def collect(
             continue
         (raw / f"{ref.slug}.json").write_text(json.dumps(guide, ensure_ascii=False))
         index[ref.slug] = ref.updated_at
-        index_file.write_text(json.dumps(index, indent=1))  # après chaque guide : une coupure ne perd rien
+        index_file.write_text(json.dumps(index, indent=1))  # after each guide: an interruption loses nothing
         stats["fetched"] += 1
         log(f"  {ref.code} {ref.title} : {len(tips_of(guide))} astuces")
-    # Seulement après un parcours complet : après un 429, le démarrage suivant reprend là où on s'est arrêté.
+    # Only after a full pass: after a 429, the next start resumes where we stopped.
     (dest / CHECKED_FILE).write_text(str(time.time()))
     return stats
 

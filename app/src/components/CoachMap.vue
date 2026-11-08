@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// Onglet Carte (niveau 3 et plus) : pays probables colorés selon StreetCLIP, pays écartés grisés par une
-// preuve forte, et les ZONES où la vue se trouve probablement (positions PLONK regroupées par le moteur).
-// Au niveau 4, une preuve forte recadre sur son pays. Les LIEUX LUS sur tes marques sont placés (GeoNames), et
-// les distances d'un panneau directionnel donnent une position estimée à quelques km : elle passe avant les zones.
-// Fond OpenStreetMap en ligne, assombri par un filtre CSS ; sans réseau, pays, zones et lieux restent dessinés.
+// Map tab (level 3 and up): likely countries coloured by StreetCLIP, countries greyed out when ruled out by
+// strong proof, and the ZONES where the view probably is (PLONK positions grouped by the engine).
+// At level 4, strong proof zooms onto its country. The PLACES READ on your marks are plotted (GeoNames), and
+// a direction sign's distances give an estimated position within a few km: it takes precedence over the zones.
+// Online OpenStreetMap background, darkened by a CSS filter; offline, countries, zones and places are still drawn.
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -33,20 +33,20 @@ const COLORS = {
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const certain = computed(() => certainProof(props.analysis));
-/** Pays en tête : prouvé, ou lu par l'IA (très probable, les autres restent colorés). */
+/** Leading country: proven, or read by the AI (very likely, the others stay coloured). */
 const head = computed(() => headCountry(props.analysis));
-/** Zones PLONK (allure de la vue) : masquées dès que tes marques situent la vue, bien plus précisément. */
+/** PLONK zones (look of the view): hidden as soon as your marks locate the view, far more precisely. */
 const zones = computed(() => (props.analysis.verdict?.location ? [] : visibleZones(props.analysis)));
 const zonesHidden = computed(() => !!props.analysis.verdict?.location && visibleZones(props.analysis).length > 0);
-const LABELS_ZOOM = 9; // en dessous, les noms des lieux lus se chevauchent : seuls les points restent
-/** Position estimée d'après tes marques (lieux lus, distances d'un panneau). */
+const LABELS_ZOOM = 9; // below this, the names of the places read overlap: only the dots remain
+/** Position estimated from your marks (places read, distances on a sign). */
 const location = computed(() => props.analysis.verdict?.location ?? null);
 const coords = (lat: number, lon: number) =>
   `${lat.toFixed(4).replace(".", ",")}° ${lat >= 0 ? "N" : "S"}, ${lon.toFixed(4).replace(".", ",")}° ${lon >= 0 ? "E" : "O"}`;
 const distances = computed(() => location.value?.places.filter((p) => p.km) ?? []);
-/** Lieu lu le plus proche (plus petite distance du panneau). */
+/** Closest place read (smallest distance on the sign). */
 const nearestRead = computed(() => [...distances.value].sort((a, b) => a.km! - b.km!)[0] ?? null);
-// Ce qui est sûr (tes choix, ou ceux du coach au niveau qui les dévoile) : la carte se cadre dessus.
+// What is certain (your choices, or the coach's at the level that reveals them): the map frames it.
 const shownLock = (l?: Lock) => (l && (l.by === "user" || props.level >= (l.level === "country" ? 3 : 4)) ? l : null);
 const lockCountry = computed(() => shownLock(props.analysis.locks?.held.country));
 const lockRegion = computed(() => shownLock(props.analysis.locks?.held.region));
@@ -55,14 +55,14 @@ const regionBounds = computed(() => (lockRegion.value ? props.analysis.locks?.re
 const outside = computed(() => props.analysis.verdict?.outside ?? []);
 const probability = (code: string) => props.analysis.scores?.find((s) => s.code === code)?.probability ?? 0;
 const pct = (p: number) => `${Math.round(p * 100)} %`;
-/** Taille lisible : arrondie à 10 km, à 50 km au-delà de 200 km. */
+/** Readable size: rounded to 10 km, to 50 km beyond 200 km. */
 const roundKm = (km: number) => {
   const step = km > 200 ? 50 : 10;
   return Math.max(10, Math.round(km / step) * step);
 };
 
 function styleFor(code: string): L.PathOptions {
-  const proven = certain.value?.country ?? lockCountry.value?.country; // prouvé, ou dit sûr
+  const proven = certain.value?.country ?? lockCountry.value?.country; // proven, or stated as certain
   if (!proven && code === head.value?.code) {
     return { color: COLORS.lac, weight: 1.6, dashArray: "6 4", fillColor: COLORS.lac, fillOpacity: 0.12 };
   }
@@ -100,21 +100,21 @@ function locationBounds(): L.LatLngBounds | null {
     const b = L.latLngBounds(loc.places.map((p) => [p.lat, p.lon] as L.LatLngTuple));
     return b.pad(0.4);
   }
-  return L.latLng(loc.lat, loc.lon).toBounds(loc.radius_km * 2000 * 1.6); // le cercle et un peu d'alentour
+  return L.latLng(loc.lat, loc.lon).toBounds(loc.radius_km * 2000 * 1.6); // the circle and a bit of surroundings
 }
 
 function frame(): L.LatLngBounds | null {
   const city = lockCity.value;
-  if (city?.lat != null && city.lon != null) return L.latLng(city.lat, city.lon).toBounds(5000); // la ville choisie
-  const here = locationBounds(); // tes marques situent la vue : plus précis que tout le reste
+  if (city?.lat != null && city.lon != null) return L.latLng(city.lat, city.lon).toBounds(5000); // the chosen city
+  const here = locationBounds(); // your marks locate the view: more precise than everything else
   if (here) return here;
-  const rb = regionBounds.value; // la région choisie, d'après l'étendue de ses lieux
+  const rb = regionBounds.value; // the chosen region, from the extent of its places
   if (rb) return L.latLngBounds([rb[0], rb[1]], [rb[2], rb[3]]).pad(0.05);
   if (lockCountry.value) return countryBounds(lockCountry.value.country);
   const top = head.value?.code;
-  if (props.level >= 4 && top) return countryBounds(top); // la réponse : on resserre sur le pays en tête
+  if (props.level >= 4 && top) return countryBounds(top); // the answer: zoom in on the leading country
   if (zones.value.length) return union(zones.value.map((z) => L.latLngBounds(z.polygon)));
-  // Sans zone : les pays probables (au-dessus de 5 %, trois au plus).
+  // Without a zone: the likely countries (above 5 %, three at most).
   const codes = (props.analysis.scores ?? []).filter((s) => s.probability >= 0.05).slice(0, 3).map((s) => s.code);
   return union(codes.map(countryBounds));
 }
@@ -138,7 +138,7 @@ function textNode(text: string): HTMLElement {
   return span;
 }
 
-/** Ta ville choisie (marqueur) et les lieux lus que tes choix écartent (grisés, jamais effacés). */
+/** Your chosen city (marker) and the places read that your choices rule out (greyed out, never erased). */
 function drawChoices() {
   if (!placeLayer) return;
   for (const o of outside.value) {
@@ -177,7 +177,7 @@ function drawLocation() {
   }
   for (const p of loc.places) {
     L.circleMarker([p.lat, p.lon], { radius: 4, color: COLORS.encre, weight: 1.5, fillColor: COLORS.marque, fillOpacity: 1 })
-      // Texte lu par l'IA : en nœud texte, jamais en HTML (Leaflet insère une chaîne comme du HTML).
+      // Text read by the AI: as a text node, never as HTML (Leaflet inserts a string as HTML).
       .bindTooltip(textNode(`${circled(p.n)} ${p.name}${p.km ? ` · ${fr(p.km)} km` : ""}`),
                    { permanent: true, direction: "right", className: "ggc-zone ggc-place" })
       .addTo(placeLayer);
@@ -194,8 +194,8 @@ function redraw() {
   drawLocation();
   const bounds = frame();
   if (bounds?.isValid()) {
-    // Une position estimée se regarde de près (rues, villages) ; une zone ou un pays, de loin.
-    // Lieux lus, ville ou région choisies : cadrés au plus près (fitBounds s'arrête là où ils tiennent tous).
+    // An estimated position is looked at up close (streets, villages); a zone or a country, from afar.
+    // Places read, chosen city or region: framed as tightly as possible (fitBounds stops where they all fit).
     const close = !!(location.value || lockCity.value || regionBounds.value);
     const options = { padding: [24, 24] as L.PointTuple, maxZoom: close ? engine.map.max_zoom : Math.min(engine.map.max_zoom, 8) };
     if (reducedMotion) map.fitBounds(bounds, options);
@@ -206,12 +206,12 @@ function redraw() {
 onMounted(async () => {
   if (!el.value) return;
   map = L.map(el.value, {
-    attributionControl: false, // attribution affichée par le coach, toujours visible (règles OSM)
+    attributionControl: false, // attribution shown by the coach, always visible (OSM rules)
     worldCopyJump: true,
     minZoom: 1,
     maxZoom: engine.map.max_zoom,
   }).setView([25, 10], 1);
-  // Sombre de loin (pays, zones), presque d'origine de près (rues, villages) : l'inversion y devient illisible.
+  // Dark from afar (countries, zones), near original up close (streets, villages): inversion is unreadable there.
   const tiles = map.getPane("tilePane")!;
   if (!reducedMotion) tiles.style.transition = "filter 250ms ease-out";
   const applyFilter = () => {
@@ -225,14 +225,14 @@ onMounted(async () => {
     applyLabels();
   });
   L.tileLayer(engine.map.tile_url, { maxZoom: engine.map.max_zoom }).addTo(map);
-  resize = new ResizeObserver(() => map?.invalidateSize()); // fenêtre redimensionnée
+  resize = new ResizeObserver(() => map?.invalidateSize()); // window resized
   resize.observe(el.value);
   const geo = await countryOutlines();
-  if (!map) return; // carte démontée pendant le chargement
+  if (!map) return; // map unmounted during loading
   if (geo) outlines = L.geoJSON(geo, { style: (f) => styleFor(codeOf(f)), interactive: false }).addTo(map);
   else outlinesMissing.value = true;
-  zoneLayer = L.layerGroup().addTo(map); // après les pays : les zones passent par-dessus
-  placeLayer = L.layerGroup().addTo(map); // puis les lieux lus sur tes marques, au-dessus de tout
+  zoneLayer = L.layerGroup().addTo(map); // after the countries: the zones go on top
+  placeLayer = L.layerGroup().addTo(map); // then the places read on your marks, above everything
   redraw();
 });
 
@@ -262,7 +262,7 @@ onBeforeUnmount(() => {
       </button>
     </div>
 
-    <!-- Ce qui est sûr : la carte se cadre dessus (la région d'après l'étendue de ses lieux, sans contour). -->
+    <!-- What is certain: the map frames it (the region from the extent of its places, without an outline). -->
     <p v-if="lockCountry" class="mt-3 text-papier">
       <span class="text-courbe">C'est sûr :</span> {{ flag(lockCountry.country) }} {{ countryName(lockCountry.country) }}
       <template v-if="lockRegion"> › {{ lockRegion.name }}</template>
@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
       Grisés : {{ outside.map((o) => `${circled(o.n)} ${o.label}`).join(", ") }}, lus mais hors de ton choix.
     </p>
 
-    <!-- Tes marques situent la vue : lieux lus (GeoNames) et distances d'un panneau directionnel. -->
+    <!-- Your marks locate the view: places read (GeoNames) and distances on a direction sign. -->
     <section v-if="location" class="mt-3" aria-labelledby="position-titre">
       <h2 id="position-titre" class="font-bold text-papier">
         <span class="mr-1.5 inline-block size-2.5 rounded-full bg-marque align-middle" aria-hidden="true" />

@@ -1,14 +1,14 @@
-# Amorce de metas : uniquement des faits très établis (alphabets, sens de circulation, couleur des
-# lignes centrales, domaines). Rédigée par l'assistant, NON vérifiée sur une source : verified = false.
-# Elle sera complétée ou remplacée par une vraie source de metas, et tes propres metas
-# (~/.config/geonesclick/mes-metas.toml) passent toujours en premier.
+# Metas seed: only well-established facts (alphabets, driving side, colour of the
+# centre lines, domains). Written by the assistant, NOT checked against a source: verified = false.
+# It will be completed or replaced by a real metas source, and your own metas
+# (~/.config/geonesclick/mes-metas.toml) always come first.
 #
-# Format : [[meta]] category = <catégorie>, countries = [codes ISO à 2 lettres], hint = "<indice>"
-#          look = "<quoi observer, sans nommer de pays>" (facultatif : sinon, consigne de la catégorie)
-# Catégories : langue, conduite, marquage, poteaux, bornes, plaques, panneaux, domaine, voiture,
+# Format: [[meta]] category = <category>, countries = [2-letter ISO codes], hint = "<clue>"
+#          look = "<what to observe, without naming a country>" (optional: otherwise, the category's instruction)
+# Categories: langue, conduite, marquage, poteaux, bornes, plaques, panneaux, domaine, voiture,
 #              vegetation, architecture, autre
 
-# --- Langue et alphabet --------------------------------------------------------------------------
+# --- Language and alphabet -----------------------------------------------------------------------
 
 [[meta]]
 category = "langue"
@@ -155,7 +155,7 @@ category = "langue"
 countries = ["TR"]
 hint = "Turc : ı (i sans point), ğ, ş, ç ; « cadde », « sokak »"
 
-# --- Sens de circulation -------------------------------------------------------------------------
+# --- Driving side --------------------------------------------------------------------------------
 
 [[meta]]
 category = "conduite"
@@ -172,7 +172,7 @@ countries = ["AL", "AD", "AR", "AT", "BE", "BO", "BR", "BG", "KH", "CA", "CL", "
              "TW", "TN", "TR", "UA", "AE", "US", "UY", "VN"]
 hint = "Circulation à droite"
 
-# --- Marquage au sol -----------------------------------------------------------------------------
+# --- Road markings -------------------------------------------------------------------------------
 
 [[meta]]
 category = "marquage"
@@ -187,7 +187,7 @@ countries = ["SE", "DK", "DE", "AT", "CH", "FR", "BE", "NL", "LU", "GB", "IE", "
 hint = "Ligne centrale blanche"
 look = "la couleur de la ligne centrale"
 
-# --- Noms de domaine (enseignes, véhicules, panneaux publicitaires) --------------------------------
+# --- Domain names (shop signs, vehicles, billboards) ----------------------------------------------
 
 [[meta]]
 category = "domaine"

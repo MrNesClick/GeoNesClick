@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Sélecteur du niveau d'aide, toujours visible : change ce qui s'affiche tout de suite, et l'enregistre.
+// Help level selector, always visible: changes what is displayed right away, and saves it.
 import { engine, setHelpLevel } from "../engine";
 
 const LEVELS = [

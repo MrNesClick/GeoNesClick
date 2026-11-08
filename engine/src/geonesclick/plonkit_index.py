@@ -1,13 +1,13 @@
-"""Base locale des astuces Plonk It : SQLite (table + recherche plein texte FTS5) et vecteurs CLIP en cache.
+"""Local database of the Plonk It tips: SQLite (table + FTS5 full-text search) and cached CLIP vectors.
 
-Le banc d'essai (spikes/search_bench.py) a tranché : à ce volume (~4 000 astuces, < 1 Mo de texte), aucun
-moteur de recherche dédié n'apporte de gain ; ce qui compte est de comparer l'image aux astuces (vecteurs
-CLIP, un produit de matrices). La base se reconstruit à partir des pages collectées (plonkit.py), en
-quelques dixièmes de seconde ; les vecteurs sont mis en cache par empreinte du texte, pour ne recalculer
-que ceux des astuces nouvelles ou modifiées.
+The benchmark (spikes/search_bench.py) settled it: at this volume (~4,000 tips, < 1 MB of text), no
+dedicated search engine brings any gain; what matters is comparing the image with the tips (CLIP
+vectors, a matrix product). The database is rebuilt from the collected pages (plonkit.py), in
+a few tenths of a second; the vectors are cached by text hash, so that only those of new or
+modified tips are recomputed.
 
-Chaque astuce est rangée dans une catégorie de metas : d'abord par ses étiquettes Plonk It, puis par
-mots-clés (réglables) ; « autre » si rien ne tranche (category_source = "aucune").
+Each tip is filed in a metas category: first by its Plonk It tags, then by
+keywords (configurable); "autre" if nothing settles it (category_source = "aucune").
 """
 
 from __future__ import annotations
@@ -26,14 +26,14 @@ import numpy as np
 
 from .plonkit import Tip
 
-# Étiquettes Plonk It → catégories de metas (les autres étiquettes, « important », « moving info », ne classent pas).
+# Plonk It tags → metas categories (the other tags, "important", "moving info", do not classify).
 TAG_CATEGORY = {
     "pole": "poteaux", "bollard": "bornes", "guardrail": "bornes", "chevron/sign": "panneaux",
     "roadline": "marquage", "license plates": "plaques", "language": "langue", "coverage": "voiture",
     "architecture": "architecture", "vegetation": "vegetation", "landscape": "vegetation",
 }
 
-# Mots-clés (anglais, comme les guides), par catégorie ; remplaçables par [plonkit.keywords] dans config.toml.
+# Keywords (English, like the guides), per category; replaceable by [plonkit.keywords] in config.toml.
 DEFAULT_KEYWORDS: dict[str, list[str]] = {
     "langue": ["language", "languages", "alphabet", "alphabets", "script", "scripts", "cyrillic", "latin", "letter",
                "letters", "diacritic", "diacritics", "spelling", "word", "words", "spoken", "dialect", "dialects"],
@@ -84,7 +84,7 @@ def _keyword_patterns(keywords: dict[str, list[str]]) -> dict[str, re.Pattern]:
 
 
 def classify(text: str, tags: Iterable[str], patterns: dict[str, re.Pattern]) -> tuple[str, str]:
-    """(catégorie, source) : « etiquette », « mots-cles », ou « aucune » (alors catégorie « autre »)."""
+    """(category, source): "etiquette", "mots-cles", or "aucune" (then category "autre")."""
     for tag in tags:
         if tag in TAG_CATEGORY:
             return TAG_CATEGORY[tag], "etiquette"
@@ -94,7 +94,7 @@ def classify(text: str, tags: Iterable[str], patterns: dict[str, re.Pattern]) ->
         counts["domaine"] = counts.get("domaine", 0) + 1
     ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
     if not ranked or ranked[0][1] == 0 or (len(ranked) > 1 and ranked[0][1] == ranked[1][1]):
-        return "autre", "aucune"  # rien, ou égalité : à départager plus tard (IA, ou le joueur)
+        return "autre", "aucune"  # nothing, or a tie: to be decided later (AI, or the player)
     return ranked[0][0], "mots-cles"
 
 
@@ -112,13 +112,13 @@ CREATE TABLE IF NOT EXISTS ai_category(hash TEXT PRIMARY KEY, category TEXT NOT 
 CREATE TABLE IF NOT EXISTS translation(hash TEXT NOT NULL, lang TEXT NOT NULL, text TEXT NOT NULL,
     PRIMARY KEY(hash, lang));
 """
-# Catégories déjà attribuées par l'IA, réappliquées à chaque reconstruction (une seule fois par texte).
+# Categories already assigned by the AI, reapplied on each rebuild (only once per text).
 APPLY_AI = """UPDATE tip SET category = (SELECT category FROM ai_category a WHERE a.hash = tip.hash),
     category_source = 'ia' WHERE category_source = 'aucune' AND hash IN (SELECT hash FROM ai_category)"""
 
 
 def _locked(method):
-    """Exécute la méthode sous le verrou de l'index (connexion SQLite partagée entre threads)."""
+    """Runs the method under the index lock (SQLite connection shared between threads)."""
 
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -134,16 +134,16 @@ class TipIndex:
         self.path = path
         self.con = sqlite3.connect(path, check_same_thread=False)
         self.con.executescript(SCHEMA)
-        # Une connexion partagée entre la mise à jour de fond et les traductions : un accès à la fois.
+        # A connection shared between the background update and the translations: one access at a time.
         self.lock = threading.Lock()
 
     def close(self) -> None:
         self.con.close()
 
-    # --- construction ----------------------------------------------------------------------------
+    # --- build -----------------------------------------------------------------------------------
     @_locked
     def rebuild(self, tips: Iterable[Tip], keywords: dict[str, list[str]] | None = None) -> int:
-        """Remplace toutes les astuces (le cache des vecteurs est conservé) ; renvoie leur nombre."""
+        """Replaces all the tips (the vector cache is kept); returns their number."""
         patterns = _keyword_patterns(DEFAULT_KEYWORDS | (keywords or {}))
         rows = []
         for t in tips:
@@ -163,7 +163,7 @@ class TipIndex:
 
     @_locked
     def unclassified(self) -> list[tuple[str, str]]:
-        """(empreinte, texte) des astuces que ni les étiquettes ni les mots-clés ni l'IA n'ont classées."""
+        """(hash, text) of the tips that neither the tags nor the keywords nor the AI have classified."""
         return list(self.con.execute(
             "SELECT DISTINCT hash, text FROM tip WHERE category_source = 'aucune'"
             " AND hash NOT IN (SELECT hash FROM ai_category)"))
@@ -177,7 +177,7 @@ class TipIndex:
 
     @_locked
     def missing_embeddings(self, model: str) -> list[tuple[str, str]]:
-        """(empreinte, texte) des astuces sans vecteur pour ce modèle."""
+        """(hash, text) of the tips without a vector for this model."""
         return list(self.con.execute(
             "SELECT DISTINCT t.hash, t.text FROM tip t LEFT JOIN embedding e ON e.hash = t.hash AND e.model = ?"
             " WHERE e.hash IS NULL", (model,)))
@@ -189,10 +189,10 @@ class TipIndex:
                 "INSERT OR REPLACE INTO embedding(hash, model, vector) VALUES (?, ?, ?)",
                 [(h, model, np.asarray(v, dtype=np.float16).tobytes()) for h, v in items])
 
-    # --- lecture ---------------------------------------------------------------------------------
+    # --- reading ---------------------------------------------------------------------------------
     @_locked
     def translations(self, hashes: list[str], lang: str) -> dict[str, str]:
-        """Traductions déjà en cache, {empreinte: texte traduit}."""
+        """Translations already cached, {hash: translated text}."""
         if not hashes:
             return {}
         rows = self.con.execute(
@@ -202,7 +202,7 @@ class TipIndex:
 
     @_locked
     def untranslated(self, lang: str) -> list[tuple[str, str]]:
-        """(empreinte, texte) des astuces sans traduction dans cette langue."""
+        """(hash, text) of the tips without a translation in this language."""
         return list(self.con.execute(
             "SELECT DISTINCT hash, text FROM tip WHERE hash NOT IN (SELECT hash FROM translation WHERE lang = ?)"
             " ORDER BY hash", (lang,)))
@@ -219,7 +219,7 @@ class TipIndex:
 
     @_locked
     def load(self, model: str) -> tuple[list[IndexedTip], np.ndarray]:
-        """Toutes les astuces qui ont un vecteur, et la matrice (n, d) de leurs vecteurs normalisés."""
+        """All the tips that have a vector, and the (n, d) matrix of their normalised vectors."""
         rows = self.con.execute(
             "SELECT t.hash, t.id, t.country, t.slug, t.section, t.text, t.category, t.image_url, t.street_view,"
             " e.vector"
@@ -231,7 +231,7 @@ class TipIndex:
 
     @_locked
     def search(self, query: str, limit: int = 20, countries: Iterable[str] | None = None) -> list[IndexedTip]:
-        """Recherche plein texte (BM25) ; chaque mot est cité, donc aucune syntaxe FTS5 ne passe de la requête."""
+        """Full-text search (BM25); each word is quoted, so no FTS5 syntax gets through from the query."""
         words = re.findall(r"\w{2,}", query.lower())[:20]
         if not words:
             return []
@@ -249,7 +249,7 @@ class TipIndex:
 def similar_tips(
     image_emb: np.ndarray, tips: list[IndexedTip], matrix: np.ndarray, countries: Iterable[str], per_country: int
 ) -> dict[str, list[tuple[IndexedTip, float]]]:
-    """Pour chaque pays, les astuces dont le texte ressemble le plus à la vue (similarité cosinus CLIP)."""
+    """For each country, the tips whose text most resembles the view (CLIP cosine similarity)."""
     if not len(tips):
         return {}
     sims = matrix @ image_emb

@@ -1,4 +1,4 @@
-"""Cycle de vie de la base Plonk It dans le moteur : guides inventés, faux StreetCLIP, aucun réseau."""
+"""Lifecycle of the Plonk It database in the engine: invented guides, fake StreetCLIP, no network."""
 
 import asyncio
 import json
@@ -58,7 +58,7 @@ def test_local_guides_are_indexed_and_matched_to_the_view(engine):
 def test_vectors_are_cached_between_refreshes(engine):
     asyncio.run(engine.refresh_plonkit(check=False))
     asyncio.run(engine.refresh_plonkit(check=False))
-    assert engine.streetclip.encoded == 3  # pas de recalcul pour les textes inchangés
+    assert engine.streetclip.encoded == 3  # no recomputation for unchanged texts
 
 
 def test_failed_check_keeps_the_previous_base(engine, monkeypatch):
@@ -75,7 +75,7 @@ def test_failed_check_keeps_the_previous_base(engine, monkeypatch):
 
 def test_check_is_due_only_after_refresh_days(engine):
     checked = engine.cfg.plonkit.path / CHECKED_FILE
-    assert engine.plonkit_due()  # jamais contrôlé
+    assert engine.plonkit_due()  # never checked
     checked.write_text(str(time.time()))
     assert not engine.plonkit_due()
     checked.write_text(str(time.time() - 31 * 86400))
@@ -125,7 +125,7 @@ def test_settings_toggle_plonkit_live(engine, tmp_path, monkeypatch):
 
 
 class FakeLLM:
-    """Faux client OpenAI : renvoie une réponse fixée et compte les appels."""
+    """Fake OpenAI client: returns a fixed answer and counts the calls."""
 
     def __init__(self, content=None, error=None):
         self.calls, self.content, self.error = 0, content, error
@@ -145,12 +145,12 @@ def test_ai_classifies_leftover_tips_once(engine):
     engine.vision.client = FakeLLM('{"0": "marquage"}')
     asyncio.run(engine.refresh_plonkit(check=False))
     by_text = {t.text: t.category for t in engine.plonkit_tips}
-    assert by_text["White lines."] == "marquage"  # ni étiquette ni mot-clé : classée par l'IA
+    assert by_text["White lines."] == "marquage"  # neither tag nor keyword: classified by the AI
     assert "classées par l'IA" in engine.plonkit_message
     asyncio.run(engine.refresh_plonkit(check=False))
-    assert engine.vision.client.calls == 1  # en cache : jamais redemandé
+    assert engine.vision.client.calls == 1  # cached: never asked again
     by_text = {t.text: t.category for t in engine.plonkit_tips}
-    assert by_text["White lines."] == "marquage"  # et réappliqué après la reconstruction de la base
+    assert by_text["White lines."] == "marquage"  # and reapplied after the database rebuild
 
 
 def test_ai_failure_is_reported_and_retried_later(engine):
@@ -172,7 +172,7 @@ def test_ai_classification_can_be_disabled(engine):
 def test_unreadable_ai_answer_is_not_cached(engine):
     engine.vision.client = FakeLLM("désolé, je ne peux pas")
     asyncio.run(engine.refresh_plonkit(check=False))
-    assert len(engine.plonkit_index.unclassified()) == 1  # sera reproposée à la prochaine mise à jour
+    assert len(engine.plonkit_index.unclassified()) == 1  # will be offered again at the next update
 
 
 def test_displayed_tips_are_translated_once_and_cached(engine):
@@ -191,7 +191,7 @@ def test_displayed_tips_are_translated_once_and_cached(engine):
     asyncio.run(engine._translate_tips("cap", [(yellow["id"], yellow["text"])], "fr"))
     assert sent[-1]["translations"] == {yellow["id"]: "Une ligne centrale **jaune**."}
     again = next(t for t in engine.similar(YELLOW, [("NO", 1.0)])["NO"] if t["id"] == yellow["id"])
-    assert again["translated"] == "Une ligne centrale **jaune**."  # servie depuis le cache
+    assert again["translated"] == "Une ligne centrale **jaune**."  # served from the cache
 
 
 def test_translation_failure_keeps_english(engine):
@@ -219,7 +219,7 @@ def test_no_translation_in_english_or_when_disabled(engine):
 
 
 def test_incomplete_translation_batch_is_reported(engine):
-    """Le modèle oublie une astuce : le lot se termine quand même, avec une erreur (sinon « en cours » à vie)."""
+    """The model forgets a tip: the batch still ends, with an error (otherwise "running" forever)."""
     asyncio.run(engine.refresh_plonkit(check=False))
     engine.vision.client = FakeLLM('{"0": "Poteaux."}')
     sent = []
@@ -252,7 +252,7 @@ def test_slow_translation_batch_times_out(engine):
 
 
 class EchoLLM(FakeLLM):
-    """Traduit chaque astuce numérotée du prompt par « FR <n> »."""
+    """Translates each numbered tip of the prompt as "FR <n>"."""
 
     async def create(self, **kwargs):
         self.calls += 1
@@ -276,7 +276,7 @@ def test_whole_base_is_translated_ahead_once(engine):
     assert "3 astuces traduites d'avance" in engine.plonkit_message
     calls = engine.vision.client.calls
     asyncio.run(engine.pretranslate())
-    assert engine.vision.client.calls == calls  # tout est en cache : aucun nouvel appel
+    assert engine.vision.client.calls == calls  # everything is cached: no new call
 
 
 def test_translation_ahead_waits_for_the_round_in_progress(engine):
@@ -287,12 +287,12 @@ def test_translation_ahead_waits_for_the_round_in_progress(engine):
     engine.vision.client = EchoLLM()
 
     async def go():
-        busy = asyncio.create_task(asyncio.sleep(0.3))  # une analyse en cours
+        busy = asyncio.create_task(asyncio.sleep(0.3))  # an analysis running
         engine.background.add(busy)
         busy.add_done_callback(engine.background.discard)
         task = asyncio.create_task(engine.pretranslate())
         await asyncio.sleep(0.1)
-        assert engine.vision.client.calls == 0  # elle attend la fin de la manche
+        assert engine.vision.client.calls == 0  # it waits for the end of the round
         await task
         assert engine.vision.client.calls == 1
 

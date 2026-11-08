@@ -1,15 +1,15 @@
-"""Expérience : PLONK (CVPR 2025) sur nos captures, branché sur le StreetCLIP déjà chargé par le moteur.
+"""Experiment: PLONK (CVPR 2025) on our captures, plugged into the StreetCLIP already loaded by the engine.
 
-PLONK_OSV_5M conditionne un petit réseau (~36 M paramètres) sur le jeton [CLS] de StreetCLIP et tire des
-points GPS sur la sphère. On compare, sur le jeu de test étiqueté : le pays réel selon StreetCLIP seul et
-selon la part des points PLONK tombés dans chaque pays ; on mesure aussi la dispersion du nuage, le temps
-et la mémoire graphique.
+PLONK_OSV_5M conditions a small network (~36 M parameters) on StreetCLIP's [CLS] token and samples
+GPS points on the sphere. On the labelled test set, we compare: the real country according to StreetCLIP alone and
+according to the share of PLONK points falling in each country; we also measure the spread of the cloud, the time
+and the graphics memory.
 
-Prérequis : scripts/setup-plonk-spike.sh (code PLONK figé, dépendances et frontières dans spikes/.vendor/,
-hors du venv du moteur).
+Prerequisite: scripts/setup-plonk-spike.sh (pinned PLONK code, dependencies and borders in spikes/.vendor/,
+outside the engine's venv).
 
-Usage : .venv/bin/python spikes/plonk_bench.py [échantillons]   (512 par défaut)
-Le premier lancement télécharge nicolas-dufour/PLONK_OSV_5M depuis Hugging Face (safetensors, 144 Mo).
+Usage: .venv/bin/python spikes/plonk_bench.py [samples]   (512 by default)
+The first run downloads nicolas-dufour/PLONK_OSV_5M from Hugging Face (safetensors, 144 MB).
 """
 
 from __future__ import annotations
@@ -32,27 +32,27 @@ from geonesclick.config import load_config
 from geonesclick.streetclip import StreetClip
 
 DATASET = Path(__file__).resolve().parent.parent / "dataset"
-VENDOR = Path(__file__).resolve().parent / ".vendor"  # rempli par scripts/setup-plonk-spike.sh
+VENDOR = Path(__file__).resolve().parent / ".vendor"  # filled by scripts/setup-plonk-spike.sh
 BORDERS = VENDOR / "ne_50m_admin_0_countries.geojson"
 MODEL_ID = "nicolas-dufour/PLONK_OSV_5M"
 EARTH_KM = 6371.0
 
 
 def load_borders(path: Path) -> list[tuple[str, np.ndarray, list[np.ndarray]]]:
-    """(code ISO, boîte englobante, anneaux extérieurs) par pays ; ISO_A2_EH corrige France et Norvège (-99)."""
+    """(ISO code, bounding box, outer rings) per country; ISO_A2_EH fixes France and Norway (-99)."""
     out = []
     for feat in json.loads(path.read_text())["features"]:
         code = feat["properties"].get("ISO_A2_EH") or feat["properties"].get("ISO_A2")
         geom = feat["geometry"]
         polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
-        rings = [np.asarray(p[0], dtype=np.float64) for p in polys]  # trous ignorés (enclaves rares)
+        rings = [np.asarray(p[0], dtype=np.float64) for p in polys]  # holes ignored (rare enclaves)
         allpts = np.concatenate(rings)
         out.append((code, np.r_[allpts.min(0), allpts.max(0)], rings))
     return out
 
 
 def inside(ring: np.ndarray, lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
-    """Test du rayon (pair-impair), vectorisé sur les points."""
+    """Ray test (even-odd), vectorised over the points."""
     x0, y0 = ring[:-1, 0][:, None], ring[:-1, 1][:, None]
     x1, y1 = ring[1:, 0][:, None], ring[1:, 1][:, None]
     cross = (y0 > lat) != (y1 > lat)
@@ -82,7 +82,7 @@ def haversine(lat1, lon1, lat2, lon2) -> np.ndarray:
 
 
 def bare_plonk_package() -> None:
-    """Rend `plonk` importable sans exécuter son __init__ (qui tire pipe.py, torchvision et DINOv2)."""
+    """Makes `plonk` importable without running its __init__ (which pulls in pipe.py, torchvision and DINOv2)."""
     sys.path[:0] = [str(VENDOR / "plonk"), str(VENDOR / "deps")]
     spec = importlib.util.find_spec("plonk")
     if spec is None or not spec.submodule_search_locations:
@@ -103,7 +103,7 @@ class Plonk:
 
         self.net = Net.from_pretrained(MODEL_ID).to(device).requires_grad_(False).eval()
         self.precond, self.sampler = DDPMPrecond(), riemannian_flow_sampler
-        self.scheduler = SigmoidScheduler(-7, 3, 1.0, 1e-9)  # réglages par défaut de PlonkPipeline
+        self.scheduler = SigmoidScheduler(-7, 3, 1.0, 1e-9)  # PlonkPipeline default settings
         self.to_gps, self.device = CartesiantoGPS(), device
 
     def sample(self, cls: torch.Tensor, n: int, steps: int, seed: int = 0) -> np.ndarray:
@@ -113,11 +113,11 @@ class Plonk:
         with torch.inference_mode():
             out = self.sampler(lambda b: self.precond(self.net, b), batch, conditioning_keys="emb",
                                scheduler=self.scheduler, num_steps=steps, generator=gen)
-        return np.degrees(self.to_gps(out).cpu().numpy())  # (n, 2) : lat, lon
+        return np.degrees(self.to_gps(out).cpu().numpy())  # (n, 2): lat, lon
 
 
 def encode(clip: StreetClip, img: Image.Image) -> tuple[torch.Tensor, torch.Tensor]:
-    """Une seule passe du ViT : probabilités par pays (comme le moteur) ET jeton [CLS] pour PLONK."""
+    """A single ViT pass: probabilities per country (like the engine) AND the [CLS] token for PLONK."""
     with torch.inference_mode():
         x = clip.processor(images=img, return_tensors="pt").to(clip.device, clip.model.dtype)
         vis = clip.model.vision_model(pixel_values=x["pixel_values"])
@@ -128,7 +128,7 @@ def encode(clip: StreetClip, img: Image.Image) -> tuple[torch.Tensor, torch.Tens
 
 
 def check_cls(clip: StreetClip, img: Image.Image, cls16: torch.Tensor) -> float:
-    """PLONK a été entraîné sur le [CLS] en fp32 de CLIPVisionModel ; notre moteur tourne en fp16."""
+    """PLONK was trained on the fp32 [CLS] of CLIPVisionModel; our engine runs in fp16."""
     from transformers import CLIPVisionModel
 
     ref = CLIPVisionModel.from_pretrained(clip.cfg.model).eval()  # CPU, fp32
@@ -143,13 +143,13 @@ def rank(ordered: list[str], code: str) -> str:
     return str(ordered.index(code) + 1) if code in ordered else "-"
 
 
-STEPS = (250, 100, 50, 25)  # 250 = défaut du papier ; combien de pas peut-on retirer sans perdre le nuage ?
+STEPS = (250, 100, 50, 25)  # 250 = the paper's default; how many steps can we remove without losing the cloud?
 
 
 def cloud(borders, pts: np.ndarray) -> tuple[Counter, list[str], tuple[float, float], float]:
-    """Part des points par pays, pays classés, mode du nuage et dispersion médiane autour de lui (km).
+    """Share of points per country, ranked countries, mode of the cloud and median spread around it (km).
 
-    Mode : le point qui a le plus de voisins à moins de 300 km.
+    Mode: the point with the most neighbours within 300 km.
     """
     lat, lon = pts[:, 0], pts[:, 1]
     share = Counter(countries_of(borders, lat, lon))
@@ -171,7 +171,7 @@ def main(borders_path: Path, n: int) -> None:
     torch.cuda.reset_peak_memory_stats()
     clip = StreetClip(cfg.streetclip)
     base = torch.cuda.max_memory_allocated() / 2**20
-    os.environ.pop("HF_HUB_OFFLINE", None)  # téléchargement des poids PLONK au premier lancement
+    os.environ.pop("HF_HUB_OFFLINE", None)  # download of the PLONK weights on first run
     plonk = Plonk(clip.device)
     print(f"VRAM : StreetCLIP {base:.0f} Mio, + PLONK {torch.cuda.max_memory_allocated() / 2**20 - base:.0f} Mio")
 
@@ -180,9 +180,9 @@ def main(borders_path: Path, n: int) -> None:
     labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
     keys = ["StreetCLIP"] + [f"PLONK {s} pas" for s in STEPS]
     totals = {k: [0, 0] for k in keys}  # top-1, top-3
-    drift = {s: [] for s in STEPS}  # écart du mode au mode à 250 pas (km)
-    cost = {s: [] for s in STEPS}  # temps (ms)
-    small = []  # temps pour 128 points à 50 pas : le nombre de points compte-t-il ?
+    drift = {s: [] for s in STEPS}  # distance from the mode to the mode at 250 steps (km)
+    cost = {s: [] for s in STEPS}  # time (ms)
+    small = []  # time for 128 points at 50 steps: does the number of points matter?
 
     for i, item in enumerate(labels):
         img = Image.open(DATASET / "images" / item["file"]).convert("RGB")

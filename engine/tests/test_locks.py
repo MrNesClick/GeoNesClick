@@ -1,4 +1,4 @@
-"""Verrous pays › région › ville : qui verrouille, rejet durable pour la capture, verrou humain jamais remplacé."""
+"""Country › region › city locks: who locks, rejection lasting the whole capture, human lock never replaced."""
 
 import io
 import zipfile
@@ -21,12 +21,12 @@ def coach(locks, country=None, region=None, proposal=None):
     return locks
 
 
-# --- le coach verrouille le certain ; ses verrous suivent les preuves ---------------------------------
+# --- the coach locks what is certain; its locks follow the proofs ------------------------------------
 def test_coach_locks_and_follows_the_evidence():
     locks = coach(Locks(), FR, NA, ORTHEZ)
     assert (locks.held["country"].by, locks.held["region"].region) == ("coach", "FR.75")
-    assert "city" not in locks.held and locks.proposal.name == "Orthez"  # une ville n'est que proposée
-    coach(locks)  # marque retirée : plus rien de certain
+    assert "city" not in locks.held and locks.proposal.name == "Orthez"  # a city is only suggested
+    coach(locks)  # mark removed: nothing certain any more
     assert locks.held == {} and locks.proposal is None
 
 
@@ -35,15 +35,15 @@ def test_coach_region_needs_the_same_country():
     assert "region" not in locks.held
 
 
-# --- rejet : durable pour la capture, il emporte les niveaux du dessous --------------------------------
+# --- rejection: lasts the whole capture, it takes away the levels below -------------------------------
 def test_rejected_lock_is_not_locked_again():
     locks = coach(Locks(), FR, NA, ORTHEZ)
     locks.reject("country")
-    assert locks.held == {} and locks.proposal is None  # région et proposition dépendaient du pays
-    coach(locks, FR, NA, ORTHEZ)  # marque suivante : toujours la France
+    assert locks.held == {} and locks.proposal is None  # region and suggestion depended on the country
+    coach(locks, FR, NA, ORTHEZ)  # next mark: still France
     assert "country" not in locks.held
     coach(locks, BE)
-    assert locks.held["country"].country == "BE"  # un autre pays reste possible
+    assert locks.held["country"].country == "BE"  # another country is still possible
 
 
 def test_rejected_region_keeps_the_country():
@@ -66,13 +66,13 @@ def test_rejecting_nothing_is_an_error():
         Locks().reject("region")
 
 
-# --- verrou humain : jamais remplacé, il entraîne les niveaux du dessus -------------------------------
+# --- human lock: never replaced, it brings along the levels above -------------------------------------
 def test_user_lock_is_never_replaced_by_the_coach():
     locks = Locks()
     locks.lock(BE)
     coach(locks, FR, NA)
     assert locks.held["country"].country == "BE" and locks.held["country"].by == "user"
-    assert "region" not in locks.held  # la région du coach est en France
+    assert "region" not in locks.held  # the coach's region is in France
 
 
 def test_user_city_locks_its_region_and_country():
@@ -103,10 +103,10 @@ def test_accepting_the_proposal_locks_the_city():
     assert locks.held["city"].by == "user" and locks.proposal is None
 
 
-# --- ce qui restreint la recherche ; journal ------------------------------------------------------
+# --- what narrows down the search; log -----------------------------------------------------------
 def test_search_scope_uses_user_locks_and_rejections_only():
     locks = coach(Locks(), FR, NA)
-    assert locks.scope() == (None, None, set(), set())  # le verrou du coach découle déjà des preuves
+    assert locks.scope() == (None, None, set(), set())  # the coach's lock already follows from the proofs
     locks.reject("region")
     locks.lock(Lock("country", "FR"))
     assert locks.scope() == ("FR", None, set(), {"FR.75"})
@@ -125,8 +125,8 @@ def test_events_are_logged_for_debugging():
     assert "events" not in shown
 
 
-# --- index v4 : régions, recherche, lieux autour d'un point ------------------------------------------
-ROWS = [  # id, nom, ascii, variantes, pays, région (admin1), population, latitude, longitude
+# --- index v4: regions, search, places around a point -----------------------------------------------
+ROWS = [  # id, name, ascii, variants, country, region (admin1), population, latitude, longitude
     ("10", "Orthez", "Orthez", "", "FR", "75", "11857", "43.48834", "-0.77266"),
     ("11", "Sauveterre-de-Béarn", "Sauveterre-de-Bearn", "", "FR", "75", "1547", "43.3993", "-0.94011"),
     ("20", "Laàs", "Laas", "", "FR", "75", "108", "43.38166", "-0.85106"),
@@ -158,15 +158,15 @@ def test_places_know_their_region(index):
     [laas_64, laas_32] = [e for e in index.match(["LAAS"]) if e.kind == "lieu"][0].points
     assert {laas_64[4], laas_32[4]} == {"FR.75", "FR.76"}
     assert index.region_name("FR.75") == "Nouvelle-Aquitaine"
-    assert index.region_name("FR.99") == "FR.99"  # inconnue : son code
+    assert index.region_name("FR.99") == "FR.99"  # unknown: its code
 
 
 def test_regions_and_cities_can_be_searched(index):
     assert [r["name"] for r in index.regions("FR", "occ")] == ["Occitanie"]
     assert [r["code"] for r in index.regions("FR")] == ["FR.75", "FR.76"]
-    assert [c["name"] for c in index.search("ort", "FR")] == ["Orthez"]  # Ortenberg est en Allemagne
+    assert [c["name"] for c in index.search("ort", "FR")] == ["Orthez"]  # Ortenberg is in Germany
     assert [c["name"] for c in index.search("laas", "FR", "FR.76")] == ["Laas"]
-    assert index.search("o", "FR") == []  # une lettre : trop vague
+    assert index.search("o", "FR") == []  # one letter: too vague
 
 
 def test_places_around_a_point(index):
@@ -183,21 +183,21 @@ def test_index_builds_without_region_names(tmp_path, monkeypatch):
     monkeypatch.setattr(places, "_fetch", fetch)
     index = Places(build("https://example.org/cities1000.zip", tmp_path, regions_url="https://example.org/a.txt"))
     assert index.region_name("FR.75") == "FR.75" and index.lookup("Orthez")
-    assert not (tmp_path / places.REGIONS).exists()  # retenté à la prochaine construction
+    assert not (tmp_path / places.REGIONS).exists()  # retried at the next build
 
 
-# --- les preuves des marques sous un verrou ------------------------------------------------------
+# --- the marks' proofs under a lock --------------------------------------------------------------
 def test_evidence_outside_the_lock_stays_visible_but_does_not_count(index):
     from geonesclick.evidence import text_evidence
     from geonesclick.locks import restrict
 
     found = restrict(index.match(["LAAS"]) + text_evidence(["Гърмен"]), ("FR", "FR.76", set(), set()))
     laas = next(e for e in found if e.kind == "lieu")
-    assert laas.countries == ["FR"] and [p[3] for p in laas.points] == ["Laas"]  # celui du Gers (Occitanie)
+    assert laas.countries == ["FR"] and [p[3] for p in laas.points] == ["Laas"]  # the one in Gers (Occitanie)
     hard_sign = next(e for e in found if e.kind == "lettres")
     assert hard_sign.countries == [] and "verrouillé" in hard_sign.note
     alphabet = next(e for e in found if e.kind == "alphabet")
-    assert "BG" in alphabet.countries  # contradiction visible, pas un alphabet vide
+    assert "BG" in alphabet.countries  # visible contradiction, not an empty alphabet
 
 
 def test_rejected_country_and_region_are_removed(index):
@@ -209,10 +209,10 @@ def test_rejected_country_and_region_are_removed(index):
     assert orthez.countries == [] and "rejeté" in orthez.note
 
 
-# --- dans le moteur : une manche en Béarn -------------------------------------------------------------
-from test_marks import ORIGIN, ReaderVision, run, setup  # noqa: E402,F401  (fixture partagée)
+# --- in the engine: a round in Béarn ------------------------------------------------------------------
+from test_marks import ORIGIN, ReaderVision, run, setup  # noqa: E402,F401  (shared fixture)
 
-SIGN_KM = ["ORTHEZ 17", "SAUVETERRE DE BEARN 9", "LAAS 2"]  # panneau directionnel près de Laàs (km par la route)
+SIGN_KM = ["ORTHEZ 17", "SAUVETERRE DE BEARN 9", "LAAS 2"]  # direction sign near Laàs (km by road)
 
 
 @pytest.fixture
@@ -242,8 +242,8 @@ def test_coach_locks_country_and_region_and_proposes_the_nearest_village(bearn):
     mark(engine, SIGN_KM)
     locks = last_locks(sent)
     assert locks["held"]["country"]["country"] == "FR" and locks["held"]["country"]["by"] == "coach"
-    assert locks["held"]["region"]["name"] == "Nouvelle-Aquitaine"  # point net, tout autour en Nouvelle-Aquitaine
-    assert "city" not in locks["held"] and locks["proposal"]["name"] == "Laàs"  # proposée, jamais verrouillée
+    assert locks["held"]["region"]["name"] == "Nouvelle-Aquitaine"  # sharp point, all around in Nouvelle-Aquitaine
+    assert "city" not in locks["held"] and locks["proposal"]["name"] == "Laàs"  # suggested, never locked
 
 
 def test_a_place_read_without_distance_is_the_proposal(bearn):
@@ -252,7 +252,7 @@ def test_a_place_read_without_distance_is_the_proposal(bearn):
     mark(engine, ["ORTHEZ"], ["SAUVETERRE DE BEARN 12"])
     locks = last_locks(sent)
     assert locks["proposal"]["name"] == "Orthez"
-    assert locks["held"]["region"]["region"] == "FR.75"  # pas de point net, mais deux lieux voisins concordent
+    assert locks["held"]["region"]["region"] == "FR.75"  # no sharp point, but two nearby places agree
 
 
 def test_rejected_country_stays_rejected_for_the_capture(bearn):
@@ -264,10 +264,10 @@ def test_rejected_country_stays_rejected_for_the_capture(bearn):
     run(engine, engine.reject_lock(RejectRequest(id=capture_id, level="country")))
     assert last_locks(sent)["held"] == {} and last_locks(sent)["proposal"] is None
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
-    assert verdict["country"] == "FR"  # la conclusion reste indépendante : elle contredit ton rejet
-    mark(engine, ["ORTHEZ"])  # marque suivante : toujours rien de verrouillé
+    assert verdict["country"] == "FR"  # the conclusion stays independent: it contradicts your rejection
+    mark(engine, ["ORTHEZ"])  # next mark: still nothing locked
     assert "country" not in last_locks(sent)["held"]
-    new_id = run(engine, engine.analyse())["id"]  # une nouvelle capture repart de zéro
+    new_id = run(engine, engine.analyse())["id"]  # a new capture starts from scratch
     assert engine.lock_scope(new_id) == (None, None, set(), set())
 
 
@@ -282,8 +282,8 @@ def test_user_lock_is_kept_and_the_marks_still_conclude_on_their_own(bearn):
     locks = last_locks(sent)
     assert locks["held"]["country"] == {**locks["held"]["country"], "country": "BE", "by": "user"}
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
-    assert (verdict["country"], verdict["level"]) == ("FR", "certain")  # contredit ton choix : visible
-    assert verdict["location"] is None  # rien de lu en Belgique : pas de position sous ton choix
+    assert (verdict["country"], verdict["level"]) == ("FR", "certain")  # contradicts your choice: visible
+    assert verdict["location"] is None  # nothing read in Belgium: no position under your choice
 
 
 def test_user_country_picks_its_homonyms_for_the_position(bearn):
@@ -292,9 +292,9 @@ def test_user_country_picks_its_homonyms_for_the_position(bearn):
     engine, sent = bearn
     capture_id = run(engine, engine.analyse())["id"]
     run(engine, engine.set_lock(LockRequest(id=capture_id, level="region", country="FR", region="FR.76")))
-    mark(engine, ["LAAS"], ["ORTHEZ 40"])  # Laàs (Béarn) près d'Orthez, mais tu as dit Occitanie
+    mark(engine, ["LAAS"], ["ORTHEZ 40"])  # Laàs (Béarn) near Orthez, but you said Occitanie
     where = [m for m in sent if m["type"] == "verdict"][-1]["location"]
-    assert [p["label"] for p in where["places"] if p["name"] == "LAAS"] == ["Laas"]  # celui du Gers
+    assert [p["label"] for p in where["places"] if p["name"] == "LAAS"] == ["Laas"]  # the one in Gers
 
 
 def test_user_city_must_exist_in_the_index(bearn):
@@ -351,9 +351,9 @@ def test_an_error_page_is_not_kept_as_region_names(tmp_path, monkeypatch):
 def test_two_nearby_places_of_one_region_fix_it_but_propose_no_city(bearn):
     engine, sent = bearn
     run(engine, engine.analyse())
-    mark(engine, ["ORTHEZ"], ["SAUVETERRE DE BEARN"])  # panneau sans distances : 16 km l'un de l'autre
+    mark(engine, ["ORTHEZ"], ["SAUVETERRE DE BEARN"])  # sign without distances: 16 km from each other
     locks = last_locks(sent)
-    assert locks["held"]["country"]["country"] == "FR" and locks["proposal"] is None  # quelle ville ? aucune
+    assert locks["held"]["country"]["country"] == "FR" and locks["proposal"] is None  # which city? none
     assert locks["held"]["region"]["name"] == "Nouvelle-Aquitaine"
     assert locks["read_regions"] == [{"code": "FR.75", "name": "Nouvelle-Aquitaine", "marks": [1, 2],
                                       "places": ["Orthez", "Sauveterre-de-Béarn"]}]
@@ -366,14 +366,14 @@ def test_places_too_far_apart_or_in_two_regions_are_only_offered(bearn):
     mark(engine, ["ORTHEZ"], ["SAUVETERRE DE BEARN"])
     assert "region" not in last_locks(sent)["held"]
     run(engine, engine.analyse())
-    mark(engine, ["ORTHEZ"], ["TOULOUSE"])  # Nouvelle-Aquitaine et Occitanie : à toi de choisir
+    mark(engine, ["ORTHEZ"], ["TOULOUSE"])  # Nouvelle-Aquitaine and Occitanie: your call
     locks = last_locks(sent)
     assert "region" not in locks["held"] and {r["code"] for r in locks["read_regions"]} == {"FR.75", "FR.76"}
 
 
 def test_no_region_when_the_point_is_near_a_border(bearn):
     engine, sent = bearn
-    engine.cfg.locks.region_radius_km = 100  # rayon qui atteint Laas (Gers, Occitanie)
+    engine.cfg.locks.region_radius_km = 100  # radius that reaches Laas (Gers, Occitanie)
     run(engine, engine.analyse())
     mark(engine, SIGN_KM)
     assert "region" not in last_locks(sent)["held"] and "country" in last_locks(sent)["held"]
@@ -382,7 +382,7 @@ def test_no_region_when_the_point_is_near_a_border(bearn):
 def test_no_lock_on_a_probable_country(bearn):
     engine, sent = bearn
     run(engine, engine.analyse())
-    mark(engine, ["ORTHEZ"], ["Repkény utca"])  # lieu seul, confirmé par rien de français
+    mark(engine, ["ORTHEZ"], ["Repkény utca"])  # lone place, confirmed by nothing French
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
     assert verdict["level"] != "certain" and "country" not in last_locks(sent)["held"]
 
@@ -392,7 +392,7 @@ def test_user_city_with_wrong_coordinates_is_refused(bearn):
 
     engine, _ = bearn
     capture_id = run(engine, engine.analyse())["id"]
-    for lat, lon in ((44.48834, -0.77266), (43.48834, 0.22734)):  # 1° de trop en latitude, puis en longitude
+    for lat, lon in ((44.48834, -0.77266), (43.48834, 0.22734)):  # 1° too many in latitude, then in longitude
         with pytest.raises(Exception) as exc:
             run(engine, engine.set_lock(LockRequest(id=capture_id, level="city", country="FR", name="Orthez",
                                                     lat=lat, lon=lon)))
@@ -409,12 +409,12 @@ def test_map_gets_the_region_extent_and_the_places_outside_your_choice(bearn):
     south, west, north, east = last_locks(sent)["region_bounds"]
     assert (south, west, north, east) == (43.38166, -0.94011, 43.48834, -0.77266)  # Orthez, Sauveterre, Laàs
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
-    assert [(o["n"], o["label"]) for o in verdict["outside"]] == [(2, "Toulouse")]  # grisé, pas effacé
+    assert [(o["n"], o["label"]) for o in verdict["outside"]] == [(2, "Toulouse")]  # greyed out, not erased
 
 
 def test_a_place_without_known_region_does_not_block_the_region(setup, tmp_path, monkeypatch):
-    """Manche russe du 2026-11-07 : un village sans région GeoNames près de Temnikov bloquait la Mordovie."""
-    rows = ROWS + [("50", "Inconnu", "Inconnu", "", "FR", "", "50", "43.39", "-0.86")]  # sans région, près de Laàs
+    """Russian round of 2026-11-07: a village without a GeoNames region near Temnikov blocked Mordovia."""
+    rows = ROWS + [("50", "Inconnu", "Inconnu", "", "FR", "", "50", "43.39", "-0.86")]  # without a region, near Laàs
 
     def archive_rows():
         lines = ["\t".join([gid, name, ascii_name, alt, lat, lon, "P", "PPL", country, "", admin1, "", "", "", pop,
@@ -435,9 +435,9 @@ def test_a_place_without_known_region_does_not_block_the_region(setup, tmp_path,
 
 
 def test_a_short_rough_radius_fixes_the_region(bearn):
-    """Distances incohérentes, mais « à moins de 3 km de Laàs » reste vrai : la région suit (panneau danois)."""
+    """Inconsistent distances, but "within 3 km of Laàs" stays true: the region follows (Danish sign)."""
     engine, sent = bearn
-    engine.cfg.locks.region_places_km = 5  # la règle « deux lieux d'accord » ne s'applique pas ici
+    engine.cfg.locks.region_places_km = 5  # the "two places agree" rule does not apply here
     run(engine, engine.analyse())
     mark(engine, ["SAUVETERRE DE BEARN 60", "LAAS 2"])
     verdict = [m for m in sent if m["type"] == "verdict"][-1]
@@ -445,7 +445,7 @@ def test_a_short_rough_radius_fixes_the_region(bearn):
     assert last_locks(sent)["held"]["region"]["region"] == "FR.75"
 
 
-# --- banc de relecture : rejoue le corpus dans les règles actuelles -----------------------------------
+# --- replay bench: replays the corpus under the current rules ----------------------------------------
 def test_bench_replays_rounds_and_counts_false_certainties(tmp_path, monkeypatch, index):
     import json as _json
 
@@ -460,7 +460,7 @@ def test_bench_replays_rounds_and_counts_false_certainties(tmp_path, monkeypatch
     frame = Image.new("RGB", (8, 8))
     good = {"marks": [{"n": 1, "text": SIGN_KM}], "scores": [["FR", 0.6]]}
     ds.add("20261107-190000-001", frame, "FR", lat=43.39, lon=-0.86, region="FR.75", round_data=good)
-    ds.add("20261107-190000-002", frame, "BE", lat=50.85, lon=4.35, round_data=good)  # en vérité en Belgique
+    ds.add("20261107-190000-002", frame, "BE", lat=50.85, lon=4.35, round_data=good)  # actually in Belgium
     ds.add("20261107-190000-003", frame, "FR", round_data={"marks": [], "scores": []})
     monkeypatch.setattr(bench, "open_places", lambda _cfg: index)
     rounds = {r.id[-1]: r for r in bench.run(cfg)}
@@ -468,4 +468,4 @@ def test_bench_replays_rounds_and_counts_false_certainties(tmp_path, monkeypatch
     assert rounds["2"].verdict == "FAUX" and rounds["2"].level == "certain"
     s = bench.summary(list(rounds.values()))
     assert s["FAUSSES CERTITUDES"] >= 1 and s["avec marques"] == 2 and s["manches"] == 3
-    assert _json.loads(_json.dumps(bench.summary(list(rounds.values()))))  # sortie --json possible
+    assert _json.loads(_json.dumps(bench.summary(list(rounds.values()))))  # --json output possible

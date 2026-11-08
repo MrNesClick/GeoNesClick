@@ -1,5 +1,5 @@
-// Description de l'écran Réglages : chaque réglage modifiable du moteur (settings.py, EDITABLE) a ici son
-// libellé, son aide, son type et sa section. L'écran se construit à partir de cette table.
+// Description of the Settings screen: each editable engine setting (settings.py, EDITABLE) has its
+// label, help, type and section here. The screen is built from this table.
 
 export type Kind =
   | "bool"
@@ -9,12 +9,12 @@ export type Kind =
   | "textarea"
   | "select"
   | "radio"
-  | "rect" // [gauche, haut, droite, bas] en fractions ; vide = image entière
-  | "rects" // liste de rectangles, un par ligne
-  | "categoryText" // une valeur texte par catégorie de metas
-  | "categoryNumber" // un nombre par catégorie
-  | "categoryList" // une liste de mots par catégorie
-  | "countries"; // pays candidats : cocher, décocher, ajouter
+  | "rect" // [left, top, right, bottom] as fractions; empty = whole image
+  | "rects" // list of rectangles, one per line
+  | "categoryText" // one text value per metas category
+  | "categoryNumber" // one number per category
+  | "categoryList" // one list of words per category
+  | "countries"; // candidate countries: tick, untick, add
 
 export interface Field {
   section: string;
@@ -26,16 +26,16 @@ export interface Field {
   max?: number;
   step?: number;
   options?: { value: string | number; label: string; hint?: string }[];
-  /** Rangé dans la partie « Avancé » de la section. */
+  /** Placed in the "Advanced" part of the section. */
   advanced?: boolean;
-  /** Grisé tant que ce réglage booléen est faux. */
+  /** Greyed out while this boolean setting is false. */
   needs?: [string, string];
 }
 
 export interface Group {
   id: string;
   title: string;
-  /** Sections du moteur dont la partie « réservé au fichier » s'affiche dans ce groupe. */
+  /** Engine sections whose "file-only" part is shown in this group. */
   fileSections: string[];
   fields: Field[];
 }
@@ -293,7 +293,7 @@ export const GROUPS: Group[] = [
   },
 ];
 
-/** Stockage : tailles, limite des caches qui grossissent, boutons « Vider » (StoragePanel). */
+/** Storage: sizes, limit of the caches that grow, "Empty" buttons (StoragePanel). */
 GROUPS.push({
   id: "stockage",
   title: "Stockage",
@@ -305,7 +305,7 @@ GROUPS.push({
   ],
 });
 
-/** Groupe sans réglage modifiable : le serveur du moteur, réservé au fichier. */
+/** Group without an editable setting: the engine's server, file-only. */
 GROUPS.push({
   id: "moteur",
   title: "Moteur",
@@ -316,7 +316,7 @@ GROUPS.push({
   ],
 });
 
-/** Libellés des réglages réservés au fichier (settings.py, FILE_ONLY). */
+/** Labels of the file-only settings (settings.py, FILE_ONLY). */
 export const FILE_ONLY_LABELS: Record<string, string> = {
   "server.host": "Adresse d'écoute du moteur",
   "server.port": "Port du moteur",

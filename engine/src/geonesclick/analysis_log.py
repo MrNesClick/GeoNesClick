@@ -1,9 +1,9 @@
-"""Mode débogage : journal JSON de chaque analyse, à côté de sa capture (capture-<id>.json).
+"""Debug mode: JSON log of each analysis, next to its capture (capture-<id>.json).
 
-Écrit seulement si [debug] enabled est vrai (coupé par défaut). Il se complète au fil des résultats
-(StreetCLIP, zones, modèle de vision, « C'était où ? ») et permet de relire une manche après coup pour la
-vérifier ou la mesurer. Local, supprimé avec les anciennes captures (prune_captures). Il ne contient ni clé
-ni donnée de compte.
+Written only if [debug] enabled is true (off by default). It is filled in as results arrive
+(StreetCLIP, zones, vision model, "Where was it?") and lets you replay a round afterwards to
+check or measure it. Local, deleted with old captures (prune_captures). It contains no key
+and no account data.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ class AnalysisLog:
     def __init__(self, path: Path, base: dict[str, Any]) -> None:
         self.path = path
         self.data = dict(base)
-        self._lock = threading.Lock()  # les résultats arrivent de tâches différentes
+        self._lock = threading.Lock()  # results arrive from different tasks
         path.parent.mkdir(parents=True, exist_ok=True)
         self._write()
 
@@ -30,4 +30,4 @@ class AnalysisLog:
     def _write(self) -> None:
         tmp = self.path.with_name(self.path.name + ".tmp")
         tmp.write_text(json.dumps(self.data, ensure_ascii=False, indent=1, default=str))
-        tmp.replace(self.path)  # jamais de fichier à moitié écrit
+        tmp.replace(self.path)  # never a half-written file

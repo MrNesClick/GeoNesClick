@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Niveau d'aide 4 : la synthèse en tête. La preuve tirée de tes marques par les règles locales l'emporte, puis
-// celle lue par l'IA sur la vue entière (si l'alphabet de tes marques ne l'exclut pas) ; sinon, le pays le plus
-// probable d'après l'allure de la vue (StreetCLIP), mais SEULEMENT s'il se détache. Sinon : « Hésitation ».
+// Help level 4: the synthesis at the top. The proof drawn from your marks by the local rules wins, then
+// the one read by the AI on the whole view (if the alphabet of your marks does not exclude it); otherwise, the most
+// likely country from the look of the view (StreetCLIP), but ONLY if it stands out. Otherwise: "Hesitation".
 import { computed } from "vue";
 import type { Analysis } from "../engine";
 import { circled, clearLeader, contenders, countryName, flag, proofLabel, proofOf, rejectedVision, unreadableText } from "../engine";
@@ -71,7 +71,7 @@ const rejected = computed(() => rejectedVision(props.analysis));
 
     <p v-else class="mt-1 text-courbe">Analyse de la vue en cours…</p>
 
-    <!-- Cohérence : ce que l'alphabet de tes marques écarte, y compris une lecture de l'IA sur la vue entière. -->
+    <!-- Consistency: what the alphabet of your marks rules out, including an AI reading of the whole view. -->
     <p v-if="verdict?.allowed" class="mt-2 text-[0.85rem] text-courbe">
       Alphabet de tes marques : {{ verdict.scripts.join(", ") }}. Seuls restent possibles
       {{ verdict.allowed.map(flag).join(" ") }}.
@@ -82,7 +82,7 @@ const rejected = computed(() => rejectedVision(props.analysis));
     </p>
     <p v-if="verdict?.conflict" class="mt-1 text-[0.85rem] text-alerte">Tes marques se contredisent ({{ verdict.conflict }}).</p>
 
-    <!-- Que faire maintenant, quand il n'y a pas de preuve -->
+    <!-- What to do now, when there is no proof -->
     <template v-if="first && !conclusion">
       <p v-if="analysis.vision.status === 'pending'" class="mt-2 text-[0.85rem] text-courbe">
         Analyse approfondie en cours : si elle lit une preuve écrite, elle s'affichera ici.

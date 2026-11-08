@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Après la manche : « C'était où ? ». Enrichit le jeu de test et suit ta progression : pays ratés, et
-// surtout tes confusions (pays réel pris pour un autre) avec les metas qui les séparent.
+// After the round: "Where was it?". Grows the test set and tracks your progress: missed countries, and
+// above all your confusions (real country taken for another) with the metas that tell them apart.
 import { computed, ref, watch } from "vue";
 import type { Analysis, Progress } from "../engine";
 import { countryName, engine, flag, fr, labelCapture, previewTruth } from "../engine";
@@ -9,8 +9,8 @@ const props = defineProps<{ analysis: Analysis; countries: string[]; progress: P
 
 const country = ref("");
 const guessed = ref("");
-const found = ref<boolean | null>(null); // si le pays répondu n'est pas demandé (réglage)
-// Lien Google Maps du vrai lieu (écran de fin de GeoGuessr) : le banc mesure alors région et précision en km.
+const found = ref<boolean | null>(null); // if the answered country is not asked for (setting)
+// Google Maps link of the real place (GeoGuessr end screen): the bench then measures region and accuracy in km.
 const link = ref("");
 const truth = ref<{ lat: number; lon: number; country: string; region_name: string } | null>(null);
 const truthError = ref("");
@@ -33,7 +33,7 @@ watch(link, (value) => {
   if (!value.trim()) return;
   timer = setTimeout(async () => {
     const r = await previewTruth(value);
-    if (value !== link.value) return; // une saisie plus récente l'emporte
+    if (value !== link.value) return; // a more recent input wins
     if ("error" in r) truthError.value = r.error;
     else {
       truth.value = r;
@@ -48,7 +48,7 @@ const sorted = computed(() =>
   [...props.countries].sort((a, b) => countryName(a).localeCompare(countryName(b), "fr")),
 );
 
-// Pays à retravailler : ceux où tu as raté au moins une manche, du plus raté au moins raté.
+// Countries to work on: those where you missed at least one round, most missed first.
 const toWork = computed(() =>
   Object.entries(props.progress?.by_country ?? {})
     .filter(([, [n, ok]]) => ok < n)

@@ -12,15 +12,15 @@ node_modules/
 dist/
 target/
 
-# Données locales (captures, modèles, base de metas)
+# Local data (captures, models, metas database)
 engine/captures/
 engine/data/cache/
 
-# Jeu de test : images locales uniquement (captures du jeu)
+# Test set: local images only (game captures)
 engine/dataset/images/
 
-# Banc PLONK : code tiers, dépendances et frontières (scripts/setup-plonk-spike.sh)
+# PLONK bench: third-party code, dependencies and borders (scripts/setup-plonk-spike.sh)
 engine/spikes/.vendor/
 
-# Ressources de l AppImage, produites par scripts/build-appimage.sh
+# AppImage resources, produced by scripts/build-appimage.sh
 app/src-tauri/engine-bundle/

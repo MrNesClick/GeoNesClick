@@ -1,4 +1,4 @@
-"""Transparence : chaque adresse écrite dans le code figure dans downloads.toml, contactée ou seulement affichée."""
+"""Transparency: every address written in the code is listed in downloads.toml, whether contacted or only shown."""
 
 import re
 import tomllib
@@ -50,8 +50,12 @@ def test_option_keys_exist_in_the_config():
 
 
 def test_readme_lists_every_contacted_host():
-    readme = (ROOT / "README.md").read_text()
-    section = readme.split("## Ce que GeoNesClick télécharge", 1)[1].split("\n## ", 1)[0]
-    for d in manifest()["download"]:
-        for host in d["hosts"]:
-            assert f"`{host}`" in section, f"{host} ({d['id']}) absent du README"
+    """Both READMEs (English and French) list every contacted host in their downloads section."""
+    for name, title in (("README.md", "## What GeoNesClick downloads"),
+                        ("README.fr.md", "## Ce que GeoNesClick télécharge")):
+        readme = (ROOT / name).read_text()
+        assert title in readme, f"{name}: section {title!r} missing"
+        section = readme.split(title, 1)[1].split("\n## ", 1)[0]
+        for d in manifest()["download"]:
+            for host in d["hosts"]:
+                assert f"`{host}`" in section, f"{host} ({d['id']}) missing from {name}"

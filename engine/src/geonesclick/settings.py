@@ -1,10 +1,10 @@
-"""Réglages modifiables depuis l'interface, écrits dans ~/.config/geonesclick/config.toml.
+"""Settings editable from the UI, written to ~/.config/geonesclick/config.toml.
 
-Tout est configurable. L'écran Réglages modifie tout ce qui est dans EDITABLE ; seuls les réglages de
-FILE_ONLY restent réservés au fichier, par sécurité : une requête qui contournerait les contrôles ne doit
-pas pouvoir rediriger la clé API, ouvrir le moteur au réseau, charger un modèle piégé ou faire écrire
-ailleurs sur le disque. L'écran les affiche en lecture seule, avec la raison. Un test vérifie que chaque
-clé de la configuration est dans l'un des deux.
+Everything is configurable. The Settings screen edits everything in EDITABLE; only the FILE_ONLY
+settings stay file-only, for security: a request that bypassed the checks must not
+be able to redirect the API key, open the engine to the network, load a booby-trapped model or write
+elsewhere on the disk. The screen shows them read-only, with the reason. A test checks that each
+configuration key is in one of the two.
 """
 
 from __future__ import annotations
@@ -66,9 +66,9 @@ FILE_ONLY: dict[str, dict[str, str]] = {
               "places_dir": _DISK},
 }
 
-# Pris en compte au prochain démarrage seulement (le reste s'applique tout de suite).
+# Taken into account at the next start only (the rest applies right away).
 RESTART: dict[str, tuple[str, ...]] = {
-    "capture": ("source",),  # ou « Changer de fenêtre », qui rouvre le sélecteur de GNOME
+    "capture": ("source",),  # or "Change window", which reopens the GNOME picker
     "streetclip": ("enabled", "device"),
 }
 
@@ -79,12 +79,12 @@ class SettingsError(ValueError):
 
 def current(cfg: Config) -> dict[str, dict[str, Any]]:
     out = {section: {key: getattr(getattr(cfg, section), key) for key in keys} for section, keys in EDITABLE.items()}
-    out["streetclip"]["countries"] = cfg.streetclip.all_countries  # liste complète : on peut en remettre un
+    out["streetclip"]["countries"] = cfg.streetclip.all_countries  # full list: one can be put back
     return out
 
 
 def file_only(cfg: Config) -> dict[str, dict[str, dict[str, Any]]]:
-    """Réglages réservés au fichier, pour l'affichage en lecture seule : valeur et raison."""
+    """File-only settings, for the read-only display: value and reason."""
     return {
         section: {key: {"value": getattr(getattr(cfg, section), key), "why": why} for key, why in keys.items()}
         for section, keys in FILE_ONLY.items()
@@ -98,10 +98,10 @@ HEADER = (
 
 
 def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config:
-    """Valide et enregistre des réglages ; renvoie la nouvelle configuration complète.
+    """Validates and saves settings; returns the new full configuration.
 
-    Le fichier est modifié en place (tomlkit) : commentaires et ordre conservés. Une valeur n'y est écrite
-    que si elle change : une valeur laissée telle quelle continue de suivre la valeur par défaut.
+    The file is edited in place (tomlkit): comments and order are kept. A value is written to it only
+    if it changes: a value left as is keeps following the default value.
     """
     for section, values in changes.items():
         if section not in EDITABLE or not isinstance(values, dict):
@@ -121,18 +121,18 @@ def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config
     except ValidationError as exc:
         first = exc.errors()[0]
         raise SettingsError(f"{'.'.join(map(str, first['loc']))} : {first['msg']}") from exc
-    except (TOMLKitError, TypeError, AttributeError) as exc:  # fichier illisible, ou section qui n'est pas une table
+    except (TOMLKitError, TypeError, AttributeError) as exc:  # unreadable file, or section that is not a table
         raise SettingsError(f"{path.name} illisible, corrige-le à la main : {exc}") from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(tomlkit.dumps(doc))
-    tmp.replace(path)  # écriture atomique : jamais de fichier à moitié écrit
+    tmp.replace(path)  # atomic write: never a half-written file
     return cfg
 
 
 def main() -> int:
-    """python -m geonesclick.settings < choix.json : enregistre les choix de l'assistant de premier lancement AVANT
-    le premier démarrage du moteur (sinon il téléchargerait des options refusées). Mêmes contrôles que l'écran."""
+    """python -m geonesclick.settings < choices.json: saves the first-launch assistant's choices BEFORE
+    the engine's first start (otherwise it would download declined options). Same checks as the screen."""
     import json
     import sys
 

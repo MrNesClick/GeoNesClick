@@ -1,14 +1,15 @@
-"""Banc de relecture : rejoue chaque manche du jeu de test dans les règles ACTUELLES du coach, et compte ce qui est
-juste et surtout les FAUSSES CERTITUDES (décidé avec l'utilisateur le 2026-11-07 : on ne change une règle ou un
-seuil que si ce banc s'améliore sur l'ensemble, sans casser une manche qui marchait ; cible : zéro fausse
-certitude, quitte à dire « je ne sais pas » plus souvent).
+"""Replay bench: replays each round of the test set under the coach's CURRENT rules, and counts what is
+right and above all the FALSE CERTAINTIES (decided with the user on 2026-11-07: a rule or a threshold is only
+changed if this bench improves overall, without breaking a round that worked; target: zero false
+certainty, even if it means saying "I don't know" more often).
 
-Corpus : dataset/rounds/<id>.json (le texte de tes marques, enregistré par « C'était où ? ») et la vérité de
-labels.toml (pays, et position + région si tu as collé le lien Google Maps). Aucun réseau : l'index des lieux local
-(avec les villages déjà téléchargés) et le même code que le moteur (marks_engine.conclude, LocksMixin._candidates).
+Corpus: dataset/rounds/<id>.json (the text of your marks, saved by "Where was it?") and the truth from
+labels.toml (country, and position + region if you pasted the Google Maps link). No network: the local places
+index (with the villages already downloaded) and the same code as the engine (marks_engine.conclude,
+LocksMixin._candidates).
 
-    cd engine && .venv/bin/python -m geonesclick.bench          # tableau + résumé
-    cd engine && .venv/bin/python -m geonesclick.bench --json   # pour comparer deux versions
+    cd engine && .venv/bin/python -m geonesclick.bench          # table + summary
+    cd engine && .venv/bin/python -m geonesclick.bench --json   # to compare two versions
 """
 
 from __future__ import annotations
@@ -32,20 +33,20 @@ from .places import DB_NAME, VERSION, Places
 @dataclass
 class Round:
     id: str
-    truth: str  # pays réel
+    truth: str  # real country
     marks: int
-    country: str  # pays conclu par les marques
-    level: str  # certain, probable ou ""
-    verdict: str  # juste, FAUX, aucun
-    region: str  # région fixée par le coach : juste, FAUSSE, aucune, ? (vérité inconnue)
-    position: str  # point, rough, ring, places ou ""
-    error_km: float | None  # distance du centre de la position estimée au vrai lieu
-    promise: str  # le vrai lieu est-il dans le rayon annoncé ? tenue, ROMPUE, ?
-    missing: str  # villages du pays réel absents de l'index (les télécharger améliore la relecture)
+    country: str  # country concluded by the marks
+    level: str  # certain, probable or ""
+    verdict: str  # right, WRONG, none
+    region: str  # region set by the coach: right, WRONG, none, ? (truth unknown)
+    position: str  # point, rough, ring, places or ""
+    error_km: float | None  # distance from the centre of the estimated position to the true place
+    promise: str  # is the true place within the announced radius? held, BROKEN, ?
+    missing: str  # villages of the real country missing from the index (downloading them improves the replay)
 
 
 def rules_of(cfg: Config, places: Places | None) -> SimpleNamespace:
-    """Juste ce dont les règles du moteur ont besoin (configuration et index), sans serveur."""
+    """Just what the engine's rules need (configuration and index), without a server."""
     return SimpleNamespace(cfg=cfg, places=places)
 
 
@@ -75,7 +76,7 @@ def replay(label: Label, data: dict[str, Any], cfg: Config, places: Places | Non
             error = haversine(truth, (loc["lat"], loc["lon"]))
             if loc["kind"] in ("point", "rough"):
                 promise = "tenue" if error <= loc["radius_km"] else "ROMPUE"
-            elif loc["kind"] == "ring":  # sur le cercle, à l'écart annoncé près
+            elif loc["kind"] == "ring":  # on the circle, within the announced margin
                 promise = "tenue" if abs(error - loc["radius_km"]) <= loc["spread_km"] / 2 + 2 else "ROMPUE"
         elif loc["places"]:
             error = min(haversine(truth, (p["lat"], p["lon"])) for p in loc["places"])

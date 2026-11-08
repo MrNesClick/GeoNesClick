@@ -1,9 +1,9 @@
-"""Marques et règles locales du moteur : vue figée, lecture des marques, conclusion, noms de lieux.
+"""Marks and local rules of the engine: frozen view, mark reading, conclusion, place names.
 
-Sorti de server.py (2026-11-07, revue de code : le fichier dépassait 1 100 lignes). Engine hérite de MarksMixin ;
-les attributs utilisés ici (cfg, recent, places, vision, background…) sont créés par Engine.__init__.
-Flux : freeze (vue figée) → add_marks (découpe agrandie) → _read_mark (transcription par l'IA) → evidence_of
-(règles locales) → _verdict (conclusion, position, villages du pays en tête via ensure_detail).
+Split out of server.py (2026-11-07, code review: the file was over 1,100 lines). Engine inherits from MarksMixin;
+the attributes used here (cfg, recent, places, vision, background…) are created by Engine.__init__.
+Flow: freeze (frozen view) → add_marks (enlarged crop) → _read_mark (transcription by the AI) → evidence_of
+(local rules) → _verdict (conclusion, position, villages of the leading country via ensure_detail).
 """
 
 from __future__ import annotations
@@ -28,34 +28,34 @@ from .places import COUNTRY, OLD_DBS, VERSION, Places, PlacesError, detail_name
 from .places import build as build_places
 from .vision import VisionError
 
-FROZEN_FRAMES = 3  # vues figées en attente de marques
+FROZEN_FRAMES = 3  # frozen views waiting for marks
 MARK_THUMB_SIDE = 360
 
 
 @dataclass
 class Conclusion:
     verdict: Verdict
-    result: dict[str, Any]  # message « verdict » : conclusion, position, homonymes écartés, lieux hors de tes choix
-    target: str  # pays où situer la vue : le tien s'il y en a un, sinon celui des marques
-    cited: list[tuple[int, list[Evidence]]]  # preuves qui situent la vue (sous tes choix)
+    result: dict[str, Any]  # "verdict" message: conclusion, position, namesakes ruled out, places outside your choices
+    target: str  # country in which to locate the view: yours if there is one, otherwise the marks' one
+    cited: list[tuple[int, list[Evidence]]]  # proofs that locate the view (under your choices)
 
 
 def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[str, float]], rules: Any,
              scope: Scope = NO_SCOPE) -> Conclusion:
-    """Conclusion des marques lues (numéro, preuves), sans réseau : utilisée par le moteur ET par le banc (bench.py),
-    pour que le banc mesure exactement ce que fait le coach.
+    """Conclusion of the marks read (number, proofs), offline: used by the engine AND by the bench (bench.py),
+    so that the bench measures exactly what the coach does.
 
-    La conclusion (pays, certitude) ne tient PAS compte de tes choix ni de tes rejets (décidé avec l'utilisateur le
-    2026-11-07) : elle confirme ou contredit ce que tu as dit, au lieu d'en être l'écho. Tes choix (scope)
-    restreignent seulement la suite : homonymes retenus pour la position, région, ville proposée.
+    The conclusion (country, certainty) does NOT take your choices or your rejections into account (decided with the
+    user on 2026-11-07): it confirms or contradicts what you said, instead of echoing it. Your choices (scope)
+    only narrow down what follows: namesakes kept for the position, region, suggested city.
     """
     spread = rules.place_max_spread_km
     read, ignored = keep_nearby([(n, from_dict(ev)) for n, ev in done], spread)
     v = verdict(read, dict(scores), rules.prior_min)
     result = asdict(v)
-    result["ignored"] = ignored  # homonymes lointains écartés
-    # Position estimée, dans ton pays s'il y en a un (et ses homonymes seulement), sinon dans celui des marques :
-    # lieux des marques qui le prouvent, et distances d'un panneau directionnel.
+    result["ignored"] = ignored  # distant namesakes ruled out
+    # Estimated position, in your country if there is one (and its namesakes only), otherwise in the marks' one:
+    # places of the marks that prove it, and a direction sign's distances.
     target = scope[0] or v.country
     near = read
     if scope != NO_SCOPE:
@@ -63,7 +63,7 @@ def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[st
     cited = {n for n, _ in near} if scope[0] else {c["n"] for c in v.cites}
     places = [(n, e) for n, found in near if n in cited for e in found if e.kind == "lieu" and target in e.countries]
     result["location"] = locate(places, target) if places else None
-    # Lieux lus que tes choix écartent (« ③ Rötz » hors de ta Basse-Saxe) : grisés sur la carte, jamais effacés.
+    # Places read that your choices rule out ("③ Rötz" outside your Lower Saxony): greyed out on the map, never erased.
     kept = {(n, e.value) for n, found in near for e in found if e.kind == "lieu" and e.points}
     result["outside"] = [{"n": n, "name": e.value, "label": e.points[0][3], "lat": e.points[0][0],
                           "lon": e.points[0][1]}
@@ -74,11 +74,11 @@ def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[st
 
 
 class MarksMixin:
-    # --- marques -------------------------------------------------------------------------------
+    # --- marks ---------------------------------------------------------------------------------
     async def freeze(self) -> dict[str, Any]:
-        """Fige la vue : la fenêtre des marques l'affiche en plein écran pour y entourer des indices.
+        """Freezes the view: the marks window shows it in full screen to circle clues on it.
 
-        Les marques complètent la manche en cours : il faut une capture d'abord (elle ouvre la manche).
+        The marks complete the current round: a capture is needed first (it opens the round).
         """
         if not self.cfg.marks.enabled:
             return {"ok": False, "error": "marques désactivées dans les réglages"}
@@ -111,7 +111,7 @@ class MarksMixin:
                 "height": frame.height}
 
     async def add_marks(self, req: MarksRequest) -> dict[str, Any]:
-        """Découpe chaque marque dans la vue figée, l'agrandit si besoin et la fait transcrire."""
+        """Crops each mark from the frozen view, enlarges it if needed and has it transcribed."""
         mc = self.cfg.marks
         if not mc.enabled:
             raise HTTPException(409, "marques désactivées dans les réglages")
@@ -126,11 +126,11 @@ class MarksMixin:
             raise HTTPException(409, "l'analyse de cette manche est trop ancienne : refais une capture")
         if len(entry["marks"]) + len(req.rects) > MAX_PER_ANALYSIS:
             raise HTTPException(422, f"au plus {MAX_PER_ANALYSIS} marques par manche")
-        del self.frozen[req.id]  # une vue figée ne sert qu'une fois
+        del self.frozen[req.id]  # a frozen view is only used once
         numbers = []
         for rect in req.rects:
             img, scale = await asyncio.to_thread(crop_mark, frame, rect, mc.upscale_to_px, mc.max_upscale)
-            n = max((m["n"] for m in entry["marks"]), default=0) + 1  # une marque retirée garde son numéro
+            n = max((m["n"] for m in entry["marks"]), default=0) + 1  # a removed mark keeps its number
             mark = {"n": n, "rect": rect, "scale": round(scale, 2), "size": list(img.size), "status": "pending"}
             entry["marks"].append(mark)
             numbers.append(n)
@@ -139,7 +139,7 @@ class MarksMixin:
                 "thumbnail": await asyncio.to_thread(data_url, img, MARK_THUMB_SIDE, 88),
             })
             if self.cfg.debug.enabled and entry.get("log") is not None:
-                with suppress(OSError):  # découpe gardée pour mesurer la lecture après coup
+                with suppress(OSError):  # crop kept to measure the reading afterwards
                     await asyncio.to_thread(save_png, img, self.cfg.capture.path, f"mark-{target}-{n}")
             task = asyncio.create_task(self._read_mark(target, mark, img))
             self.background.add(task)
@@ -163,24 +163,24 @@ class MarksMixin:
                     mark.update(status="error", error=str(exc)[:300])
         entry = self.recent.get(capture_id)
         if entry is None or not any(m is mark for m in entry["marks"]):
-            return  # retirée pendant la lecture (ou manche oubliée) : elle ne doit pas réapparaître
+            return  # removed during the reading (or round forgotten): it must not reappear
         message.update({k: v for k, v in mark.items() if k not in ("n", "rect", "size")})
         await self._log_marks(capture_id)
         await self.broadcast(message)
         await self._verdict(capture_id)
 
     def evidence_of(self, lines: list[str]) -> list[Evidence]:
-        """Preuves tirées du texte d'une marque, selon les règles actives (appelée hors de la boucle).
+        """Proofs drawn from a mark's text, according to the active rules (called outside the loop).
 
-        Jamais restreintes par tes choix (« c'est sûr ») : la conclusion des marques reste un avis indépendant.
+        Never restricted by your choices ("it's certain"): the marks' conclusion stays an independent opinion.
         """
         rc = self.cfg.rules
         found = [e for e in text_evidence(lines)
                  if (e.kind == "alphabet" and rc.scripts) or (e.kind in ("lettres", "mot") and rc.letters)]
         if rc.places and self.places is not None:
             found += self.places.match(lines, rc.place_min_len)
-        # Seuls les pays candidats comptent (la Moldavie n'empêche pas « ș » de désigner la Roumanie). Une preuve qui
-        # ne désigne que des pays hors liste reste affichée, mais ne compte pas (« Manto » → Honduras, 2026-11-07).
+        # Only the candidate countries count (Moldova does not prevent "ș" from pointing to Romania). A proof that
+        # only points to countries outside the list stays visible, but does not count ("Manto" → Honduras, 2026-11-07).
         known = set(self.cfg.streetclip.countries.values())
         for e in found:
             kept = [c for c in e.countries if c in known]
@@ -190,8 +190,8 @@ class MarksMixin:
         return found
 
     async def _verdict(self, capture_id: str) -> None:
-        """Conclusion des marques lues (conclude), recalculée à chaque lecture, retrait ou choix, poussée à
-        l'interface ; puis ce que le coach verrouille."""
+        """Conclusion of the marks read (conclude), recomputed on each reading, removal or choice, pushed to
+        the UI; then what the coach locks."""
         entry = self.recent.get(capture_id)
         if entry is None:
             return
@@ -207,7 +207,7 @@ class MarksMixin:
         await self.coach_locks(capture_id, v, c.cited, result["location"], target)
 
     async def remove_mark(self, req: DeleteRequest) -> dict[str, Any]:
-        """Le joueur retire une marque (lecture fausse) : elle ne compte plus, les autres gardent leur numéro."""
+        """The player removes a mark (wrong reading): it no longer counts, the others keep their number."""
         entry = self.recent.get(req.id)
         if entry is None:
             raise HTTPException(404, "analyse trop ancienne ou inconnue")
@@ -222,21 +222,21 @@ class MarksMixin:
 
     async def _log_marks(self, capture_id: str) -> None:
         entry = self.recent.get(capture_id)
-        if entry is not None:  # copie : le journal s'écrit dans un thread pendant que les lectures arrivent
+        if entry is not None:  # copy: the log is written in a thread while the readings arrive
             await self._log(capture_id, marks=[dict(m) for m in entry["marks"]])
 
 
-    # --- noms de lieux (GeoNames) ----------------------------------------------------------------
+    # --- place names (GeoNames) ------------------------------------------------------------------
     def schedule_places(self) -> None:
         if self.places_task and not self.places_task.done():
             return
         self.places_task = asyncio.create_task(self.load_places())
 
     async def load_places(self) -> None:
-        """Ouvre l'index des lieux ; le télécharge et le construit d'abord s'il manque (une fois, ~11 Mo)."""
+        """Opens the places index; downloads and builds it first if missing (once, ~11 MB)."""
         rc = self.cfg.rules
         path = rc.places_path / PLACES_DB
-        for old in OLD_DBS:  # anciens formats, remplacés (l'archive gardée évite de retélécharger)
+        for old in OLD_DBS:  # old formats, replaced (the kept archive avoids downloading again)
             (rc.places_path / old).unlink(missing_ok=True)
         for old in rc.places_path.glob("detail-*.sqlite"):
             if not old.name.endswith(f"-{VERSION}.sqlite"):
@@ -247,11 +247,11 @@ class MarksMixin:
                 await self.broadcast(self.state())
                 await asyncio.to_thread(build_places, rc.places_url, rc.places_path, regions_url=rc.regions_url)
             places = await asyncio.to_thread(Places, path)
-            for detail in sorted(rc.places_path.glob(f"detail-*-{VERSION}.sqlite")):  # pays déjà détaillés
+            for detail in sorted(rc.places_path.glob(f"detail-*-{VERSION}.sqlite")):  # countries already detailed
                 await asyncio.to_thread(places.add_detail, detail.name.split("-")[1], detail)
             self.places = places
             self.places_message = self._places_summary()
-        except (PlacesError, OSError, sqlite3.Error) as exc:  # hors ligne, disque… : les autres règles restent
+        except (PlacesError, OSError, sqlite3.Error) as exc:  # offline, disk…: the other rules remain
             self.places, self.places_message = None, f"indisponible : {exc}"[:300]
         await self.broadcast(self.state())
 
@@ -262,10 +262,10 @@ class MarksMixin:
         return f"{self.places.count} noms de lieux (GeoNames, CC BY 4.0)" + (f" ; villages : {details}" if details else "")
 
     def ensure_detail(self, country: str) -> None:
-        """Répertoire complet du pays en tête (villages), une fois : puis les marques sont relues avec lui."""
+        """Full directory of the leading country (villages), once: then the marks are re-read with it."""
         if not (self.cfg.rules.places and self.cfg.rules.detail and self.places) or not COUNTRY.fullmatch(country):
             return
-        if country in self.places.details:  # déjà là : il devient le plus récemment utilisé
+        if country in self.places.details:  # already there: it becomes the most recently used
             storage.touch(self.cfg.rules.places_path / detail_name(country))
             return
         if country in self.detail_failed or (country in self.detail_tasks and not self.detail_tasks[country].done()):
@@ -291,5 +291,5 @@ class MarksMixin:
         await self.evict_caches(keep={country})
         self.places_message = self._places_summary()
         await self.broadcast(self.state())
-        for capture_id in list(self.recent):  # relire les marques avec les villages
+        for capture_id in list(self.recent):  # re-read the marks with the villages
             await self.reread_marks(capture_id)

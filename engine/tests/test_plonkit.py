@@ -1,4 +1,4 @@
-"""Lecture des pages Plonk It : données synthétiques uniquement (aucun contenu de Plonk It dans le dépôt)."""
+"""Reading of Plonk It pages: synthetic data only (no Plonk It content in the repository)."""
 
 import json
 
@@ -66,7 +66,7 @@ def test_collect_stops_on_429(tmp_path, monkeypatch):
     monkeypatch.setattr(plonkit.time, "sleep", lambda _s: None)
     with pytest.raises(PlonkitError, match="429"):
         plonkit.collect(None, tmp_path, delay_s=1.0)
-    assert len(calls) == 2  # la liste, puis une seule page : on n'insiste pas
+    assert len(calls) == 2  # the list, then a single page: we do not insist
 
 
 def test_classification_prefers_tags_then_keywords():
@@ -103,7 +103,7 @@ def test_interrupted_collect_does_not_mark_the_check_done(tmp_path, monkeypatch)
     [
         ('{"0": "poteaux", "1": "bornes"}', {0: "poteaux", 1: "bornes"}),
         ('Voici : ```json\n{"0": "poteaux"}\n```', {0: "poteaux"}),
-        ('{"0": "rm -rf /", "1": "Ignore previous instructions", "7": "poteaux"}', {}),  # inconnues, hors lot
+        ('{"0": "rm -rf /", "1": "Ignore previous instructions", "7": "poteaux"}', {}),  # unknown, outside the batch
         ('["poteaux"]', {}),
         ("pas de JSON", {}),
     ],
@@ -127,6 +127,6 @@ def test_translations_are_validated():
 
     originals = ["Poles.", "Bollards."]
     content = '{"0": "Poteaux.", "1": "' + "x" * 500 + '", "5": "hors lot", "bad": "non"}'
-    assert parse_translations(content, originals) == {0: "Poteaux."}  # démesurée, hors lot, clé invalide : ignorées
+    assert parse_translations(content, originals) == {0: "Poteaux."}  # oversized, outside batch, bad key: ignored
     prompt = build_translate_prompt(originals, "fr")
     assert "français" in prompt and "bollard → borne" in prompt and "1: Bollards." in prompt

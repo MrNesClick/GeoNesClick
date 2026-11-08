@@ -1,9 +1,9 @@
-"""Clé API du modèle de vision, hors du dépôt : ~/.config/geonesclick/<nom>.key, lisible par toi seul (0600).
+"""API key of the vision model, outside the repository: ~/.config/geonesclick/<name>.key, readable by you only (0600).
 
-Décidé avec l'utilisateur le 2026-11-07 (« clé API pas dans le .env » ; fichier protégé préféré au trousseau du
-système). Ordre de lecture : la variable d'environnement (tests, usages avancés), puis le fichier. Saisie depuis
-Réglages › Analyse ; l'interface n'en voit jamais que les 4 derniers caractères. L'ancien .env du dépôt est migré
-une fois au démarrage : la clé est DÉPLACÉE vers le fichier, puis sa ligne retirée du .env (le reste est gardé).
+Decided with the user on 2026-11-07 ("API key not in the .env"; protected file preferred over the system
+keyring). Reading order: the environment variable (tests, advanced uses), then the file. Entered from
+Settings › Analysis; the UI only ever sees its last 4 characters. The repository's old .env is migrated
+once at startup: the key is MOVED to the file, then its line removed from the .env (the rest is kept).
 """
 
 from __future__ import annotations
@@ -14,8 +14,8 @@ from pathlib import Path
 
 from . import paths
 
-NAME = re.compile(r"[A-Z][A-Z0-9_]{0,63}")  # nom de la variable (« NVAPI ») : sert aussi de nom de fichier
-VALUE = re.compile(r"[\x21-\x7e]{8,300}")  # caractères imprimables, sans espace ni retour à la ligne
+NAME = re.compile(r"[A-Z][A-Z0-9_]{0,63}")  # name of the variable ("NVAPI"): also used as the file name
+VALUE = re.compile(r"[\x21-\x7e]{8,300}")  # printable characters, no space or line break
 
 
 class ApiKeyError(ValueError):
@@ -29,7 +29,7 @@ def key_file(name: str) -> Path:
 
 
 def _write_private(path: Path, text: str) -> None:
-    """Écriture atomique d'un fichier lisible par toi seul (créé directement en 0600, jamais visible autrement)."""
+    """Atomic write of a file readable by you only (created directly as 0600, never visible otherwise)."""
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     tmp = path.with_name(path.name + ".tmp")
     tmp.unlink(missing_ok=True)
@@ -64,7 +64,7 @@ def forget(name: str) -> None:
 
 
 def hint(name: str) -> dict[str, str] | None:
-    """Ce que l'interface peut montrer : d'où vient la clé et ses 4 derniers caractères, jamais la clé."""
+    """What the UI may show: where the key comes from and its last 4 characters, never the key."""
     value = read(name)
     if not value:
         return None
@@ -72,22 +72,22 @@ def hint(name: str) -> dict[str, str] | None:
 
 
 def migrate_env(name: str, env_file: Path) -> bool:
-    """Ancien .env du dépôt : la clé est déplacée vers le fichier protégé, puis sa ligne retirée du .env."""
+    """The repository's old .env: the key is moved to the protected file, then its line removed from the .env."""
     if not env_file.is_file() or key_file(name).exists():
         return False
     lines = env_file.read_text().splitlines(keepends=True)
     found = [ln.partition("=")[2].strip().strip("\"'") for ln in lines if ln.partition("=")[0].strip() == name]
     if not found or not found[-1]:
         return False
-    save(name, found[-1])  # d'abord la copie protégée…
+    save(name, found[-1])  # first the protected copy…
     kept = "".join(ln for ln in lines if ln.partition("=")[0].strip() != name)
-    _write_private(env_file, kept)  # … puis seulement la ligne retirée
+    _write_private(env_file, kept)  # … only then the line removed
     return True
 
 
 def main() -> int:
-    """python -m geonesclick.apikey < clé : enregistre la clé lue sur l'entrée standard (jamais en argument, visible
-    par les autres programmes de la machine). Appelé par l'assistant de premier lancement."""
+    """python -m geonesclick.apikey < key: saves the key read from standard input (never as an argument, visible
+    to the machine's other programs). Called by the first-launch assistant."""
     import sys
 
     from .config import load_config

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Ce qui tourne encore en arrière-plan pour la capture affichée, avec le temps écoulé depuis le début de la tâche
-// en cours la plus ancienne (une lecture de marques compte depuis son lancement, pas depuis la capture).
-// Rien n'est affiché quand tout est terminé.
+// What is still running in the background for the displayed capture, with the time elapsed since the start of the
+// oldest running task (a marks reading counts from its launch, not from the capture).
+// Nothing is shown once everything is done.
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { engine, fr } from "../engine";
 
@@ -31,7 +31,7 @@ watch(
   () => tasks.value.length > 0,
   (active) => {
     clearInterval(ticker);
-    now.value = Date.now(); // sinon la dernière valeur, figée à la fin de la tâche précédente
+    now.value = Date.now(); // otherwise the last value, frozen at the end of the previous task
     if (active) ticker = setInterval(() => (now.value = Date.now()), 250);
   },
   { immediate: true },

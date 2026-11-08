@@ -1,4 +1,4 @@
-// Résumés d'une ligne des sections du coach : lisibles même quand la section est repliée.
+// One-line summaries of the coach sections: readable even when the section is collapsed.
 import type { Analysis } from "./engine";
 import { certainProof, circled, clearLeader, contenders, countryName, flag, fr, proofOf, tipsByCountry, viable } from "./engine";
 
@@ -61,7 +61,7 @@ export function round(a: Analysis): string {
   return a.labelled ? `${flag(a.labelled.country)} enregistré` : "c'était où ?";
 }
 
-/** Marques : le texte lu de chacune, par son numéro (« ① « Repkény utca » · ② illisible »). */
+/** Marks: the text read on each, by its number ("① « Repkény utca » · ② illisible"). */
 export function marks(a: Analysis): string {
   return a.marks
     .map((m) => {

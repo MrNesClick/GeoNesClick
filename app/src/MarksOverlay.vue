@@ -1,23 +1,23 @@
 <script setup lang="ts">
-// Fenêtre des marques : la vue figée en plein écran, où le joueur entoure chaque indice (plaque de rue,
-// panneau, enseigne…). Créée cachée au démarrage (tauri.conf.json) pour s'afficher sans délai ; elle écoute le
-// moteur et se montre à chaque « freeze » (Super+Maj+Z ou bouton « Marquer »).
+// Marks window: the frozen view in full screen, where the player circles each clue (street sign,
+// road sign, shop sign…). Created hidden at startup (tauri.conf.json) to show without delay; it listens to the
+// engine and shows up on each "freeze" (Super+Shift+Z or the "Mark" button).
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ENGINE_URL, WS_URL } from "./engine";
 
-type Rect = [number, number, number, number]; // fractions [gauche, haut, droite, bas] de l'image brute
-const MIN_PX = 8; // un simple clic ne fait pas une marque
+type Rect = [number, number, number, number]; // fractions [left, top, right, bottom] of the raw image
+const MIN_PX = 8; // a single click does not make a mark
 
 const win = getCurrentWindow();
 const open = ref(false);
 const freezeId = ref("");
 const image = ref("");
 const size = ref({ width: 16, height: 9 });
-const targetAt = ref(""); // heure de l'analyse que les marques complètent (la manche en cours)
-const existing = ref(0); // marques déjà posées sur cette manche : la numérotation continue
+const targetAt = ref(""); // time of the analysis the marks complete (the current round)
+const existing = ref(0); // marks already placed in this round: numbering continues
 const max = ref(9);
-const uses = ref<string[]>([]); // ce que le coach tire d'une marque (fourni par le moteur)
+const uses = ref<string[]>([]); // what the coach draws from a mark (provided by the engine)
 const notYet = ref<string[]>([]);
 const rects = ref<Rect[]>([]);
 const drawing = ref<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
@@ -57,9 +57,9 @@ async function show(msg: { id: string; width: number; height: number; target_at:
   try {
     await win.show();
     await win.setFullscreen(true);
-    await win.setFocus(); // GNOME peut refuser le clavier : les boutons restent là pour valider ou annuler
+    await win.setFocus(); // GNOME may withhold the keyboard: the buttons stay there to confirm or cancel
   } catch {
-    /* fenêtre déjà visible */
+    /* window already visible */
   }
   const res = await post<{ image: string }>("/marks/frame", { id: msg.id });
   if (res.data && freezeId.value === msg.id) image.value = res.data.image;
@@ -68,12 +68,12 @@ async function show(msg: { id: string; width: number; height: number; target_at:
 
 async function close() {
   open.value = false;
-  image.value = ""; // libère l'image (plusieurs Mo) tant que la fenêtre est cachée
+  image.value = ""; // frees the image (several MB) while the window is hidden
   rects.value = [];
   try {
     await win.hide();
   } catch {
-    /* déjà cachée */
+    /* already hidden */
   }
 }
 
@@ -88,7 +88,7 @@ async function submit() {
 
 const removeLast = () => void rects.value.pop();
 
-// --- tracé ---------------------------------------------------------------------------------------
+// --- drawing -------------------------------------------------------------------------------------
 function point(e: PointerEvent) {
   const box = stage.value!.getBoundingClientRect();
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
@@ -131,7 +131,7 @@ function key(e: KeyboardEvent) {
   e.preventDefault();
 }
 
-// --- écoute du moteur ----------------------------------------------------------------------------
+// --- listening to the engine ---------------------------------------------------------------------
 let ws: WebSocket | null = null;
 let retry: ReturnType<typeof setTimeout> | undefined;
 function listen() {
@@ -163,7 +163,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="open" class="fixed inset-0 grid select-none place-items-center bg-black">
-    <!-- L'image garde ses proportions : les fractions des rectangles sont celles de l'image brute. -->
+    <!-- The image keeps its aspect ratio: the rectangles' fractions are those of the raw image. -->
     <div
       ref="stage"
       class="relative cursor-crosshair touch-none"
@@ -189,7 +189,7 @@ onBeforeUnmount(() => {
       <div v-if="live" class="absolute border-2 border-dashed border-marque" :style="boxStyle(live)" />
     </div>
 
-    <!-- Barre d'outils : s'efface pendant le tracé pour ne rien cacher de la vue. -->
+    <!-- Toolbar: fades out while drawing so it hides nothing of the view. -->
     <div
       class="fixed top-3 left-1/2 flex max-w-[calc(100vw-2rem)] -translate-x-1/2 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-courbe-fonce bg-encre/90 px-4 py-2.5 text-[0.95rem] text-papier shadow-lg transition-opacity motion-reduce:transition-none"
       :class="drawing ? 'pointer-events-none opacity-0' : 'opacity-100'"
@@ -224,7 +224,7 @@ onBeforeUnmount(() => {
           Lire les marques <kbd class="font-normal">Entrée</kbd>
         </button>
       </div>
-      <!-- Ce que le coach tire d'une marque : pour savoir quoi entourer, et ce qui ne compte pas encore. -->
+      <!-- What the coach draws from a mark: to know what to circle, and what does not count yet. -->
       <dl v-if="uses.length || notYet.length" class="w-full border-t border-courbe-fonce pt-2 text-[0.85rem]">
         <div v-if="uses.length" class="flex gap-2">
           <dt class="shrink-0 text-marque">Pris en compte</dt>

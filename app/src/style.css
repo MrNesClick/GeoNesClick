@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
-/* Polices embarquées (aucun appel réseau) */
+/* Bundled fonts (no network call) */
 @import "@fontsource/spectral/400-italic.css";
 @import "@fontsource/spectral/600-italic.css";
 @import "@fontsource/atkinson-hyperlegible/400.css";
 @import "@fontsource/atkinson-hyperlegible/700.css";
 
-/* Carte topographique de nuit : l'encre et le papier, deux accents porteurs de sens.
-   forêt = calculé en local, instantané (niveau 1) ; lac = IA distante (niveau 2). */
+/* Topographic map at night: ink and paper, two accents that carry meaning.
+   forest = computed locally, instant (level 1); lake = remote AI (level 2). */
 @theme {
   --color-encre: #15202b;
   --color-relief: #1c2a37;
@@ -17,7 +17,7 @@
   --color-foret: #7db38a;
   --color-lac: #7fb6d6;
   --color-alerte: #e29a7e;
-  /* Marques : le surligneur du joueur sur la vue figée, lisible sur n'importe quelle photo. */
+  /* Marks: the player's highlighter on the frozen view, readable on any photo. */
   --color-marque: #f2c14e;
 
   --font-atlas: "Spectral", "Iowan Old Style", Georgia, serif;
@@ -40,14 +40,14 @@
   }
 }
 
-/* Étiquette d'atlas : italique espacé, comme les noms de régions sur une carte. */
+/* Atlas label: spaced italics, like region names on a map. */
 .atlas {
   font-family: var(--font-atlas);
   font-style: italic;
   letter-spacing: 0.06em;
 }
 
-/* Le seul moment animé : l'arrivée d'une nouvelle capture. */
+/* The only animated moment: a new capture arriving. */
 .arrivee-enter-active {
   transition: opacity 260ms ease-out, transform 260ms ease-out;
 }
@@ -66,7 +66,7 @@
   }
 }
 
-/* Carte (Leaflet) aux couleurs du coach : fond d'encre et boutons de zoom sombres. */
+/* Map (Leaflet) in the coach's colours: ink background and dark zoom buttons. */
 .leaflet-container {
   background: var(--color-encre);
   font-family: var(--font-ui);
@@ -82,7 +82,7 @@
   box-shadow: none !important;
 }
 
-/* Étiquettes des zones probables sur la carte. */
+/* Labels of the likely zones on the map. */
 .leaflet-tooltip.ggc-zone {
   background: var(--color-encre);
   border: 1px solid var(--color-lac);
@@ -96,7 +96,7 @@
 .leaflet-tooltip.ggc-zone::before {
   display: none;
 }
-/* Lieux lus sur tes marques : nom au contour couleur marque ; masqué de loin, où les noms se chevauchent. */
+/* Places read on your marks: name outlined in the mark colour; hidden from afar, where names overlap. */
 .leaflet-tooltip.ggc-place {
   border-color: var(--color-marque);
 }

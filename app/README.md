@@ -1,3 +1,3 @@
-# Interface GeoNesClick (Tauri + Vue)
+# GeoNesClick UI (Tauri + Vue)
 
-Voir le [README principal](../README.md) pour l'installation et le lancement.
+See the [main README](../README.md) for installation and running.

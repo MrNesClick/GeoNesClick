@@ -17,15 +17,15 @@ def test_save_merges_into_existing_user_file(tmp_path):
     cfg = save({"coach": {"help_level": 2}}, user)
     assert cfg.coach.help_level == 2
     written = tomllib.loads(user.read_text())
-    assert written["vision"]["model"] == "a/b"  # clé existante conservée
-    assert written["capture"]["crop"] == [0.0, 0.1, 1.0, 1.0]  # même hors de l'écran Réglages
-    assert not (tmp_path / "config.tmp").exists()  # écriture atomique terminée
+    assert written["vision"]["model"] == "a/b"  # existing key kept
+    assert written["capture"]["crop"] == [0.0, 0.1, 1.0, 1.0]  # even outside the Settings screen
+    assert not (tmp_path / "config.tmp").exists()  # atomic write finished
 
 
 @pytest.mark.parametrize(
     "changes",
     [
-        {"vision": {"base_url": "https://attaquant.example/v1"}},  # rediriger la clé API : interdit
+        {"vision": {"base_url": "https://attaquant.example/v1"}},  # redirecting the API key: forbidden
         {"vision": {"api_key_env": "AUTRE"}},
         {"server": {"port": 1}},
         {"inconnue": {"x": 1}},
@@ -35,7 +35,7 @@ def test_non_editable_settings_are_refused(tmp_path, changes):
     user = tmp_path / "config.toml"
     with pytest.raises(SettingsError):
         save(changes, user)
-    assert not user.exists()  # rien n'est écrit
+    assert not user.exists()  # nothing is written
 
 
 def test_invalid_value_is_refused_without_writing(tmp_path):
@@ -101,7 +101,7 @@ def test_save_only_writes_values_that_change(tmp_path):
     defaults = current(load_config(tmp_path / "absent.toml"))
     save(defaults | {"coach": {"help_level": 2, "language": "fr"}}, user)
     written = tomllib.loads(user.read_text())
-    assert written == {"coach": {"help_level": 2}}  # le reste suit toujours les valeurs par défaut
+    assert written == {"coach": {"help_level": 2}}  # the rest still follows the default values
 
 
 def test_unreadable_user_file_is_refused_without_writing(tmp_path):
@@ -113,8 +113,8 @@ def test_unreadable_user_file_is_refused_without_writing(tmp_path):
 
 
 def test_every_setting_is_editable_or_file_only():
-    """Tout est configurable : chaque clé de la configuration est modifiable à l'écran, ou réservée au
-    fichier pour une raison de sécurité écrite. Une clé ajoutée sans être rangée fait échouer ce test."""
+    """Everything is configurable: each configuration key is editable on screen, or file-only
+    for a written security reason. A key added without being filed makes this test fail."""
     from geonesclick.settings import EDITABLE, FILE_ONLY
 
     cfg = load_config(Path("/nonexistent.toml"))
@@ -145,7 +145,7 @@ def test_streetclip_labels_are_recomputed_live(client):
     ok = http.post("/settings", json={"streetclip": {"prompt": "A photo taken in {}."}}, headers=ORIGIN)
     assert ok.status_code == 200 and engine.streetclip.relabelled == 1
     http.post("/settings", json={"streetclip": {"top_k": 7}}, headers=ORIGIN)
-    assert engine.streetclip.relabelled == 1 and engine.streetclip.cfg.top_k == 7  # rien à recalculer
+    assert engine.streetclip.relabelled == 1 and engine.streetclip.cfg.top_k == 7  # nothing to recompute
 
 
 def test_excluded_country_can_be_restored(client):
@@ -153,14 +153,14 @@ def test_excluded_country_can_be_restored(client):
     http.post("/settings", json={"streetclip": {"exclude_countries": ["RU"]}}, headers=ORIGIN)
     assert "RU" not in engine.cfg.streetclip.countries.values()
     listed = http.get("/settings", headers=ORIGIN).json()["streetclip"]["countries"]
-    assert "RU" in listed.values()  # toujours proposé à l'écran, pour pouvoir le remettre
+    assert "RU" in listed.values()  # always offered on screen, so it can be put back
 
 
 @pytest.mark.parametrize(
     "changes",
     [
         {"streetclip": {"prompt": "sans accolades"}},
-        {"streetclip": {"prompt": "A photo in {}.{:>999999999}"}},  # largeur géante via str.format
+        {"streetclip": {"prompt": "A photo in {}.{:>999999999}"}},  # giant width through str.format
         {"streetclip": {"prompt": "A photo in {}{0.__class__}"}},
         {"streetclip": {"device": "cuda; rm -rf /"}},
         {"streetclip": {"countries": {"Atlantis": "atl"}}},
@@ -195,5 +195,5 @@ def test_first_launch_choices_are_saved_before_the_engine_starts(monkeypatch, tm
     monkeypatch.setattr("sys.stdin", io.StringIO('{"rules": {"places": false}, "plonkit": {"enabled": false}}'))
     assert s.main() == 0
     assert "places = false" in target.read_text() and "enabled = false" in target.read_text()
-    monkeypatch.setattr("sys.stdin", io.StringIO('{"server": {"port": 1}}'))  # réservé au fichier : refusé
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"server": {"port": 1}}'))  # file-only: refused
     assert s.main() == 1

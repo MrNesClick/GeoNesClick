@@ -1,8 +1,8 @@
 <script setup lang="ts">
-// Écran Réglages : TOUT est configurable. Sept groupes repliables au format du coach (titre + résumé d'une
-// ligne), décrits dans settingsSchema.ts ; les réglages fins sont rangés dans « Avancé ». Chaque changement
-// s'applique et s'enregistre tout de suite. Les réglages réservés au fichier (sécurité) sont affichés en
-// lecture seule, avec leur raison et l'endroit où les changer.
+// Settings screen: EVERYTHING is configurable. Seven collapsible groups in the coach's format (title + one-line
+// summary), described in settingsSchema.ts; fine-grained settings are under "Advanced". Each change applies and
+// is saved right away. File-only settings (security) are shown read-only, with their reason and where to
+// change them.
 import { onMounted, reactive, ref } from "vue";
 import type { FileOnly, Settings } from "../engine";
 import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveApiKey, saveSetting, testModel } from "../engine";
@@ -17,7 +17,7 @@ const fileOnly = ref<FileOnly | null>(null);
 const models = ref<string[]>([]);
 const test = ref<{ model: string; text: string; ok: boolean } | null>(null);
 const testing = ref(false);
-/** État d'enregistrement de chaque réglage (« section.clé »). */
+/** Saving state of each setting ("section.key"). */
 const status = reactive<Record<string, { tone: "ok" | "error" | "busy"; text: string }>>({});
 const timers: Record<string, ReturnType<typeof setTimeout>> = {};
 
@@ -38,7 +38,7 @@ async function save(f: Field, section: string, key: string, value: unknown) {
   const r = await saveSetting(section, key, value);
   if (r.error) {
     status[id] = { tone: "error", text: r.error };
-    await load(); // l'écran revient à la valeur réellement en vigueur
+    await load(); // the screen goes back to the value actually in effect
     return;
   }
   if (s.value) s.value[section][key] = value;
@@ -47,7 +47,7 @@ async function save(f: Field, section: string, key: string, value: unknown) {
 }
 const invalid = (f: Field, text: string) => (status[fieldId(f)] = { tone: "error", text });
 
-// Clé API NVIDIA : saisie ici, rangée par le moteur dans ~/.config/geonesclick/nvapi.key (lisible par toi seul).
+// NVIDIA API key: entered here, stored by the engine in ~/.config/geonesclick/nvapi.key (readable by you only).
 const keyInput = ref("");
 const keyStatus = ref<{ tone: "ok" | "error"; text: string } | null>(null);
 async function storeKey(value: string) {
@@ -67,7 +67,7 @@ async function runTest() {
     : { model, ok: false, text: r.error ?? "Échec du test." };
 }
 
-// --- Résumés d'une ligne, lisibles quand la section est repliée ---------------------------------------
+// --- One-line summaries, readable when the section is collapsed ---------------------------------------
 const LANG: Record<string, string> = {
   fr: "français", en: "anglais", es: "espagnol", de: "allemand", it: "italien", pt: "portugais",
 };
@@ -147,7 +147,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
             <SettingField :field="f" :settings="s" :status="status[fieldId(f)]"
                           @save="(section, key, v) => save(f, section, key, v)" @invalid="(t) => invalid(f, t)" />
 
-            <!-- Compléments propres à certains réglages -->
+            <!-- Extras specific to some settings -->
             <div v-if="f.section === 'vision' && f.key === 'enabled'" class="-mt-2 space-y-1.5">
               <label for="cle-api" class="block text-papier">Clé API NVIDIA</label>
               <p class="text-[0.85rem] text-courbe">

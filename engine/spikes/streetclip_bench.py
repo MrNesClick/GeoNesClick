@@ -1,9 +1,9 @@
-"""Test de faisabilité n°3 : StreetCLIP sur la carte graphique locale (RTX 3050 Ti, 4 Go).
+"""Feasibility test no. 3: StreetCLIP on the local graphics card (RTX 3050 Ti, 4 GB).
 
-Usage : .venv/bin/python spikes/streetclip_bench.py [image.png ...]
-Sans argument, prend la dernière capture de engine/captures/.
+Usage: .venv/bin/python spikes/streetclip_bench.py [image.png ...]
+Without an argument, takes the latest capture from engine/captures/.
 
-Mesure : mémoire GPU utilisée, temps de chargement, latence par image (à chaud) et top 5 des pays.
+Measures: GPU memory used, load time, latency per image (warm) and top 5 countries.
 """
 
 from __future__ import annotations
@@ -17,9 +17,9 @@ from PIL import Image
 from transformers import CLIPModel, CLIPProcessor
 
 MODEL_ID = "geolocal/StreetCLIP"
-PROMPT = "A Street View photo in {}."  # sera configurable
+PROMPT = "A Street View photo in {}."  # will be configurable
 
-# Pays couverts par Google Street View utilisés couramment dans GeoGuessr (liste à affiner).
+# Countries covered by Google Street View commonly used in GeoGuessr (list to refine).
 COUNTRIES = [
     "Albania", "Andorra", "Argentina", "Australia", "Austria", "Bangladesh", "Belgium", "Bhutan",
     "Bolivia", "Botswana", "Brazil", "Bulgaria", "Cambodia", "Canada", "Chile", "Colombia",
@@ -54,16 +54,16 @@ def main(paths: list[Path]) -> None:
     processor = CLIPProcessor.from_pretrained(MODEL_ID)
     print(f"Chargement : {time.perf_counter() - t0:.1f} s  |  VRAM modèle : {gpu_mib():.0f} Mio")
 
-    # Les embeddings texte des pays sont calculés une seule fois au démarrage.
+    # The countries' text embeddings are computed only once at startup.
     with torch.inference_mode():
         text_in = processor(text=[PROMPT.format(c) for c in COUNTRIES], return_tensors="pt", padding=True).to("cuda")
-        text_emb = model.get_text_features(**text_in).pooler_output  # Transformers 5 : objet de sortie
+        text_emb = model.get_text_features(**text_in).pooler_output  # Transformers 5: output object
         text_emb = text_emb / text_emb.norm(dim=-1, keepdim=True)
 
     for path in paths:
         image = Image.open(path).convert("RGB")
         timings = []
-        for _ in range(4):  # 1 passe de chauffe + 3 mesures
+        for _ in range(4):  # 1 warm-up pass + 3 measurements
             torch.cuda.synchronize()
             t = time.perf_counter()
             with torch.inference_mode():

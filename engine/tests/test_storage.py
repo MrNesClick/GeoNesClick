@@ -1,4 +1,4 @@
-"""Réglages › Stockage : tailles, limite des caches qui grossissent, « Vider » (fichiers connus seulement)."""
+"""Settings › Storage: sizes, limit of the caches that grow, "Empty" (known files only)."""
 
 import os
 import time
@@ -26,13 +26,13 @@ def folders(tmp_path):
     write(places / "source.zip", 500)
     for i, country in enumerate(["FR", "IT", "BG"]):
         f = write(places / f"detail-{country}-v4.sqlite", 300)
-        os.utime(f, (time.time() - 100 + i, time.time() - 100 + i))  # FR le plus ancien, BG le plus récent
+        os.utime(f, (time.time() - 100 + i, time.time() - 100 + i))  # FR the oldest, BG the most recent
     write(plonkit / "plonkit.sqlite", 700)
     write(plonkit / "raw" / "france.json", 50)
     write(captures / "capture-20261107-1.png", 200)
     write(captures / "mark-20261107-1-1.png", 20)
     for folder in (places, plonkit, captures):
-        write(folder / "a-moi.txt", 10)  # fichier étranger au coach : jamais supprimé
+        write(folder / "a-moi.txt", 10)  # file foreign to the coach: never deleted
     return places, plonkit, captures
 
 
@@ -45,9 +45,9 @@ def test_inventory_gives_each_size(folders):
 
 def test_least_recently_used_villages_go_first(folders):
     places, _, _ = folders
-    assert storage.evict(places, 650, keep={"FR"}) == ["IT"]  # FR gardé (manche en cours), IT le plus ancien ensuite
+    assert storage.evict(places, 650, keep={"FR"}) == ["IT"]  # FR kept (current round), IT the oldest next
     assert sorted(f.name for f in storage.village_files(places)) == ["detail-BG-v4.sqlite", "detail-FR-v4.sqlite"]
-    assert (places / "places-v4.sqlite").exists()  # le socle ne part jamais tout seul
+    assert (places / "places-v4.sqlite").exists()  # the base never goes on its own
 
 
 def test_only_known_files_are_removed(folders):
@@ -81,7 +81,7 @@ def test_storage_route_and_clear(client, folders):
 def test_clearing_is_refused_from_a_foreign_origin_or_for_unknown_items(client):
     c, _ = client
     assert c.post("/storage/clear", json={"id": "captures"}, headers={"Origin": "https://x.example"}).status_code == 403
-    assert c.post("/storage/clear", json={"id": "dataset"}, headers=ORIGIN).status_code == 422  # jamais tes données
+    assert c.post("/storage/clear", json={"id": "dataset"}, headers=ORIGIN).status_code == 422  # never your data
 
 
 def test_lowering_the_limit_evicts_now(client, folders):
@@ -89,11 +89,11 @@ def test_lowering_the_limit_evicts_now(client, folders):
 
     c, engine = client
     places, _, _ = folders
-    asyncio.run(engine.apply_settings({"storage": {"max_cache_mb": 50}}))  # 900 octets < 50 Mo : rien ne part
+    asyncio.run(engine.apply_settings({"storage": {"max_cache_mb": 50}}))  # 900 bytes < 50 MB: nothing goes
     assert len(storage.village_files(places)) == 3
 
 
-# --- « Tout effacer » (RGPD) -------------------------------------------------------------------------
+# --- "Erase everything" (GDPR) -------------------------------------------------------------------------
 def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
@@ -138,11 +138,11 @@ def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
     res = client.post("/storage/erase", json={"confirm": "EFFACER"}, headers=origin).json()
     assert res["ok"] and res["shortcuts"] == 1
     assert not any(p.exists() for p in gone) and apikey.read("NVAPI") is None
-    assert all(p.exists() for p in kept) and ours.exists()  # modèles : seulement sur demande
+    assert all(p.exists() for p in kept) and ours.exists()  # models: only on request
     assert ["set", storage.MEDIA_KEYS, "custom-keybindings", "['/a/']"] in calls
     assert client.get("/health").json()["erased"] is True
     client.post("/storage/erase", json={"confirm": "EFFACER", "models": True}, headers=origin)
-    assert not ours.exists() and kept[1].exists()  # les modèles d'autres logiciels restent
+    assert not ours.exists() and kept[1].exists()  # other software's models stay
 
 
 def test_model_ids_cannot_escape_the_cache(tmp_path):

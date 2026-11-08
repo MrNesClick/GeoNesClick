@@ -1,13 +1,13 @@
-"""Nuage de positions probables d'une vue, pour la carte du coach : PLONK sur le jeton [CLS] de StreetCLIP.
+"""Cloud of a view's likely positions, for the coach's map: PLONK on StreetCLIP's [CLS] token.
 
-PLONK (Dufour, Picard, Kalogeiton, Landrieu, « Around the World in 80 Timesteps », CVPR 2025) tire des
-points sur la sphère par un flot riemannien conditionné sur l'image. Modèle « nicolas-dufour/PLONK_OSV_5M »
-(safetensors), entraîné sur OSV-5M avec StreetCLIP comme encodeur. Il ne sert qu'à la CARTE : mesuré sur le
-jeu de test, il ne classe pas mieux les pays que StreetCLIP (même vecteur) ; voir README, spikes/plonk_bench.py.
+PLONK (Dufour, Picard, Kalogeiton, Landrieu, "Around the World in 80 Timesteps", CVPR 2025) samples
+points on the sphere through a Riemannian flow conditioned on the image. Model "nicolas-dufour/PLONK_OSV_5M"
+(safetensors), trained on OSV-5M with StreetCLIP as the encoder. It only serves the MAP: measured on the
+test set, it does not rank the countries better than StreetCLIP (same vector); see README, spikes/plonk_bench.py.
 
-Le réseau et l'échantillonneur sont repris de https://github.com/nicolas-dufour/plonk (commit 76d4641),
-réduits à ce que demande ce modèle : GeoAdaLNMLP, échelle sigmoïde, flot sans guidage. La projection sur la
-sphère de geoopt (Sphere.projx) se réduit ici à une normalisation : ni geoopt ni scipy ne sont nécessaires.
+The network and the sampler are taken from https://github.com/nicolas-dufour/plonk (commit 76d4641),
+reduced to what this model needs: GeoAdaLNMLP, sigmoid schedule, unguided flow. geoopt's projection onto the
+sphere (Sphere.projx) comes down to a normalisation here: neither geoopt nor scipy is needed.
 
     MIT License — Copyright (c) 2024 Nicolas Dufour
 
@@ -41,10 +41,10 @@ from torch import nn
 from .config import PlonkConfig
 
 EARTH_KM = 6371.0
-SCHEDULE = (-7.0, 3.0, 1.0, 1e-9)  # échelle sigmoïde par défaut de PLONK : début, fin, tau, plancher
+SCHEDULE = (-7.0, 3.0, 1.0, 1e-9)  # PLONK's default sigmoid schedule: start, end, tau, floor
 
 
-# --- Réseau (repris de plonk/models/networks/mlp.py ; noms des couches inchangés pour les poids) ----------
+# --- Network (taken from plonk/models/networks/mlp.py; layer names unchanged for the weights) ---------
 class PositionalEmbedding(nn.Module):
     def __init__(self, num_channels: int, max_positions: int = 10000, endpoint: bool = False) -> None:
         super().__init__()
@@ -110,17 +110,17 @@ class GeoAdaLNMLP(nn.Module):
 
 
 def sigmoid_schedule(t: torch.Tensor) -> torch.Tensor:
-    """SigmoidScheduler(-7, 3, tau=1) de PLONK : 1 → 0 quand t va de 0 à 1."""
+    """PLONK's SigmoidScheduler(-7, 3, tau=1): 1 → 0 as t goes from 0 to 1."""
     start, end, tau, clip_min = SCHEDULE
     v_start, v_end = torch.sigmoid(torch.tensor(start / tau)), torch.sigmoid(torch.tensor(end / tau))
     out = (-torch.sigmoid((t * (end - start) + start) / tau) + v_end) / (v_end - v_start)
     return out.clamp(min=clip_min, max=1.0)
 
 
-# --- Nuage ------------------------------------------------------------------------------------------------
+# --- Cloud ------------------------------------------------------------------------------------------------
 @dataclass
 class Cloud:
-    lat: np.ndarray  # degrés
+    lat: np.ndarray  # degrees
     lon: np.ndarray
     ms: float
 
@@ -138,19 +138,19 @@ class PlonkCloud:
 
     @staticmethod
     def _load(model_id: str, revision: str) -> GeoAdaLNMLP:
-        # Import tardif : les tests fournissent leur réseau et n'ont jamais besoin de Hugging Face.
+        # Late import: the tests provide their own network and never need Hugging Face.
         from huggingface_hub import hf_hub_download
         from safetensors.torch import load_file
 
-        # Révision figée : un changement du dépôt ne modifie pas le modèle sans qu'on l'ait mesuré.
-        # Poids en safetensors : aucun code exécuté au chargement (contrairement à pickle).
+        # Pinned revision: a change in the repository does not alter the model without us having measured it.
+        # Weights in safetensors: no code run on load (unlike pickle).
         params = json.loads(Path(hf_hub_download(model_id, "config.json", revision=revision)).read_text())
         net = GeoAdaLNMLP(**{k: int(params[k]) for k in ("input_dim", "dim", "depth", "expansion", "cond_dim")})
         net.load_state_dict(load_file(hf_hub_download(model_id, "model.safetensors", revision=revision)), strict=True)
         return net
 
     def sample(self, cls: torch.Tensor, points: int | None = None, steps: int | None = None, seed: int = 0) -> Cloud:
-        """Tire `points` positions pour la vue dont `cls` est le jeton [CLS] StreetCLIP (même graine = même nuage)."""
+        """Samples `points` positions for the view whose StreetCLIP [CLS] token is `cls` (same seed = same cloud)."""
         n, steps = points or self.cfg.points, steps or self.cfg.steps
         t0 = time.perf_counter()
         with torch.inference_mode():
@@ -160,7 +160,7 @@ class PlonkCloud:
             gammas = sigmoid_schedule(1 - torch.arange(steps + 1, dtype=torch.float32) / steps).to(self.device)
             for g_now, g_next in zip(gammas[:-1], gammas[1:], strict=True):
                 x = x + (g_next - g_now) * self.net(x, g_now.expand(n), emb)
-                x = x / x.norm(dim=-1, keepdim=True)  # retour sur la sphère (geoopt Sphere.projx)
+                x = x / x.norm(dim=-1, keepdim=True)  # back onto the sphere (geoopt Sphere.projx)
             lat = torch.rad2deg(torch.asin(x[:, 2].clamp(-1, 1)))
             lon = torch.rad2deg(torch.atan2(x[:, 1], x[:, 0]))
         if self.device.startswith("cuda"):
@@ -169,12 +169,12 @@ class PlonkCloud:
 
 
 def _turn(o: np.ndarray, a: np.ndarray, b: np.ndarray) -> float:
-    """Produit vectoriel 2D de OA et OB : > 0 si O → A → B tourne à gauche."""
+    """2D cross product of OA and OB: > 0 if O → A → B turns left."""
     return float((a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]))
 
 
 def _hull(xy: np.ndarray) -> np.ndarray:
-    """Enveloppe convexe (chaîne monotone d'Andrew), sommets dans le sens trigonométrique."""
+    """Convex hull (Andrew's monotone chain), vertices in counter-clockwise order."""
     pts = np.unique(xy, axis=0)
     if len(pts) < 3:
         return pts
@@ -192,12 +192,12 @@ def _hull(xy: np.ndarray) -> np.ndarray:
 
 def zones(lat: np.ndarray, lon: np.ndarray, share: float, link_km: float, min_part: float,
           codes: np.ndarray | None = None, round_km: float = 40.0) -> list[dict]:
-    """Zones où la vue se trouve probablement : contours arrondis autour des points les plus denses.
+    """Zones where the view probably is: rounded outlines around the densest points.
 
-    On garde la part `share` des points les plus entourés (voisins à moins de link_km), on les regroupe en
-    zones séparées (deux points à moins de link_km sont dans la même), et on ne garde que les zones qui
-    réunissent au moins `min_part` des points. part = points de la zone / points donnés.
-    codes (pays de chaque point) : ajoute les deux pays principaux de chaque zone et leur part dans la zone.
+    We keep the `share` of the points with the most neighbours (within link_km), group them into
+    separate zones (two points within link_km are in the same one), and keep only the zones that
+    gather at least `min_part` of the points. part = points of the zone / points given.
+    codes (country of each point): adds the two main countries of each zone and their share in the zone.
     """
     n = len(lat)
     if n < 5:
@@ -206,7 +206,7 @@ def zones(lat: np.ndarray, lon: np.ndarray, share: float, link_km: float, min_pa
     keep = np.argsort(-(d < link_km).sum(1), kind="stable")[: math.ceil(share * n)]
     near = d[np.ix_(keep, keep)] < link_km
     label = np.full(len(keep), -1)
-    for start in range(len(keep)):  # composantes connexes (parcours en largeur)
+    for start in range(len(keep)):  # connected components (breadth-first search)
         if label[start] >= 0:
             continue
         label[start], todo = start, [start]
@@ -221,12 +221,12 @@ def zones(lat: np.ndarray, lon: np.ndarray, share: float, link_km: float, min_pa
         if len(idx) < min_part * n:
             continue
         lat0, lon0 = float(lat[idx].mean()), float(lon[idx[0]])
-        lon_u = (lon[idx] - lon0 + 180) % 360 - 180 + lon0  # sans saut à l'antiméridien
-        kx, ky = 111.32 * math.cos(math.radians(lat0)), 110.57  # km par degré, projection locale
+        lon_u = (lon[idx] - lon0 + 180) % 360 - 180 + lon0  # without a jump at the antimeridian
+        kx, ky = 111.32 * math.cos(math.radians(lat0)), 110.57  # km per degree, local projection
         xy = np.column_stack(((lon_u - lon0) * kx, (lat[idx] - lat0) * ky))
         angles = np.linspace(0, 2 * np.pi, 12, endpoint=False)
         ring = np.column_stack((np.cos(angles), np.sin(angles))) * round_km
-        outline = _hull((_hull(xy)[:, None, :] + ring[None]).reshape(-1, 2))  # coins arrondis
+        outline = _hull((_hull(xy)[:, None, :] + ring[None]).reshape(-1, 2))  # rounded corners
         out.append({
             "polygon": [[round(lat0 + y / ky, 3), round(lon0 + x / kx, 3)] for x, y in outline],
             "part": round(len(idx) / n, 3),
@@ -241,8 +241,8 @@ def zones(lat: np.ndarray, lon: np.ndarray, share: float, link_km: float, min_pa
 
 
 def summarise(cloud: Cloud, countries: list[str], cfg: PlonkConfig) -> dict:
-    """Message pour l'interface : zones probables, toutes et pays par pays (pour suivre une preuve).
-    Les points eux-mêmes restent dans le moteur."""
+    """Message for the UI: likely zones, all of them and country by country (to follow a proof).
+    The points themselves stay in the engine."""
     codes = np.array(countries, dtype=object)
     by_country = {}
     for c in sorted({c for c in countries if c}):

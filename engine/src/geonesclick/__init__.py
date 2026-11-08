@@ -1,1 +1,1 @@
-"""GeoNesClick : moteur (capture, IA locale et distante, metas)."""
+"""GeoNesClick: engine (capture, local and remote AI, metas)."""

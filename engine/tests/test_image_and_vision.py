@@ -14,9 +14,9 @@ def test_crop_uses_fractions():
 def test_masks_are_relative_to_the_cropped_view():
     img = Image.new("RGB", (200, 100), (255, 255, 255))
     out = apply_crop_and_masks(img, [0.5, 0.0, 1.0, 1.0], [[0.5, 0.5, 1.0, 1.0]])
-    assert out.getpixel((99, 99)) == (0, 0, 0)  # coin bas-droit masqué
+    assert out.getpixel((99, 99)) == (0, 0, 0)  # bottom-right corner masked
     assert out.getpixel((10, 10)) == (255, 255, 255)
-    assert img.getpixel((199, 99)) == (255, 255, 255)  # l'original n'est pas modifié
+    assert img.getpixel((199, 99)) == (255, 255, 255)  # the original is not modified
 
 
 def test_no_crop_no_mask_keeps_image():

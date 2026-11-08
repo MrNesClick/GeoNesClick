@@ -1,7 +1,7 @@
-"""Jeu de test étiqueté : captures brutes (fenêtre entière) + pays réel, saisis depuis le coach.
+"""Labelled test set: raw captures (whole window) + real country, entered from the coach.
 
-Les images vont dans dataset/images/ (non versionnées), les étiquettes dans dataset/labels.toml.
-On garde l'image BRUTE, avant recadrage et masques, pour pouvoir rejouer les expériences de recadrage.
+The images go to dataset/images/ (not versioned), the labels to dataset/labels.toml.
+The RAW image is kept, before cropping and masks, so that the cropping experiments can be replayed.
 """
 
 from __future__ import annotations
@@ -16,14 +16,14 @@ from pathlib import Path
 
 from PIL import Image
 
-CAPTURE_ID = re.compile(r"^\d{8}-\d{6}-\d{3}$")  # format produit par Engine.analyse()
-# Coordonnées du vrai lieu dans un lien Google Maps (écran de fin de GeoGuessr) ou tapées « 54.65, 43.22 ».
-# Le lien n'est JAMAIS ouvert : on lit seulement ses chiffres. Du plus précis au moins précis.
+CAPTURE_ID = re.compile(r"^\d{8}-\d{6}-\d{3}$")  # format produced by Engine.analyse()
+# Coordinates of the true place in a Google Maps link (GeoGuessr end screen) or typed as "54.65, 43.22".
+# The link is NEVER opened: only its digits are read. From most to least precise.
 _LAT, _LON = r"(-?\d{1,2}(?:\.\d+)?)", r"(-?\d{1,3}(?:\.\d+)?)"
 COORDS = [re.compile(p) for p in (
-    rf"!3d{_LAT}!4d{_LON}",  # repère d'un lieu
-    rf"[?&](?:cbll|viewpoint)={_LAT}(?:,|%2C){_LON}",  # position de la photo Street View
-    rf"@{_LAT},{_LON}",  # position de la vue
+    rf"!3d{_LAT}!4d{_LON}",  # marker of a place
+    rf"[?&](?:cbll|viewpoint)={_LAT}(?:,|%2C){_LON}",  # position of the Street View photo
+    rf"@{_LAT},{_LON}",  # position of the view
     rf"[?&](?:q|query|ll)={_LAT}(?:,|%2C)\s*{_LON}",
     rf"^\s*{_LAT}\s*[,;]\s*{_LON}\s*$",
 )]
@@ -38,7 +38,7 @@ class DatasetError(ValueError):
 
 
 def coords_of(text: str) -> tuple[float, float] | None:
-    """(latitude, longitude) lues dans un lien Google Maps ou « lat, lon » ; None si absentes ou impossibles."""
+    """(latitude, longitude) read from a Google Maps link or "lat, lon"; None if missing or impossible."""
     for pattern in COORDS:
         found = pattern.search(text.strip())
         if found:
@@ -55,16 +55,16 @@ class Label:
     area: str = ""
     mode: str = "classique"
     layout: str = ""
-    found: bool | None = None  # le joueur avait-il trouvé le pays ?
-    predicted: str = ""  # premier pays proposé par StreetCLIP au moment de la capture
-    guessed: str = ""  # pays répondu par le joueur ; s'il est connu, « found » en découle
-    lat: float | None = None  # vrai lieu (lien Google Maps de l'écran de fin) : le banc mesure l'erreur en km
+    found: bool | None = None  # had the player found the country?
+    predicted: str = ""  # first country suggested by StreetCLIP at capture time
+    guessed: str = ""  # country answered by the player; if known, "found" follows from it
+    lat: float | None = None  # true place (Google Maps link from the end screen): the bench measures the error in km
     lon: float | None = None
-    region: str = ""  # code GeoNames de sa région (« RU.46 »), déduit de la position
+    region: str = ""  # GeoNames code of its region ("RU.46"), derived from the position
 
 
 def _toml_value(value: str | bool | float) -> str:
-    # Une chaîne, un nombre ou un booléen JSON est une valeur TOML valide (mêmes échappements, true/false).
+    # A JSON string, number or boolean is a valid TOML value (same escapes, true/false).
     return json.dumps(value, ensure_ascii=False)
 
 
@@ -73,7 +73,7 @@ class Dataset:
         self.directory = directory
         self.images = directory / "images"
         self.labels_file = directory / "labels.toml"
-        self.rounds = directory / "rounds"  # une manche par fichier : marques lues, conclusion, choix du joueur
+        self.rounds = directory / "rounds"  # one round per file: marks read, conclusion, player's choices
         self._lock = threading.Lock()
 
     def labels(self) -> list[Label]:
@@ -97,7 +97,7 @@ class Dataset:
         region: str = "",
         round_data: dict | None = None,
     ) -> Label:
-        """Enregistre (ou ré-étiquette) une capture. Lève DatasetError si l'identifiant est invalide."""
+        """Saves (or relabels) a capture. Raises DatasetError if the identifier is invalid."""
         if not CAPTURE_ID.fullmatch(capture_id):
             raise DatasetError("identifiant de capture invalide")
         if guessed:
@@ -118,7 +118,7 @@ class Dataset:
         with self._lock:
             self.images.mkdir(parents=True, exist_ok=True)
             frame.save(self.images / label.file)
-            if round_data is not None:  # ce que le coach avait lu et conclu : le corpus du banc (bench.py)
+            if round_data is not None:  # what the coach had read and concluded: the bench's corpus (bench.py)
                 self.rounds.mkdir(parents=True, exist_ok=True)
                 (self.rounds / f"{capture_id}.json").write_text(json.dumps(round_data, ensure_ascii=False, indent=1))
             entries = [e for e in self.labels() if e.file != label.file] + [label]
@@ -133,21 +133,21 @@ class Dataset:
 
 @dataclass
 class Confusion:
-    country: str  # pays réel
-    guessed: str  # pays répondu à la place
+    country: str  # real country
+    guessed: str  # country answered instead
     count: int
 
 
 @dataclass
 class Progress:
-    """Ta progression, calculée sur les captures étiquetées où tu as indiqué si tu avais trouvé."""
+    """Your progress, computed on the labelled captures where you said whether you had found it."""
 
     rounds: int
     found: int
-    by_country: dict[str, tuple[int, int]]  # pays → (manches, trouvées)
-    model_top1: int  # manches où StreetCLIP avait mis le bon pays en premier
+    by_country: dict[str, tuple[int, int]]  # country → (rounds, found)
+    model_top1: int  # rounds where StreetCLIP had put the right country first
     model_rounds: int
-    confusions: list[Confusion] = field(default_factory=list)  # les plus fréquentes d'abord
+    confusions: list[Confusion] = field(default_factory=list)  # most frequent first
 
 
 def progress(labels: list[Label]) -> Progress:

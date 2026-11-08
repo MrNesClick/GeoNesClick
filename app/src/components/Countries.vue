@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Pays probables (StreetCLIP, en local). Une preuve lue avec certitude forte met son pays en tête,
-// « certain », et écarte les autres ; le pourcentage de StreetCLIP reste affiché pour comparer.
-// Sans preuve, le premier n'est mis en avant que s'il se détache (même règle que la carte Réponse).
+// Likely countries (StreetCLIP, local). Proof read with strong certainty puts its country first,
+// "certain", and rules out the others; StreetCLIP's percentage stays visible for comparison.
+// Without proof, the first one is highlighted only if it stands out (same rule as the Answer card).
 import { computed } from "vue";
 import type { Analysis } from "../engine";
 import { certainProof, clearLeader, countryName, excluded, flag, proofLabel, proofOf } from "../engine";
@@ -9,7 +9,7 @@ import { certainProof, clearLeader, countryName, excluded, flag, proofLabel, pro
 const props = defineProps<{ analysis: Analysis }>();
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
-// Échelle réelle de 0 à 100 % sur un rail : la longueur se lit comme le pourcentage affiché.
+// Real scale from 0 to 100 % on a rail: the length reads like the displayed percentage.
 const width = (p: number) => `${Math.max(1.5, p * 100)}%`;
 const scores = computed(() => props.analysis.scores ?? []);
 const first = computed(() => scores.value[0] ?? null);
@@ -17,14 +17,14 @@ const leader = computed(() => clearLeader(props.analysis));
 const proof = computed(() => proofOf(props.analysis));
 const certain = computed(() => certainProof(props.analysis));
 const clipOf = (code: string) => scores.value.find((s) => s.code === code) ?? null;
-// Lu par l'IA mais pas encore confirmé : ce pays passe en tête, « très probable », sans écarter les autres.
+// Read by the AI but not confirmed yet: this country goes first, "very likely", without ruling out the others.
 const likely = computed(() => (!certain.value && proof.value ? proof.value : null));
 const others = computed(() => {
   const top = certain.value?.country ?? likely.value?.country;
   if (top) return scores.value.filter((s) => s.code !== top);
-  return leader.value ? scores.value.filter((s) => s.code !== leader.value!.code) : scores.value; // hésitation : même rang
+  return leader.value ? scores.value.filter((s) => s.code !== leader.value!.code) : scores.value; // tie: same rank
 });
-// Écarté : par une preuve certaine, ou par l'alphabet de tes marques (« cyrillique » exclut la France).
+// Ruled out: by certain proof, or by the alphabet of your marks ("Cyrillic" excludes France).
 const out = (code: string) => !!certain.value || excluded(props.analysis, code);
 </script>
 

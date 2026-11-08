@@ -1,8 +1,8 @@
-"""Capture d'écran via le portail ScreenCast (xdg-desktop-portal) + PipeWire + GStreamer.
+"""Screen capture through the ScreenCast portal (xdg-desktop-portal) + PipeWire + GStreamer.
 
-Tout ce qui touche à GLib (D-Bus, GStreamer) vit dans un thread dédié qui fait tourner la boucle GLib.
-La première ouverture affiche le sélecteur de GNOME ; le jeton de restauration (persist_mode=2) évite
-de redemander ensuite.
+Everything touching GLib (D-Bus, GStreamer) lives in a dedicated thread that runs the GLib loop.
+The first opening shows the GNOME picker; the restore token (persist_mode=2) avoids
+asking again afterwards.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ class CaptureError(RuntimeError):
 
 
 class _Portal:
-    """Pilote minimal du portail ScreenCast (requêtes asynchrones avec signal Response)."""
+    """Minimal driver for the ScreenCast portal (asynchronous requests with a Response signal)."""
 
     def __init__(self, loop: GLib.MainLoop) -> None:
         self.loop = loop
@@ -91,7 +91,7 @@ class _Portal:
         res = self._request("Start", "(osa{sv})", (self.session_handle, ""), {})
         if token := res.get("restore_token"):
             CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-            # Créé directement en 0600 : pas d'instant où le jeton serait lisible par d'autres.
+            # Created directly as 0600: no moment when the token would be readable by others.
             fd = os.open(TOKEN_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
             with os.fdopen(fd, "w") as f:
                 f.write(token)
@@ -111,16 +111,16 @@ class _Portal:
                     None, None, Gio.DBusCallFlags.NONE, 2000, None,
                 )
             except GLib.Error:
-                pass  # session déjà fermée (partage coupé par l'utilisateur)
+                pass  # session already closed (sharing stopped by the user)
 
 
 class CaptureService:
-    """Flux continu de la fenêtre partagée ; `grab()` renvoie la dernière image reçue."""
+    """Continuous stream of the shared window; `grab()` returns the last image received."""
 
     SOURCES = {"window": SOURCE_WINDOW, "monitor": SOURCE_MONITOR, "both": SOURCE_WINDOW | SOURCE_MONITOR}
 
     def __init__(self, on_state: Callable[[bool, str, bool], None], source: str = "window") -> None:
-        # Appelé depuis le thread GLib : (flux actif ?, message, coupé en cours de route ?)
+        # Called from the GLib thread: (stream active?, message, cut off midway?)
         self._on_state = on_state
         self._source_types = self.SOURCES[source]
         self._lock = threading.Lock()
@@ -143,7 +143,7 @@ class CaptureService:
         self._thread.start()
 
     def restart(self, forget_window: bool = False) -> None:
-        """Relance le partage ; avec forget_window, oublie la fenêtre mémorisée et rouvre le sélecteur GNOME."""
+        """Restarts the sharing; with forget_window, forgets the remembered window and reopens the GNOME picker."""
         self.stop()
         if forget_window:
             TOKEN_FILE.unlink(missing_ok=True)
@@ -151,8 +151,8 @@ class CaptureService:
 
     def stop(self) -> None:
         if self._loop:
-            # La demande doit passer par le contexte GLib du thread de capture : GLib.idle_add()
-            # viserait le contexte par défaut, que personne ne fait tourner.
+            # The request must go through the capture thread's GLib context: GLib.idle_add()
+            # would target the default context, which nobody runs.
             source = GLib.idle_source_new()
             source.set_callback(lambda *_: self._shutdown())
             source.attach(self._loop.get_context())
@@ -189,7 +189,7 @@ class CaptureService:
             self._pipeline.set_state(Gst.State.PLAYING)
             self._set_alive(True, "partage d'écran actif")
             self._loop.run()
-        except Exception as exc:  # portail refusé, PipeWire absent…
+        except Exception as exc:  # portal refused, PipeWire missing…
             self._set_alive(False, f"capture indisponible : {exc}")
         finally:
             if self._alive:
@@ -200,7 +200,7 @@ class CaptureService:
         with self._lock:
             self._alive = alive
             if not alive:
-                self._latest = None  # ne jamais renvoyer une image périmée
+                self._latest = None  # never return a stale image
         self._on_state(alive, message, interrupted)
 
     def _on_sample(self, sink) -> Gst.FlowReturn:
@@ -234,7 +234,7 @@ class CaptureService:
         return img.convert("RGB")
 
 
-THUMB_SIDE = 720  # miniature d'une capture envoyée à l'interface
+THUMB_SIDE = 720  # thumbnail of a capture sent to the UI
 
 
 def data_url(img: Image.Image, side: int = THUMB_SIDE, quality: int = 82) -> str:
@@ -246,13 +246,13 @@ def data_url(img: Image.Image, side: int = THUMB_SIDE, quality: int = 82) -> str
 
 
 def new_id() -> str:
-    """Identifiant horodaté d'une capture ou d'une vue figée (sert aussi de nom de fichier)."""
+    """Timestamped identifier of a capture or a frozen view (also used as the file name)."""
     return f"{datetime.now():%Y%m%d-%H%M%S}-{time.time_ns() % 1000:03d}"
 
 
 
 def apply_crop_and_masks(img: Image.Image, crop: list[float], masks: list[list[float]]) -> Image.Image:
-    """Recadre (fractions [g, h, d, b]) puis noircit les zones masquées (fractions de la zone recadrée)."""
+    """Crops (fractions [l, t, r, b]) then blacks out the masked zones (fractions of the cropped zone)."""
     if len(crop) == 4:
         w, h = img.size
         img = img.crop((int(crop[0] * w), int(crop[1] * h), int(crop[2] * w), int(crop[3] * h)))
@@ -273,14 +273,14 @@ def save_png(img: Image.Image, directory: Path, stem: str) -> Path:
 
 
 def prune_captures(directory: Path, keep: int) -> int:
-    """Ne garde que les `keep` captures les plus récentes (noms horodatés). Renvoie le nombre supprimé."""
+    """Keeps only the `keep` most recent captures (timestamped names). Returns the number deleted."""
     files = sorted(directory.glob("capture-*.png"))
     old = files[:-keep] if keep else []
     for f in old:
         f.unlink(missing_ok=True)
-        f.with_suffix(".json").unlink(missing_ok=True)  # journal du mode débogage
+        f.with_suffix(".json").unlink(missing_ok=True)  # debug mode log
         _unlink_marks(directory, f.stem)
-    logs = sorted(directory.glob("capture-*.json"))  # journaux sans image (copie des captures coupée)
+    logs = sorted(directory.glob("capture-*.json"))  # logs without an image (capture copies turned off)
     for f in logs[:-keep] if keep else []:
         f.unlink(missing_ok=True)
         _unlink_marks(directory, f.stem)
@@ -288,6 +288,6 @@ def prune_captures(directory: Path, keep: int) -> int:
 
 
 def _unlink_marks(directory: Path, capture_stem: str) -> None:
-    """Découpes des marques (mode débogage) d'une capture supprimée : mark-<id>-<n>.png."""
+    """Mark crops (debug mode) of a deleted capture: mark-<id>-<n>.png."""
     for f in directory.glob(f"mark-{capture_stem.removeprefix('capture-')}-*.png"):
         f.unlink(missing_ok=True)

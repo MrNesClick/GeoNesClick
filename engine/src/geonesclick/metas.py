@@ -1,12 +1,12 @@
-"""Base de metas et départage des pays candidats (niveau 1 « où regarder »).
+"""Metas database and tie-break between the candidate countries (level 1 "where to look").
 
-Une meta est un indice visuel attaché à un ou plusieurs pays, rangé dans une catégorie (poteaux,
-marquage au sol, alphabet…). Sources, de la plus prioritaire à la moins prioritaire :
-  « mes metas »  ~/.config/geonesclick/mes-metas.toml, saisies ou corrigées par le joueur
-  « amorce »     metas_amorce.toml (dans le paquet) : quelques faits très établis, à vérifier
-Le joueur tranche chaque indice de l'amorce depuis le coach (« Juste » / « Faux ») : le verdict est ajouté
-à la fin de mes-metas.toml, une copie vérifiée ([[meta]]) ou une mise à l'écart ([[rejected]]).
-Le format est indépendant de la source : une future importation (Plonk It ou autre) produira les mêmes fiches.
+A meta is a visual clue attached to one or more countries, filed in a category (poles,
+road markings, alphabet…). Sources, from highest to lowest priority:
+  "mes metas"  ~/.config/geonesclick/mes-metas.toml, entered or corrected by the player
+  "amorce"     metas_amorce.toml (in the package): a seed of a few well-established facts, to be checked
+The player settles each seed clue from the coach ("Right" / "Wrong"): the verdict is appended
+to mes-metas.toml, as a verified copy ([[meta]]) or a dismissal ([[rejected]]).
+The format does not depend on the source: a future import (Plonk It or other) will produce the same entries.
 """
 
 from __future__ import annotations
@@ -37,8 +37,8 @@ CATEGORIES: dict[str, str] = {
 }
 
 
-# Consigne par défaut de chaque catégorie, sans nommer de pays : ce qu'il faut observer dans la vue.
-# Une meta peut préciser la sienne (champ « look »), qui remplace alors celle-ci.
+# Default instruction of each category, without naming a country: what to observe in the view.
+# A meta can specify its own (field "look"), which then replaces this one.
 CATEGORY_LOOK: dict[str, str] = {
     "langue": "les lettres et les mots des panneaux et des enseignes",
     "conduite": "le côté de la route où roulent et se garent les voitures",
@@ -55,8 +55,8 @@ CATEGORY_LOOK: dict[str, str] = {
 }
 MAX_LOOKS = 2
 
-# Poids d'une catégorie dans le départage : à quel point l'indice est souvent visible dans une vue.
-# Un nom de domaine sépare autant que la langue, mais apparaît rarement : il compte pour moitié.
+# Weight of a category in the tie-break: how often the clue is visible in a view.
+# A domain name separates as much as the language, but rarely appears: it counts for half.
 CATEGORY_WEIGHT: dict[str, float] = {"domaine": 0.5}
 
 
@@ -65,7 +65,7 @@ class MetaError(ValueError):
 
 
 class UserMetasError(MetaError):
-    """mes-metas.toml est invalide : à corriger à la main avant tout nouveau verdict."""
+    """mes-metas.toml is invalid: to be fixed by hand before any new verdict."""
 
 
 @dataclass(frozen=True)
@@ -75,7 +75,7 @@ class Meta:
     hint: str
     source: str
     verified: bool = False
-    look: str = ""  # ce qu'il faut observer, sans nommer de pays ; vide = consigne de la catégorie
+    look: str = ""  # what to observe, without naming a country; empty = the category's instruction
 
 
 @dataclass
@@ -88,17 +88,17 @@ class Hint:
 
 @dataclass
 class LookFor:
-    """Une catégorie à regarder pour départager les candidats, avec les indices de chacun."""
+    """A category to look at to tell the candidates apart, with each one's clues."""
 
     category: str
     label: str
     score: float
-    looks: list[str]  # consignes sans spoiler : quoi observer pour trancher
+    looks: list[str]  # spoiler-free instructions: what to observe to decide
     hints: list[Hint] = field(default_factory=list)
 
 
 def parse_metas(text: str, source: str, known_countries: Iterable[str] | None = None) -> list[Meta]:
-    """Lit un fichier TOML de metas ([[meta]] category, countries, hint, look, verified). Lève MetaError si invalide."""
+    """Reads a TOML metas file ([[meta]] category, countries, hint, look, verified). Raises MetaError if invalid."""
     known = set(known_countries) if known_countries is not None else None
     metas = []
     for i, entry in enumerate(tomllib.loads(text).get("meta", [])):
@@ -123,7 +123,7 @@ def parse_metas(text: str, source: str, known_countries: Iterable[str] | None = 
 
 
 def parse_rejected(text: str, source: str) -> set[tuple[str, str]]:
-    """Indices de l'amorce écartés par le joueur : [[rejected]] category, hint."""
+    """Seed clues dismissed by the player: [[rejected]] category, hint."""
     rejected = set()
     for i, entry in enumerate(tomllib.loads(text).get("rejected", [])):
         category, hint = entry.get("category"), entry.get("hint")
@@ -134,7 +134,7 @@ def parse_rejected(text: str, source: str) -> set[tuple[str, str]]:
 
 
 def seed_metas(known_countries: Iterable[str]) -> list[Meta]:
-    """L'amorce, réduite aux pays configurés : retirer un pays de la liste ne doit pas tout invalider."""
+    """The seed, reduced to the configured countries: removing a country from the list must not break everything."""
     known = frozenset(known_countries)
     seed = parse_metas(resources.files(__package__).joinpath("metas_amorce.toml").read_text(), "amorce")
     return [replace(m, countries=m.countries & known) for m in seed if m.countries & known]
@@ -156,10 +156,10 @@ def load_metas(user_file: Path | None, include_seed: bool, known_countries: Iter
 def judge_seed(
     user_file: Path, category: str, hint: str, verdict: Literal["right", "wrong"], known_countries: Iterable[str]
 ) -> None:
-    """Enregistre le verdict du joueur sur un indice de l'amorce, en fin de mes-metas.toml.
+    """Saves the player's verdict on a seed clue, at the end of mes-metas.toml.
 
-    « right » : copie vérifiée de l'indice, qui passe alors en « ta meta ». « wrong » : mise à l'écart.
-    Le fichier n'est jamais réécrit (ses commentaires sont conservés) ; s'il est invalide, rien n'est écrit.
+    "right": verified copy of the clue, which then becomes "your meta". "wrong": dismissal.
+    The file is never rewritten (its comments are kept); if it is invalid, nothing is written.
     """
     known = list(known_countries)
     meta = next((m for m in seed_metas(known) if m.category == category and m.hint == hint), None)
@@ -168,7 +168,7 @@ def judge_seed(
     text = user_file.read_text() if user_file.exists() else ""
     try:
         mine, rejected = parse_metas(text, "mes metas", known), parse_rejected(text, "mes metas")
-    except ValueError as exc:  # MetaError, ou TOML illisible
+    except ValueError as exc:  # MetaError, or unreadable TOML
         raise UserMetasError(f"mes-metas.toml invalide, corrige-le d'abord : {exc}") from exc
     if verdict == "right":
         entry = {"category": meta.category, "countries": sorted(meta.countries), "hint": meta.hint}
@@ -179,13 +179,13 @@ def judge_seed(
     else:
         block = _array_of_tables("rejected", {"category": meta.category, "hint": meta.hint})
         done = (category, hint) in rejected
-    if done:  # verdict déjà enregistré : rien à ajouter
+    if done:  # verdict already saved: nothing to add
         return
     new = text + ("\n" if text and not text.endswith("\n") else "") + "\n" + block
     user_file.parent.mkdir(parents=True, exist_ok=True)
     tmp = user_file.with_suffix(".tmp")
     tmp.write_text(new)
-    tmp.replace(user_file)  # écriture atomique
+    tmp.replace(user_file)  # atomic write
 
 
 def tiebreak(
@@ -197,14 +197,14 @@ def tiebreak(
     weights: dict[str, float] | None = None,
     max_looks: int = MAX_LOOKS,
 ) -> list[LookFor]:
-    """Catégories qui départagent le mieux les candidats [(code pays, probabilité)].
+    """Categories that best tell the candidates apart [(country code, probability)].
 
-    Pour chaque catégorie, chaque candidat a un « profil » : l'ensemble des indices qui le concernent.
-    Score = somme, sur les paires de candidats dont les deux profils sont connus et différents, du produit
-    de leurs probabilités. Une catégorie qui sépare les deux favoris pèse donc plus qu'une qui sépare deux
-    outsiders ; un candidat sans indice connu n'apporte rien.
-    looks et weights remplacent, catégorie par catégorie, CATEGORY_LOOK et CATEGORY_WEIGHT ; max_looks = 0
-    supprime les consignes.
+    For each category, each candidate has a "profile": the set of clues that concern it.
+    Score = sum, over the pairs of candidates whose two profiles are known and different, of the product
+    of their probabilities. A category that separates the two favourites therefore weighs more than one that
+    separates two outsiders; a candidate without a known clue brings nothing.
+    looks and weights replace, category by category, CATEGORY_LOOK and CATEGORY_WEIGHT; max_looks = 0
+    removes the instructions.
     """
     looks = CATEGORY_LOOK | (looks or {})
     weights = CATEGORY_WEIGHT | (weights or {})
@@ -225,13 +225,13 @@ def tiebreak(
         hints = [
             Hint(
                 m.hint,
-                [c for c in probs if c in m.countries],  # dans l'ordre de probabilité
+                [c for c in probs if c in m.countries],  # in order of probability
                 m.source,
                 m.verified,
             )
             for m in in_cat
         ]
-        # « mes metas » d'abord, puis les indices des candidats les plus probables.
+        # "mes metas" first, then the clues of the most likely candidates.
         hints.sort(key=lambda h: (h.source != "mes metas", -max(probs[c] for c in h.countries)))
         hints = _dedupe(hints)
         by_hint = {m.hint: m.look for m in in_cat}
@@ -243,7 +243,7 @@ def tiebreak(
 
 
 def _array_of_tables(name: str, entry: dict[str, Any]) -> str:
-    """Un bloc TOML [[name]] (chaînes correctement échappées)."""
+    """A TOML block [[name]] (strings correctly escaped)."""
     table = tomlkit.table()
     table.update(entry)
     doc = tomlkit.document()
@@ -264,6 +264,6 @@ def _dedupe(hints: list[Hint]) -> list[Hint]:
 def select_candidates(
     scores: list[tuple[str, float]], min_probability: float, max_candidates: int
 ) -> list[tuple[str, float]]:
-    """Garde les candidats plausibles : au moins 2, au plus max_candidates, au-dessus du seuil sinon."""
+    """Keeps the plausible candidates: at least 2, at most max_candidates, above the threshold otherwise."""
     kept = [s for s in scores if s[1] >= min_probability][:max_candidates]
     return kept if len(kept) >= 2 else scores[:2]

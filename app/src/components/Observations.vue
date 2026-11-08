@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// Ce que voit l'IA (modèle de vision distant), affiché dès le niveau d'aide 2.
+// What the AI sees (remote vision model), shown from help level 2.
 import { computed } from "vue";
 import type { Analysis, Fiche } from "../engine";
 
 const props = defineProps<{ vision: Analysis["vision"] }>();
 
-// Le texte lu d'abord : c'est l'indice le plus décisif quand il existe.
+// The text read first: it is the most decisive clue when there is one.
 const LABELS: Record<string, string> = {
   panneaux_et_texte: "Texte lu et panneaux",
   sens_circulation: "Circulation",

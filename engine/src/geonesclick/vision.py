@@ -1,4 +1,4 @@
-"""Fiche d'indices par un modèle de vision distant (niveau 2, asynchrone)."""
+"""Clue sheet from a remote vision model (level 2, asynchronous)."""
 
 from __future__ import annotations
 
@@ -38,11 +38,11 @@ class VisionClient:
         return base64.b64encode(buf.getvalue()).decode()
 
     async def describe(self, img: Image.Image) -> tuple[dict[str, Any], float]:
-        """Fiche d'indices de la vue entière."""
+        """Clue sheet of the whole view."""
         return await self.ask(img, self.cfg.prompt, self.cfg.model, self.cfg.max_tokens)
 
     async def ask(self, img: Image.Image, prompt: str, model: str, max_tokens: int) -> tuple[dict[str, Any], float]:
-        """Une image, une consigne : renvoie l'objet JSON de la réponse et la durée de l'appel."""
+        """One image, one instruction: returns the JSON object of the answer and the duration of the call."""
         if not self.client:
             raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
         t0 = time.perf_counter()
@@ -60,12 +60,12 @@ class VisionClient:
                 }],
                 extra_body={"chat_template_kwargs": {"enable_thinking": self.cfg.thinking}},
             )
-        except Exception as exc:  # délai dépassé, 429, modèle indisponible…
+        except Exception as exc:  # timeout, 429, model unavailable…
             raise VisionError(f"{type(exc).__name__} : {exc}") from exc
         return parse_fiche(resp.choices[0].message.content or ""), time.perf_counter() - t0
 
     async def list_models(self) -> list[str]:
-        """Identifiants des modèles disponibles (liste publique de l'API)."""
+        """Identifiers of the available models (the API's public list)."""
         if not self.client:
             raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
         try:
@@ -75,10 +75,10 @@ class VisionClient:
         return sorted(m.id for m in page.data)
 
     async def probe(self, model: str) -> float:
-        """Envoie une petite image au modèle : vérifie qu'il accepte les images et mesure sa latence."""
+        """Sends a small image to the model: checks that it accepts images and measures its latency."""
         if not self.client:
             raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
-        img = Image.new("RGB", (96, 64), (90, 140, 200))  # ciel uni : test minimal
+        img = Image.new("RGB", (96, 64), (90, 140, 200))  # plain sky: minimal test
         t0 = time.perf_counter()
         try:
             await self.client.chat.completions.create(
@@ -99,12 +99,12 @@ class VisionClient:
 
 
 def parse_fiche(text: str) -> dict[str, Any]:
-    """Extrait l'objet JSON de la réponse, même entouré de texte ou d'un bloc de code Markdown."""
+    """Extracts the JSON object from the answer, even when surrounded by text or a Markdown code block."""
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end < start:
         raise VisionError("réponse du modèle illisible (pas de JSON)")
     try:
-        # Un JSON valide qui commence par « { » et finit par « } » est forcément un objet.
+        # A valid JSON that starts with "{" and ends with "}" is necessarily an object.
         return json.loads(text[start:end + 1])
     except ValueError as exc:
         raise VisionError("réponse du modèle illisible (JSON invalide)") from exc

@@ -1,15 +1,15 @@
-"""Verrous pays › région › ville : ce qui est fixé pour la capture en cours, et qui l'a fixé.
+"""Country › region › city locks: what is set for the current capture, and who set it.
 
-Décidé avec l'utilisateur le 2026-11-07 (démarche OSINT : fixer ce qui est sûr, puis resserrer) :
-- le COACH verrouille seul le pays « certain » et la région d'un point net ; une ville, il la PROPOSE seulement
-  (un panneau « Pau 40 km » nomme un lieu où l'on n'est pas) ; ses verrous suivent les preuves (une marque retirée
-  peut les défaire) ;
-- l'HUMAIN peut toujours rejeter un verrou (✕) : le rejet dure toute la capture, le coach ne re-verrouille pas la
-  même chose ; il peut aussi verrouiller lui-même, et le coach ne remplace jamais ce verrou ;
-- un verrou humain à un niveau entraîne les niveaux du dessus (« Orthez » : la France, la Nouvelle-Aquitaine) ; un
-  rejet emporte les niveaux du dessous, qui en dépendaient ;
-- tout est journalisé (mode débogage) pour mesurer les erreurs des règles ;
-- les verrous durent une capture : une nouvelle capture repart de zéro (un verrou périmé fausserait la suivante).
+Decided with the user on 2026-11-07 (OSINT approach: pin down what is certain, then narrow down):
+- the COACH locks on its own the "certain" country and the region of a sharp point; a city, it only SUGGESTS
+  (a "Pau 40 km" sign names a place where you are not); its locks follow the proofs (a removed mark
+  can undo them);
+- the HUMAN can always reject a lock (✕): the rejection lasts the whole capture, the coach does not lock the
+  same thing again; they can also lock themselves, and the coach never replaces that lock;
+- a human lock at one level brings along the levels above ("Orthez": France, Nouvelle-Aquitaine); a
+  rejection takes away the levels below, which depended on it;
+- everything is logged (debug mode) to measure the rules' errors;
+- locks last one capture: a new capture starts from scratch (a stale lock would skew the next one).
 """
 
 from __future__ import annotations
@@ -22,23 +22,23 @@ from .evidence import Evidence
 from .places import normalise
 
 LEVELS = ("country", "region", "city")
-Scope = tuple[str | None, str | None, set[str], set[str]]  # voir Locks.scope
+Scope = tuple[str | None, str | None, set[str], set[str]]  # see Locks.scope
 NO_SCOPE: Scope = (None, None, set(), set())
 
 
 @dataclass
 class Lock:
-    level: str  # "country", "region" ou "city"
-    country: str  # code ISO à 2 lettres
-    region: str = ""  # code GeoNames de la région (« FR.75 ») : région, et ville si on la connaît
-    name: str = ""  # région ou ville telle qu'affichée (le pays : l'interface a son nom)
-    lat: float | None = None  # ville
+    level: str  # "country", "region" or "city"
+    country: str  # 2-letter ISO code
+    region: str = ""  # GeoNames code of the region ("FR.75"): region, and city if known
+    name: str = ""  # region or city as displayed (the country: the UI has its name)
+    lat: float | None = None  # city
     lon: float | None = None
-    by: str = "coach"  # "coach" ou "user"
-    why: str = ""  # ce qui l'a fait poser (coach : les marques qui le prouvent)
+    by: str = "coach"  # "coach" or "user"
+    why: str = ""  # what made it be set (coach: the marks that prove it)
 
     def same(self, other: Lock) -> bool:
-        """Même lieu au même niveau, quel que soit l'auteur."""
+        """Same place at the same level, whoever the author."""
         if self.level != other.level or self.country != other.country:
             return False
         if self.level == "country":
@@ -50,16 +50,16 @@ class Lock:
 
 @dataclass
 class Locks:
-    held: dict[str, Lock] = field(default_factory=dict)  # niveau → verrou, dans l'ordre pays, région, ville
+    held: dict[str, Lock] = field(default_factory=dict)  # level → lock, in the order country, region, city
     rejected: list[Lock] = field(default_factory=list)
-    proposal: Lock | None = None  # ville proposée par le coach (un clic pour la verrouiller)
+    proposal: Lock | None = None  # city suggested by the coach (one click to lock it)
     events: list[dict[str, Any]] = field(default_factory=list)
 
-    # --- humain --------------------------------------------------------------------------------
+    # --- human ---------------------------------------------------------------------------------
     def lock(self, lock: Lock, region_name: str = "") -> None:
-        """Verrou posé par le joueur (ou proposition acceptée), avec les niveaux du dessus.
+        """Lock set by the player (or accepted suggestion), with the levels above.
 
-        region_name : nom de la région d'une ville (sinon celui du verrou en place, ou son code).
+        region_name: name of a city's region (otherwise the one of the lock in place, or its code).
         """
         lock = replace(lock, by="user")
         chain = [lock]
@@ -70,13 +70,13 @@ class Locks:
             name = region_name or (held.name if held and held.region == lock.region else lock.region)
             chain.insert(1, Lock("region", lock.country, region=lock.region, name=name, by="user"))
         for item in chain:
-            self.rejected = [r for r in self.rejected if not r.same(item)]  # le joueur l'emporte sur son rejet
+            self.rejected = [r for r in self.rejected if not r.same(item)]  # the player wins over their own rejection
             self._set(item)
         if self.proposal and lock.level == "city":
             self.proposal = None
 
     def reject(self, level: str) -> Lock:
-        """✕ sur un verrou (ou sur la proposition, level « proposal ») : écarté pour toute la capture."""
+        """✕ on a lock (or on the suggestion, level "proposal"): ruled out for the whole capture."""
         if level == "proposal":
             if self.proposal is None:
                 raise KeyError(level)
@@ -92,7 +92,7 @@ class Locks:
 
     # --- coach ---------------------------------------------------------------------------------
     def coach(self, country: Lock | None, region: Lock | None, proposal: Lock | None) -> None:
-        """Ce que les preuves permettent maintenant ; les verrous du joueur et ses rejets l'emportent."""
+        """What the proofs allow now; the player's locks and rejections win."""
         for level, candidate in (("country", country), ("region", region)):
             held = self.held.get(level)
             if held and held.by == "user":
@@ -112,11 +112,11 @@ class Locks:
         if proposal is not None and "city" not in self.held and not self._rejected(proposal) and self._fits(proposal):
             self.proposal = replace(proposal, by="coach")
 
-    # --- ce qui restreint la recherche ---------------------------------------------------------
+    # --- what narrows down the search ----------------------------------------------------------
     def scope(self) -> tuple[str | None, str | None, set[str], set[str]]:
-        """(pays verrouillé, région verrouillée, pays rejetés, régions rejetées) pour situer la vue.
+        """(locked country, locked region, rejected countries, rejected regions) to locate the view.
 
-        Seuls les choix du JOUEUR comptent ici : ceux du coach découlent déjà des preuves.
+        Only the PLAYER's choices count here: the coach's already follow from the proofs.
         """
         country = self.held.get("country")
         region = self.held.get("region")
@@ -126,7 +126,7 @@ class Locks:
                 {r.region for r in self.rejected if r.level == "region"})
 
     def country(self) -> str | None:
-        """Pays verrouillé, par qui que ce soit : astuces, carte et départage s'y centrent."""
+        """Locked country, by whoever: tips, map and tie-break centre on it."""
         held = self.held.get("country")
         return held.country if held else None
 
@@ -135,13 +135,13 @@ class Locks:
                 "rejected": [asdict(r) for r in self.rejected],
                 "proposal": asdict(self.proposal) if self.proposal else None}
 
-    # --- interne -------------------------------------------------------------------------------
+    # --- internal ------------------------------------------------------------------------------
     def _set(self, lock: Lock) -> None:
         held = self.held.get(lock.level)
         if held and held.same(lock) and held.by == lock.by:
             return
         self.held[lock.level] = lock
-        # Ordre pays › région › ville, et niveaux du dessous qui ne sont plus dedans : retirés.
+        # Order country › region › city, and levels below that are no longer inside it: removed.
         for below in LEVELS[LEVELS.index(lock.level) + 1:]:
             child = self.held.get(below)
             if child and not self._inside(child, lock):
@@ -155,7 +155,7 @@ class Locks:
         return child.country == parent.country and (parent.level != "region" or child.region == parent.region)
 
     def _fits(self, lock: Lock) -> bool:
-        """Dans les verrous en place, et hors des pays et régions rejetés."""
+        """Within the locks in place, and outside the rejected countries and regions."""
         _, _, countries, regions = self.scope()
         return (lock.country not in countries and not (lock.region and lock.region in regions)
                 and all(self._inside(lock, held) for held in self.held.values() if held.level != lock.level))
@@ -173,11 +173,12 @@ class Locks:
 
 
 def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
-    """Restreint les preuves d'une marque à ce que le joueur a choisi, et en retire ce qu'il a rejeté.
+    """Restricts a mark's proofs to what the player chose, and removes from them what they rejected.
 
-    Sert à situer la vue sous ses choix (homonymes de son pays, de sa région), JAMAIS à conclure : la conclusion des
-    marques reste indépendante. Une preuve qui ne désigne plus rien garde la raison (« hors du pays verrouillé »). L'alphabet n'est restreint que par les rejets : du cyrillique sous un
-    verrou « France » doit rester une contradiction visible, pas devenir un alphabet sans pays.
+    Used to locate the view under their choices (namesakes in their country, their region), NEVER to conclude: the
+    marks' conclusion stays independent. A proof that no longer points to anything keeps the reason ("hors du pays
+    verrouillé"). The alphabet is restricted only by rejections: Cyrillic under a "France" lock must stay a visible
+    contradiction, not become an alphabet without a country.
     """
     country, region, no_countries, no_regions = scope
     for e in found:
@@ -199,6 +200,6 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
             e.note = (f"hors du pays verrouillé ({', '.join(e.countries[:4])})" if country
                       else f"pays rejeté ({', '.join(e.countries[:4])})")
         e.countries = inside
-        if e.kind == "lieu":  # homonymes : seulement ceux des pays restants (keep_nearby en redéduit les pays)
+        if e.kind == "lieu":  # namesakes of the remaining countries only (keep_nearby re-derives the countries)
             e.points = [p for p in e.points if p[2] in inside]
     return found

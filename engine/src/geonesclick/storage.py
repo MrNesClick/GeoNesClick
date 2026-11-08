@@ -1,14 +1,14 @@
-"""Stockage du coach : ce qu'il garde sur le disque, sa taille, et comment le vider (Réglages › Stockage).
+"""Coach storage: what it keeps on disk, its size, and how to empty it (Settings › Storage).
 
-Décidé avec l'utilisateur le 2026-11-07 :
-- chaque élément s'affiche avec sa taille et peut être vidé à la main ;
-- la taille maximale ([storage] max_cache_mb) ne s'applique qu'aux caches QUI GROSSISSENT tout seuls (villages par
-  pays ; plus tard rues par ville et Nominatim) : les moins récemment utilisés partent d'abord ;
-- le SOCLE (index GeoNames, base Plonk It) ne part jamais tout seul : sinon chaque démarrage le retéléchargerait ;
-- le jeu de test, tes metas et ta config ne sont JAMAIS touchés ; les poids des modèles (Hugging Face) non plus.
+Decided with the user on 2026-11-07:
+- each item is shown with its size and can be emptied by hand;
+- the maximum size ([storage] max_cache_mb) only applies to the caches THAT GROW on their own (villages per
+  country; later streets per city and Nominatim): the least recently used go first;
+- the BASE (GeoNames index, Plonk It database) never goes on its own: otherwise each start would download it again;
+- the test set, your metas and your config are NEVER touched; nor are the model weights (Hugging Face).
 
-Sécurité : on ne supprime que des FICHIERS CONNUS (motifs ci-dessous), jamais un dossier entier : les dossiers sont
-réglables, et un chemin mal configuré (~) ne doit pas pouvoir être effacé.
+Security: only KNOWN FILES are deleted (patterns below), never a whole folder: the folders are
+configurable, and a misconfigured path (~) must not be erasable.
 """
 
 from __future__ import annotations
@@ -33,11 +33,11 @@ CAPTURE_FILES = ("capture-*.png", "capture-*.json", "mark-*.png")
 class Item:
     id: str
     label: str
-    kind: str  # "cache" (grossit, limité), "socle" (vidé à la main seulement), "historique"
-    size: int  # octets
-    detail: str  # ce qu'il contient, en clair
-    effect: str  # ce que « Vider » coûte
-    confirm: bool = False  # vider demande une confirmation (perte coûteuse)
+    kind: str  # "cache" (grows, limited), "socle" (base, emptied by hand only), "historique" (history)
+    size: int  # bytes
+    detail: str  # what it contains, in plain words
+    effect: str  # what "Empty" costs
+    confirm: bool = False  # emptying asks for a confirmation (costly loss)
 
 
 def files_of(directory: Path, patterns: Iterable[str]) -> list[Path]:
@@ -107,9 +107,9 @@ def remove(files: Iterable[Path]) -> int:
 
 
 def evict(places_dir: Path, max_bytes: int, keep: set[str] = frozenset()) -> list[str]:
-    """Caches qui grossissent au-delà de la limite : les moins récemment utilisés partent d'abord.
+    """Caches that grow beyond the limit: the least recently used go first.
 
-    keep : pays à ne jamais retirer maintenant (celui de la manche en cours). Renvoie les pays retirés.
+    keep: countries never to remove now (the one of the current round). Returns the countries removed.
     """
     files = village_files(places_dir)
     total = size_of(files)
@@ -126,26 +126,26 @@ def evict(places_dir: Path, max_bytes: int, keep: set[str] = frozenset()) -> lis
 
 
 def touch(path: Path) -> None:
-    """Marque un cache comme utilisé (date de modification) : il passe en dernier pour la suppression."""
+    """Marks a cache as used (modification date): it goes last for deletion."""
     try:
         os.utime(path)
     except OSError:
         pass
 
 
-# --- « Tout effacer » (droit à l'effacement, RGPD ; décidé avec l'utilisateur le 2026-11-07) -------------------
-# Tout ce qui te concerne part : clé API, réglages, tes metas, captures et journaux, jeu de test, guides Plonk It et
-# traductions, index des lieux, raccourcis GNOME (l'interface efface son propre état). À part, sur demande : les
-# modèles téléchargés (rien de personnel). Toujours des fichiers CONNUS : dans un dossier réglé à la main, seuls les
-# fichiers de l'app partent, jamais le dossier.
-MODEL_ID = re.compile(r"[\w.\-]+/[\w.\-]+")  # « geolocal/StreetCLIP » : jamais de « .. » ni de « / » en trop
+# --- "Erase everything" (right to erasure, GDPR; decided with the user on 2026-11-07) -------------------------
+# Everything about you goes: API key, settings, your metas, captures and logs, test set, Plonk It guides and
+# translations, places index, GNOME shortcuts (the UI erases its own state). Separately, on request: the
+# downloaded models (nothing personal). Always KNOWN files: in a folder set by hand, only the
+# app's files go, never the folder.
+MODEL_ID = re.compile(r"[\w.\-]+/[\w.\-]+")  # "geolocal/StreetCLIP": never a ".." or an extra "/"
 SHORTCUT_PATHS = ("/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/",
                   "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick-mark/")
 MEDIA_KEYS = "org.gnome.settings-daemon.plugins.media-keys"
 
 
 def account_files(config_dir: Path, settings: Path, metas: Path) -> list[Path]:
-    """Clé API, réglages, tes metas, autorisation de partage d'écran (fichiers connus seulement)."""
+    """API key, settings, your metas, screen-sharing permission (known files only)."""
     named = [settings, metas, config_dir / "screencast.token"]
     return sorted({p for p in named if p.is_file() and not p.is_symlink()} | set(files_of(config_dir, ["*.key", "*.tmp"])))
 
@@ -156,7 +156,7 @@ def dataset_files(dataset_dir: Path) -> list[Path]:
 
 
 def model_dirs(hub_cache: Path, model_ids: Iterable[str]) -> list[Path]:
-    """Dossiers du cache Hugging Face de NOS modèles seulement (ceux d'autres logiciels restent)."""
+    """Folders of the Hugging Face cache for OUR models only (those of other software stay)."""
     out = []
     for model in model_ids:
         if not MODEL_ID.fullmatch(model):
@@ -183,13 +183,13 @@ def erase_plan(groups: dict[str, list[Path]], models: list[Path]) -> list[dict[s
 
 
 def _gsettings(args: list[str]) -> str:
-    """gsettings du système (remplacé dans les tests : ils ne touchent jamais tes raccourcis)."""
+    """The system's gsettings (replaced in the tests: they never touch your shortcuts)."""
     return subprocess.run(["/usr/bin/gsettings", *args], capture_output=True, text=True, timeout=10,
                           check=False).stdout.strip()
 
 
 def remove_shortcuts(run: Callable[[list[str]], str] | None = None) -> int:
-    """Retire les raccourcis GNOME de l'app. Renvoie le nombre retiré."""
+    """Removes the app's GNOME shortcuts. Returns the number removed."""
     run = run or _gsettings
     current = run(["get", MEDIA_KEYS, "custom-keybindings"])
     keys = re.findall(r"'([^']+)'", current)
@@ -203,15 +203,15 @@ def remove_shortcuts(run: Callable[[list[str]], str] | None = None) -> int:
 
 
 def erase(groups: dict[str, list[Path]], models: list[Path], with_models: bool, empty_dirs: Iterable[Path]) -> int:
-    """Supprime les fichiers listés (et, si demandé, nos dossiers de modèles) ; puis les dossiers de l'app vidés."""
+    """Deletes the listed files (and, if asked, our model folders); then the app's emptied folders."""
     freed = sum(remove(files) for files in groups.values())
     if with_models:
         for path in models:
             freed += dir_size(path)
             shutil.rmtree(path, ignore_errors=True)
-    for folder in sorted(empty_dirs, key=lambda p: -len(p.parts)):  # les plus profonds d'abord
+    for folder in sorted(empty_dirs, key=lambda p: -len(p.parts)):  # deepest first
         try:
-            folder.rmdir()  # seulement s'il est vide : un fichier inconnu le garde
+            folder.rmdir()  # only if it is empty: an unknown file keeps it
         except OSError:
             pass
     return freed

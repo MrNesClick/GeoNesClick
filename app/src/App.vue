@@ -24,15 +24,15 @@ const status = computed(() => {
   if (!engine.streetclip.ready) return { tone: "bg-courbe", text: "Chargement du modèle local…" };
   return { tone: "bg-foret", text: engine.marks.enabled ? "Prêt. Capture : Super+Maj+G · marques : Super+Maj+Z." : "Prêt. Capture avec Super+Maj+G." };
 });
-// Vues de la fenêtre : le coach, la carte en grand (niveau 3 et plus), les réglages.
+// Window views: the coach, the full-size map (level 3 and up), the settings.
 const view = ref<"coach" | "map" | "settings">("coach");
 const showSettings = computed(() => view.value === "settings");
 const level = computed(() => engine.helpLevel);
 const mapAvailable = computed(() => engine.map.enabled && level.value >= 3);
 watch(mapAvailable, (ok) => {
-  if (!ok && view.value === "map") view.value = "coach"; // carte masquée aux niveaux 1 et 2 : rien à dévoiler
+  if (!ok && view.value === "map") view.value = "coach"; // map hidden at levels 1 and 2: nothing to reveal
 });
-// Nouvelles zones prêtes mais pas encore vues : un point sur l'onglet Carte (le travail de fond se voit).
+// New zones ready but not seen yet: a dot on the Map tab (background work shows).
 const mapUnseen = ref(false);
 watch(
   () => [engine.current?.id, engine.current?.cloud.status],
@@ -44,7 +44,7 @@ watch(
 watch(view, (v) => {
   if (v === "map") mapUnseen.value = false;
 });
-// Barre d'onglets du bas : la navigation ; les niveaux d'aide, en haut, dosent l'aide.
+// Bottom tab bar: navigation; the help levels, at the top, set how much help is given.
 const tabs = computed(() => [
   { id: "coach" as const, label: "Coach", disabled: false, hint: "" },
   ...(engine.map.enabled
@@ -57,7 +57,7 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <!-- La carte profite de toute la largeur si la fenêtre est agrandie ; le coach reste en colonne lisible. -->
+  <!-- The map uses the full width when the window is maximised; the coach stays a readable column. -->
   <div class="mx-auto flex min-h-screen flex-col px-4 pt-4" :class="view === 'map' ? 'max-w-none' : 'max-w-xl'">
     <header class="flex items-center gap-3 border-b border-courbe-fonce pb-3">
       <span class="size-2.5 shrink-0 rounded-full" :class="status.tone" aria-hidden="true" />
@@ -110,16 +110,16 @@ const tabs = computed(() => [
     </main>
 
     <main v-else-if="engine.current" class="flex-1">
-      <!-- Verrous : en tête, hors des sections repliables (ils restreignent tout ce qui suit). -->
+      <!-- Locks: at the top, outside the collapsible sections (they narrow down everything that follows). -->
       <Locks v-if="engine.locks.enabled" :analysis="engine.current" />
       <Transition name="arrivee" appear mode="out-in">
         <div :key="engine.current.id" class="pt-2">
-          <!-- Sections dans l'ordre d'utilité ; le résumé de chacune reste lisible quand elle est repliée. -->
+          <!-- Sections in order of usefulness; each one's summary stays readable when it is collapsed. -->
           <Section v-if="level >= 4" id="reponse" title="Réponse" tone="papier" :summary="sum.answer(engine.current)">
             <Summary :analysis="engine.current" />
           </Section>
 
-          <!-- Les marques sont tes preuves : juste après la réponse, à tous les niveaux (elles ne nomment aucun pays). -->
+          <!-- The marks are your proof: right after the answer, at every level (they name no country). -->
           <Section v-if="engine.current.marks.length" id="marques" title="Marques" tone="papier" :summary="sum.marks(engine.current)">
             <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
           </Section>

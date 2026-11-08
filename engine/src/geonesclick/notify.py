@@ -1,4 +1,4 @@
-"""Notifications GNOME (org.freedesktop.Notifications) : confirmation de capture ou erreur."""
+"""GNOME notifications (org.freedesktop.Notifications): capture confirmation or error."""
 
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ from gi.repository import Gio, GLib
 
 
 class Notifier:
-    """Chaque notification remplace la précédente et reste « transient » (pas d'accumulation)."""
+    """Each notification replaces the previous one and stays "transient" (no build-up)."""
 
     def __init__(self, enabled: bool, sound: bool) -> None:
         self.enabled = enabled
         self.sound = sound
         self._last_id = 0
         self._lock = threading.Lock()
-        self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)  # ouvert même désactivé : réactivable à chaud
+        self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)  # opened even when disabled: can be turned back on live
 
     def send(self, summary: str, body: str = "", image: Path | None = None, error: bool = False) -> None:
         if not self.enabled:
@@ -39,5 +39,5 @@ class Notifier:
                     GLib.VariantType("(u)"), Gio.DBusCallFlags.NONE, 2000, None,
                 )
                 self._last_id = reply.unpack()[0]
-            except GLib.Error as exc:  # une notification ratée ne doit jamais bloquer la capture
+            except GLib.Error as exc:  # a failed notification must never block the capture
                 print(f"[notification] échec : {exc.message}")

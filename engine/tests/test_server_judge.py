@@ -1,4 +1,4 @@
-"""Analyse de bout en bout (capture et modèles simulés) et verdicts « Juste » / « Faux » sur l'amorce."""
+"""End-to-end analysis (simulated capture and models) and "Right" / "Wrong" verdicts on the seed."""
 
 import asyncio
 
@@ -38,14 +38,14 @@ class FakeClip:
 
 class FakeVision:
     ready = True
-    client = None  # pas de client OpenAI : ni traduction ni classement
+    client = None  # no OpenAI client: neither translation nor classification
 
     async def describe(self, _img):
         return {"confiance": "faible"}, 0.1
 
 
 def test_analyse_runs_both_levels(setup):
-    """Régression : la tâche du niveau 2 doit être suivie dès la première capture."""
+    """Regression: the level 2 task must be tracked from the first capture."""
     _, engine = setup
     engine.capture.grab = lambda: Image.new("RGB", (64, 40))
     engine.streetclip, engine.vision = FakeClip(), FakeVision()
@@ -73,7 +73,7 @@ def test_right_copies_the_hint_as_verified_and_keeps_comments(cfg):
     path.write_text("# mes notes\n")
     known = cfg.streetclip.countries.values()
     judge_seed(path, "marquage", JAUNE, "right", known)
-    judge_seed(path, "marquage", JAUNE, "right", known)  # deux fois : un seul ajout
+    judge_seed(path, "marquage", JAUNE, "right", known)  # twice: a single addition
     text = path.read_text()
     assert text.startswith("# mes notes\n") and text.count("[[meta]]") == 1
     mine = [m for m in load_metas(path, True, known) if m.hint == JAUNE and m.source == "mes metas"]
@@ -84,7 +84,7 @@ def test_wrong_removes_the_hint_from_the_seed(cfg):
     known = cfg.streetclip.countries.values()
     judge_seed(cfg.metas.user_path, "marquage", JAUNE, "wrong", known)
     assert JAUNE not in [m.hint for m in load_metas(cfg.metas.user_path, True, known)]
-    assert JAUNE in [m.hint for m in seed_metas(known)]  # l'amorce elle-même est intacte
+    assert JAUNE in [m.hint for m in seed_metas(known)]  # the seed itself is intact
 
 
 def test_unknown_hint_is_refused_and_nothing_written(cfg):
@@ -105,7 +105,7 @@ def test_judge_route_reloads_metas_and_refreshes_the_capture(setup):
     engine.recent["20261107-080023-137"] = {"frame": None, "predicted": "NO", "scores": [("NO", 0.6), ("SE", 0.4)]}
     before = len(engine.metas)
     with client.websocket_connect("ws://127.0.0.1:47615/ws", headers=ORIGIN) as ws:
-        ws.receive_json()  # état initial
+        ws.receive_json()  # initial state
         body = {"category": "marquage", "hint": JAUNE, "verdict": "wrong", "id": "20261107-080023-137"}
         assert client.post("/metas/judge", json=body, headers=ORIGIN).status_code == 200
         assert ws.receive_json()["type"] == "state"
@@ -169,7 +169,7 @@ def test_seed_survives_a_shorter_country_list():
 
 def test_unreadable_user_file_is_a_conflict(setup, cfg):
     client, _ = setup
-    cfg.metas.user_path.write_text("[[meta\n")  # TOML illisible
+    cfg.metas.user_path.write_text("[[meta\n")  # unreadable TOML
     body = {"category": "marquage", "hint": JAUNE, "verdict": "wrong"}
     assert client.post("/metas/judge", json=body, headers=ORIGIN).status_code == 409
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Les metas qui départagent les pays probables, avec l'indice propre à chacun. Les indices de l'amorce
-// non vérifiés se tranchent ici (« Juste » / « Faux »).
+// The metas that tell the likely countries apart, with each one's own clue. Unverified clues from the seed
+// are settled here ("Right" / "Wrong").
 import type { LookFor } from "../engine";
 import { countryName, engine, flag, judgeHint } from "../engine";
 

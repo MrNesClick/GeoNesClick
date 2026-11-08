@@ -1,13 +1,13 @@
-"""Prépare ce que l'AppImage embarque pour installer le moteur au premier lancement (appelé par build-appimage.sh).
+"""Prepares what the AppImage bundles to install the engine on first launch (called by build-appimage.sh).
 
-Écrit dans le dossier donné :
-- requirements-cuda.txt / requirements-cpu.txt : dépendances figées AVEC empreintes (uv export ; la variante CPU
-  remplace PyTorch CUDA et ses bibliothèques NVIDIA par PyTorch CPU, empreinte relevée sur download.pytorch.org) ;
-- packages-cuda.json / packages-cpu.json : la liste détaillée affichée par l'assistant (nom, version, taille du
-  téléchargement, licence) ;
-- downloads.json : la liste des téléchargements (downloads.toml), pour l'assistant écrit en Rust.
+Writes to the given folder:
+- requirements-cuda.txt / requirements-cpu.txt: pinned dependencies WITH hashes (uv export; the CPU variant
+  replaces PyTorch CUDA and its NVIDIA libraries with PyTorch CPU, hash taken from download.pytorch.org);
+- packages-cuda.json / packages-cpu.json: the detailed list shown by the assistant (name, version, download
+  size, licence);
+- downloads.json: the list of downloads (downloads.toml), for the assistant written in Rust.
 
-Transparence décidée avec l'utilisateur le 2026-11-07 : tout ce qui est téléchargé est montré avant le moindre octet.
+Transparency decided with the user on 2026-11-07: everything that is downloaded is shown before a single byte.
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ from importlib import metadata
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1] / "engine"
-CUDA_ONLY = re.compile(r"^(nvidia-|triton$|cuda-)")  # paquets de la seule variante CUDA
-LOCAL_BUILT = ("pygobject", "pycairo")  # compilés par build-appimage.sh, livrés en wheel dans l'AppImage
+CUDA_ONLY = re.compile(r"^(nvidia-|triton$|cuda-)")  # packages of the CUDA variant only
+LOCAL_BUILT = ("pygobject", "pycairo")  # compiled by build-appimage.sh, shipped as wheels in the AppImage
 CPU_INDEX = "https://download.pytorch.org/whl/cpu/torch/"
 
 
@@ -35,7 +35,7 @@ def export_requirements() -> str:
 
 
 def blocks(text: str) -> list[tuple[str, str]]:
-    """(nom, bloc de lignes) pour chaque paquet d'un export uv (une ligne + ses « --hash » en suite)."""
+    """(name, block of lines) for each package of a uv export (one line + its "--hash" continuation lines)."""
     out, current = [], []
     for line in text.splitlines():
         if line and not line.startswith((" ", "#")):
@@ -50,8 +50,8 @@ def blocks(text: str) -> list[tuple[str, str]]:
 
 
 def cpu_torch_line(version: str) -> str:
-    """Ligne figée de PyTorch CPU, avec l'empreinte publiée par l'index PyTorch (vérifiée par uv à l'installation)."""
-    with urllib.request.urlopen(CPU_INDEX, timeout=60) as resp:  # noqa: S310 (adresse fixe, https)
+    """Pinned PyTorch CPU line, with the hash published by the PyTorch index (checked by uv at install time)."""
+    with urllib.request.urlopen(CPU_INDEX, timeout=60) as resp:  # noqa: S310 (fixed address, https)
         page = resp.read().decode()
     wheel = f"torch-{version}%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl"
     found = re.search(re.escape(wheel) + r"#sha256=([0-9a-f]{64})", page)
@@ -61,7 +61,7 @@ def cpu_torch_line(version: str) -> str:
 
 
 def wheel_sizes() -> dict[str, tuple[str, int]]:
-    """Taille du téléchargement de chaque paquet (wheel Linux x86_64, Python 3.12), d'après uv.lock."""
+    """Download size of each package (Linux x86_64 wheel, Python 3.12), from uv.lock."""
     lock = tomllib.loads((ENGINE / "uv.lock").read_text())
     out = {}
     for p in lock["package"]:
@@ -73,7 +73,7 @@ def wheel_sizes() -> dict[str, tuple[str, int]]:
 
 
 def license_of(name: str) -> str:
-    """Licence déclarée par le paquet installé dans le venv de développement (même version que l'AppImage)."""
+    """Licence declared by the package installed in the development venv (same version as the AppImage)."""
     try:
         meta = metadata.metadata(name)
     except metadata.PackageNotFoundError:

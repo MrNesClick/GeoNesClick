@@ -1,26 +1,26 @@
-"""Moteur du coach : serveur local (FastAPI + WebSocket) qui orchestre capture → N1 local → N2 distant.
+"""Coach engine: local server (FastAPI + WebSocket) that orchestrates capture → local L1 → remote L2.
 
-Protocole WebSocket (/ws), messages JSON poussés vers l'interface :
-  state          état des services (capture, StreetCLIP, vision) et niveau d'aide par défaut
-  capture        nouvelle capture : id, miniature (data URL JPEG), durée
-  streetclip     niveau 1 : top des pays (local) et « où regarder » pour les départager (metas)
-  vision_pending niveau 2 en cours (modèle distant)
-  vision         niveau 2 : fiche d'indices
-  vision_error   niveau 2 en échec
-  labelled       capture ajoutée au jeu de test (« C'était où ? »), avec la progression à jour
-  lookfor        « où regarder » recalculé pour une capture, après un verdict « Juste » / « Faux »
-  (streetclip.similar : astuces Plonk It qui ressemblent à la vue, pour chaque pays candidat)
-  tips_translated traductions des astuces affichées, arrivées après coup ({empreinte: texte})
-  cloud          zones probables de la vue pour la carte (nuage PLONK regroupé), toutes et pays par pays
-  freeze         vue figée pour y tracer des marques (la fenêtre plein écran des marques s'ouvre)
-  mark           une marque : découpe agrandie (pending), puis ce que le modèle y a lu (done) ou l'erreur
-  verdict        ce que les marques prouvent ensemble (règles locales : alphabet, lettres, lieux)
-  mark_removed   une marque retirée par le joueur
-  locks          verrous de la capture (pays › région › ville), rejets et ville proposée
-  similar        astuces Plonk It du pays verrouillé, s'il n'était pas parmi les candidats
+WebSocket protocol (/ws), JSON messages pushed to the UI:
+  state          state of the services (capture, StreetCLIP, vision) and default help level
+  capture        new capture: id, thumbnail (JPEG data URL), duration
+  streetclip     level 1: top countries (local) and "where to look" to tell them apart (metas)
+  vision_pending level 2 running (remote model)
+  vision         level 2: clue sheet
+  vision_error   level 2 failed
+  labelled       capture added to the test set ("Where was it?"), with the updated progress
+  lookfor        "where to look" recomputed for a capture, after a "Right" / "Wrong" verdict
+  (streetclip.similar: Plonk It tips that look like the view, for each candidate country)
+  tips_translated translations of the displayed tips, arriving afterwards ({hash: text})
+  cloud          likely zones of the view for the map (grouped PLONK cloud), all and country by country
+  freeze         view frozen to draw marks on it (the full-screen marks window opens)
+  mark           a mark: enlarged crop (pending), then what the model read there (done) or the error
+  verdict        what the marks prove together (local rules: alphabet, letters, places)
+  mark_removed   a mark removed by the player
+  locks          locks of the capture (country › region › city), rejections and suggested city
+  similar        Plonk It tips of the locked country, if it was not among the candidates
   error          capture impossible
-Déclencheurs : POST /capture et /marks/freeze (boutons de l'interface) ou socket Unix (raccourcis GNOME,
-voir trigger.py).
+Triggers: POST /capture and /marks/freeze (UI buttons) or Unix socket (GNOME shortcuts,
+see trigger.py).
 """
 
 from __future__ import annotations
@@ -66,9 +66,9 @@ from . import apikey, paths, storage
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
-RECENT_FRAMES = 10  # captures brutes gardées en mémoire pour « C'était où ? »
-TRANSLATE_BATCH = 3  # astuces par appel de traduction (les appels partent en parallèle)
-PRETRANSLATE_BATCH = 10  # astuces par appel de la traduction d'avance (réponse courte : JSON moins fragile)
+RECENT_FRAMES = 10  # raw captures kept in memory for "Where was it?"
+TRANSLATE_BATCH = 3  # tips per translation call (the calls go out in parallel)
+PRETRANSLATE_BATCH = 10  # tips per call of the ahead-of-time translation (short answer: less fragile JSON)
 
 
 class ModelTestRequest(BaseModel):
@@ -77,15 +77,15 @@ class ModelTestRequest(BaseModel):
 
 class LabelRequest(BaseModel):
     id: str = Field(max_length=32)
-    country: str = Field(default="", max_length=2)  # facultatif si le lien donne la position
-    found: bool | None = None  # ignoré si « guessed » est donné : il s'en déduit
-    guessed: str = Field(default="", max_length=2)  # pays répondu par le joueur, facultatif
+    country: str = Field(default="", max_length=2)  # optional if the link gives the position
+    found: bool | None = None  # ignored if "guessed" is given: it follows from it
+    guessed: str = Field(default="", max_length=2)  # country answered by the player, optional
     area: str = Field(default="", max_length=200)
-    link: str = Field(default="", max_length=2000)  # lien Google Maps du vrai lieu (jamais ouvert : lu seulement)
+    link: str = Field(default="", max_length=2000)  # Google Maps link of the true place (never opened: only read)
 
 
 class ApiKeyRequest(BaseModel):
-    key: str = Field(default="", max_length=300)  # vide : oublier la clé
+    key: str = Field(default="", max_length=300)  # empty: forget the key
 
 
 class TruthRequest(BaseModel):
@@ -93,8 +93,8 @@ class TruthRequest(BaseModel):
 
 
 class EraseRequest(BaseModel):
-    confirm: Literal["EFFACER"]  # tapé par le joueur : rien ne part sur un clic égaré
-    models: bool = False  # aussi les modèles téléchargés (rien de personnel)
+    confirm: Literal["EFFACER"]  # typed by the player: nothing goes on a stray click
+    models: bool = False  # also the downloaded models (nothing personal)
 
 
 class ClearRequest(BaseModel):
@@ -102,7 +102,7 @@ class ClearRequest(BaseModel):
 
 
 class JudgeRequest(BaseModel):
-    """Verdict du joueur sur un indice de l'amorce ; id = capture affichée, pour la mettre à jour."""
+    """Player's verdict on a seed clue; id = displayed capture, to update it."""
 
     category: str = Field(max_length=20)
     hint: str = Field(min_length=1, max_length=300)
@@ -113,48 +113,48 @@ class JudgeRequest(BaseModel):
 class Engine(MarksMixin, LocksMixin):
     def __init__(self, cfg: Config, settings_path: Path = USER_CONFIG) -> None:
         self.cfg = cfg
-        self.settings_path = settings_path  # fichier écrit par l'écran Réglages
+        self.settings_path = settings_path  # file written by the Settings screen
         self.clients: set[WebSocket] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
         self.notifier = Notifier(cfg.capture.notify, cfg.capture.sound)
         self.capture = CaptureService(on_state=self._on_capture_state, source=cfg.capture.source)
         self.capture_message = "démarrage du partage d'écran…"
-        self.capture_starting = True  # sélecteur GNOME éventuellement ouvert : ni actif ni coupé
+        self.capture_starting = True  # GNOME picker possibly open: neither active nor cut off
         self.streetclip: StreetClip | None = None
         self.streetclip_message = "chargement du modèle…"
         self.vision = VisionClient(cfg.vision)
         self.gpu_lock = asyncio.Lock()
         self.dataset = Dataset(cfg.dataset.path) if cfg.dataset.enabled else None
-        self.recent: OrderedDict[str, dict[str, Any]] = OrderedDict()  # id → image brute, pays prédits
-        self.last_id: str | None = None  # dernière analyse : les marques la complètent
-        # Vues figées en attente de marques, avec l'analyse qu'elles complètent (fixée au moment de figer).
+        self.recent: OrderedDict[str, dict[str, Any]] = OrderedDict()  # id → raw image, predicted countries
+        self.last_id: str | None = None  # last analysis: the marks complete it
+        # Frozen views waiting for marks, with the analysis they complete (set at freeze time).
         self.frozen: OrderedDict[str, tuple[Image.Image, str]] = OrderedDict()
         self.mark_slots = asyncio.Semaphore(cfg.marks.parallel)
         self.metas = []
         self.metas_message = "désactivées"
         self.load_metas()
         self.settings_lock = asyncio.Lock()
-        # Références vers les tâches du niveau 2 : sans elles, asyncio peut les libérer en cours de route.
+        # References to the level 2 tasks: without them, asyncio may free them midway.
         self.background: set[asyncio.Task] = set()
-        # (astuces, matrice de leurs vecteurs) : remplacé d'un seul bloc et lu en une fois, car la recherche
-        # tourne dans un thread pendant que la mise à jour de fond peut changer la base.
+        # (tips, matrix of their vectors): replaced in a single block and read at once, because the search
+        # runs in a thread while the background update may change the database.
         self.plonkit_base: tuple[list, Any] = ([], None)
         self.plonkit_status = "off" if not cfg.plonkit.enabled else "absent"  # absent, busy, ready, error, off
         self.plonkit_message = ""
         self.plonkit_task: asyncio.Task | None = None
         self.plonkit_index: TipIndex | None = None
-        self.plonkit_summary = ""  # « 4060 astuces, 84 pays » : base des messages de la traduction d'avance
+        self.plonkit_summary = ""  # "4060 astuces, 84 pays": base of the ahead-of-time translation messages
         self.pretranslate_task: asyncio.Task | None = None
-        self.plonk: PlonkCloud | None = None  # nuage de la carte (PLONK), chargé après StreetCLIP
+        self.plonk: PlonkCloud | None = None  # map cloud (PLONK), loaded after StreetCLIP
         self.plonk_message = "désactivé" if not cfg.plonk.enabled else "en attente de StreetCLIP"
         self.plonk_task: asyncio.Task | None = None
-        self.borders: Borders | None = None  # frontières Natural Earth : pays des points, contours de la carte
-        self.places: Places | None = None  # noms de lieux GeoNames (règles locales des marques)
+        self.borders: Borders | None = None  # Natural Earth borders: countries of the points, map outlines
+        self.places: Places | None = None  # GeoNames place names (local rules of the marks)
         self.places_message = "désactivé" if not cfg.rules.places else "en attente"
         self.places_task: asyncio.Task | None = None
-        self.detail_tasks: dict[str, asyncio.Task] = {}  # répertoire complet d'un pays, en cours de téléchargement
-        self.detail_failed: set[str] = set()  # pays dont le détail a échoué : pas de nouvel essai avant redémarrage
-        self.erased = False  # « Tout effacer » fait : plus rien n'est valide en mémoire, relance attendue
+        self.detail_tasks: dict[str, asyncio.Task] = {}  # full directory of a country, being downloaded
+        self.detail_failed: set[str] = set()  # countries whose detail failed: no new attempt before a restart
+        self.erased = False  # "Erase everything" done: nothing in memory is valid any more, restart expected
 
     def load_metas(self) -> None:
         self.metas, self.metas_message = [], "désactivées"
@@ -164,11 +164,11 @@ class Engine(MarksMixin, LocksMixin):
                     self.cfg.metas.user_path, self.cfg.metas.include_seed, self.cfg.streetclip.countries.values()
                 )
                 self.metas_message = f"{len(self.metas)} metas chargées"
-            except (MetaError, ValueError) as exc:  # fichier « mes metas » invalide : on le signale sans bloquer
+            except (MetaError, ValueError) as exc:  # invalid "mes metas" file: reported without blocking
                 self.metas_message = f"metas indisponibles : {exc}"
 
     async def apply_settings(self, changes: dict[str, dict[str, Any]]) -> dict[str, Any]:
-        """Enregistre les réglages puis les applique à chaud (tous les réglages exposés le permettent)."""
+        """Saves the settings then applies them on the fly (all the exposed settings allow it)."""
         async with self.settings_lock:
             try:
                 new = await asyncio.to_thread(save, changes, self.settings_path)
@@ -177,11 +177,11 @@ class Engine(MarksMixin, LocksMixin):
             old, self.cfg = self.cfg, new
             self.notifier.enabled, self.notifier.sound = new.capture.notify, new.capture.sound
             self.vision = VisionClient(new.vision)
-            if new.marks.parallel != old.marks.parallel:  # les lectures en cours gardent l'ancien
+            if new.marks.parallel != old.marks.parallel:  # the readings in progress keep the old one
                 self.mark_slots = asyncio.Semaphore(new.marks.parallel)
             if self.streetclip:
                 labels = (new.streetclip.prompt, new.streetclip.countries)
-                if labels != (old.streetclip.prompt, old.streetclip.countries):  # vecteurs texte à recalculer
+                if labels != (old.streetclip.prompt, old.streetclip.countries):  # text vectors to recompute
                     async with self.gpu_lock:
                         await asyncio.to_thread(self.streetclip.set_labels, new.streetclip)
                 else:
@@ -190,17 +190,17 @@ class Engine(MarksMixin, LocksMixin):
                 self.dataset = Dataset(new.dataset.path) if new.dataset.enabled else None
             self.load_metas()
             if self.plonk:
-                self.plonk.cfg = new.plonk  # pas et points : lus à chaque nuage
+                self.plonk.cfg = new.plonk  # steps and points: read for each cloud
             if new.plonk.enabled and self.plonk is None:
                 self.schedule_plonk()
             elif not new.plonk.enabled:
-                self.plonk, self.plonk_message = None, "désactivé"  # libère la mémoire vidéo
+                self.plonk, self.plonk_message = None, "désactivé"  # frees the video memory
             if new.plonkit.enabled and self.plonkit_status == "off":
                 self.plonkit_status = "absent"
                 self.schedule_plonkit(check=self.plonkit_due())
             elif not new.plonkit.enabled:
                 self.plonkit_status, self.plonkit_message = "off", ""
-            # Langue changée, traduction d'avance réactivée… : elle reprend là où le cache s'arrête.
+            # Language changed, ahead-of-time translation re-enabled…: it resumes where the cache stops.
             if self.plonkit_status == "ready":
                 self.schedule_pretranslate()
             if new.rules.places and self.places is None:
@@ -212,7 +212,7 @@ class Engine(MarksMixin, LocksMixin):
                    if key in RESTART.get(section, ())]
         return {"ok": True, "settings": current(self.cfg), "restart": restart}
 
-    # --- diffusion -------------------------------------------------------------------------
+    # --- broadcast -------------------------------------------------------------------------
     def state(self) -> dict[str, Any]:
         return {
             "type": "state",
@@ -226,7 +226,7 @@ class Engine(MarksMixin, LocksMixin):
                 "enabled": self.cfg.vision.enabled,
                 "ready": self.vision.ready,
                 "model": self.cfg.vision.model,
-                "key": apikey.hint(self.cfg.vision.api_key_env),  # d'où vient la clé, 4 derniers caractères
+                "key": apikey.hint(self.cfg.vision.api_key_env),  # where the key comes from, last 4 characters
             },
             "help_level": self.cfg.coach.help_level,
             "trust_proof": self.cfg.coach.trust_proof,
@@ -254,7 +254,7 @@ class Engine(MarksMixin, LocksMixin):
                 "close_zoom": self.cfg.map.close_zoom, "max_zoom": self.cfg.map.max_zoom,
             },
             "countries": sorted(self.cfg.streetclip.countries.values()),
-            "erased": self.erased,  # « Tout effacer » fait : le moteur attend d'être relancé
+            "erased": self.erased,  # "Erase everything" done: the engine is waiting to be restarted
         }
 
     async def broadcast(self, message: dict[str, Any]) -> None:
@@ -265,7 +265,7 @@ class Engine(MarksMixin, LocksMixin):
                 self.clients.discard(ws)
 
     def _on_capture_state(self, alive: bool, message: str, interrupted: bool) -> None:
-        """Appelé depuis le thread GLib : on repasse dans la boucle asyncio."""
+        """Called from the GLib thread: we go back into the asyncio loop."""
         self.capture_message = message
         self.capture_starting = False
         if interrupted:
@@ -273,7 +273,7 @@ class Engine(MarksMixin, LocksMixin):
         if self.loop:
             asyncio.run_coroutine_threadsafe(self.broadcast(self.state()), self.loop)
 
-    # --- cycle de vie ----------------------------------------------------------------------
+    # --- lifecycle -------------------------------------------------------------------------
     async def start(self) -> None:
         self.loop = asyncio.get_running_loop()
         self.capture.start()
@@ -300,9 +300,9 @@ class Engine(MarksMixin, LocksMixin):
                 task.cancel()
         await asyncio.to_thread(self.capture.stop)
 
-    # --- stockage : tailles, limite des caches qui grossissent, « Vider » -----------------------------
+    # --- storage: sizes, limit of the caches that grow, "Empty" -----------------------------------
     async def evict_caches(self, keep: set[str] = frozenset()) -> list[str]:
-        """Villages des pays au-delà de la limite : les moins récemment utilisés partent (sauf keep)."""
+        """Villages of the countries beyond the limit: the least recently used go (except keep)."""
         removed = await asyncio.to_thread(storage.evict, self.cfg.rules.places_path,
                                           self.cfg.storage.max_cache_mb * 1024 * 1024, set(keep))
         for country in removed:
@@ -314,7 +314,7 @@ class Engine(MarksMixin, LocksMixin):
         items = storage.inventory(self.cfg.rules.places_path, self.cfg.plonkit.path, self.cfg.capture.path)
         return {"items": items, "max_cache_mb": self.cfg.storage.max_cache_mb}
 
-    # --- « Tout effacer » (RGPD) -------------------------------------------------------------------
+    # --- "Erase everything" (GDPR) -------------------------------------------------------------------
     def _erase_targets(self) -> tuple[dict[str, list[Path]], list[Path], list[Path]]:
         cfg, rc = self.cfg, self.cfg.rules
         groups = {
@@ -325,7 +325,7 @@ class Engine(MarksMixin, LocksMixin):
             "lieux": storage.village_files(rc.places_path) + storage.base_place_files(rc.places_path),
         }
         models = storage.model_dirs(paths.hf_hub_cache(), [cfg.streetclip.model, cfg.plonk.model])
-        # Dossiers retirés s'ils sont vides après coup (un fichier inconnu les garde).
+        # Folders removed if they are empty afterwards (an unknown file keeps them).
         folders = [paths.CONFIG_DIR, paths.DATA_DIR, cfg.capture.path, cfg.dataset.path, cfg.dataset.path / "images",
                    cfg.dataset.path / "rounds", cfg.plonkit.path, cfg.plonkit.path / "raw", rc.places_path]
         return groups, models, folders
@@ -335,7 +335,7 @@ class Engine(MarksMixin, LocksMixin):
         return {"groups": storage.erase_plan(groups, models)}
 
     async def erase_all(self, with_models: bool) -> dict[str, Any]:
-        """Efface tout ce qui te concerne ; le moteur doit ensuite être relancé (l'interface le demande à Tauri)."""
+        """Erases everything about you; the engine must then be restarted (the UI asks Tauri to)."""
         for task in (self.plonkit_task, self.pretranslate_task, self.places_task, self.plonk_task,
                      *self.detail_tasks.values()):
             if task and not task.done():
@@ -350,14 +350,14 @@ class Engine(MarksMixin, LocksMixin):
         freed = await asyncio.to_thread(storage.erase, groups, models, with_models, folders)
         try:
             shortcuts = await asyncio.to_thread(storage.remove_shortcuts)
-        except (OSError, subprocess.SubprocessError):  # pas de GNOME : rien à retirer
+        except (OSError, subprocess.SubprocessError):  # no GNOME: nothing to remove
             shortcuts = 0
         self.erased = True
         await self.broadcast(self.state())
         return {"ok": True, "freed": freed, "shortcuts": shortcuts}
 
     async def clear_storage(self, what: str) -> dict[str, Any]:
-        """Vide un élément du stockage ; seuls des fichiers connus sont supprimés, jamais un dossier."""
+        """Empties a storage item; only known files are deleted, never a folder."""
         rc = self.cfg.rules
         if what in ("villages", "lieux") and self.places:
             for country in list(self.places.details):
@@ -387,14 +387,14 @@ class Engine(MarksMixin, LocksMixin):
         await self.broadcast(self.state())
         return {"ok": True, "freed": freed, **self.storage_items()}
 
-    # --- PLONK : nuage de la carte -----------------------------------------------------------------
+    # --- PLONK: map cloud --------------------------------------------------------------------------
     def schedule_plonk(self) -> None:
         if self.plonk_task and not self.plonk_task.done():
             return
         self.plonk_task = asyncio.create_task(self.load_plonk())
 
     async def load_plonk(self) -> None:
-        """Charge PLONK (et les frontières) sur la carte graphique de StreetCLIP, dont il lit le vecteur."""
+        """Loads PLONK (and the borders) on StreetCLIP's graphics card, whose vector it reads."""
         if self.streetclip is None:
             self.plonk_message = "StreetCLIP est nécessaire au nuage de la carte"
             await self.broadcast(self.state())
@@ -409,14 +409,14 @@ class Engine(MarksMixin, LocksMixin):
                 plonk = await asyncio.to_thread(PlonkCloud, cfg, device)
             if self.cfg.plonk.enabled:
                 self.plonk, self.plonk_message = plonk, f"prêt ({device})"
-            else:  # désactivé pendant le chargement : on ne le garde pas
+            else:  # disabled during loading: we do not keep it
                 self.plonk_message = "désactivé"
-        except Exception as exc:  # poids absents hors ligne, mémoire vidéo, fichier de frontières…
+        except Exception as exc:  # weights missing offline, video memory, borders file…
             self.plonk, self.plonk_message = None, f"indisponible : {type(exc).__name__}: {exc}"[:300]
         await self.broadcast(self.state())
 
     async def _cloud(self, capture_id: str, cls) -> None:
-        """Nuage PLONK de la vue, en arrière-plan après StreetCLIP : il ne retarde jamais l'aide."""
+        """PLONK cloud of the view, in the background after StreetCLIP: it never delays the help."""
         plonk, borders = self.plonk, self.borders
         if plonk is None or borders is None:
             return
@@ -425,7 +425,7 @@ class Engine(MarksMixin, LocksMixin):
                 cloud = await asyncio.to_thread(plonk.sample, cls)
             countries = await asyncio.to_thread(borders.countries_of, cloud.lat, cloud.lon)
             message = {"type": "cloud", "id": capture_id, **summarise(cloud, countries, plonk.cfg)}
-        except Exception as exc:  # mémoire vidéo saturée… : la carte reste au niveau des pays
+        except Exception as exc:  # video memory full…: the map stays at country level
             message = {"type": "cloud", "id": capture_id, "error": f"nuage indisponible ({type(exc).__name__})"}
         await self._log(capture_id, cloud={k: v for k, v in message.items() if k not in ("type", "id")})
         await self.broadcast(message)
@@ -436,7 +436,7 @@ class Engine(MarksMixin, LocksMixin):
         return self.plonkit_base[0]
 
     def plonkit_due(self) -> bool:
-        """Le dernier contrôle de la liste des guides date-t-il de plus de refresh_days jours ?"""
+        """Was the last check of the guides list more than refresh_days days ago?"""
         try:
             last = float((self.cfg.plonkit.path / CHECKED_FILE).read_text())
         except (OSError, ValueError):
@@ -444,7 +444,7 @@ class Engine(MarksMixin, LocksMixin):
         return time.time() - last > self.cfg.plonkit.refresh_days * 86400
 
     def schedule_plonkit(self, check: bool) -> bool:
-        """Lance la mise à jour en arrière-plan ; False si une est déjà en cours."""
+        """Starts the update in the background; False if one is already running."""
         if self.plonkit_task and not self.plonkit_task.done():
             return False
         self.plonkit_task = asyncio.create_task(self.refresh_plonkit(check))
@@ -455,7 +455,7 @@ class Engine(MarksMixin, LocksMixin):
         await self.broadcast(self.state())
 
     async def refresh_plonkit(self, check: bool) -> None:
-        """check : contrôler la liste en ligne et recharger les guides modifiés ; puis indexer et vectoriser."""
+        """check: check the online list and reload the modified guides; then index and vectorise."""
         pc = self.cfg.plonkit
         if self.streetclip is None:
             await self._plonkit_status("error", "StreetCLIP est nécessaire pour comparer la vue aux astuces")
@@ -477,16 +477,16 @@ class Engine(MarksMixin, LocksMixin):
             self.plonkit_summary = summary
             await self._classify_plonkit(summary)
             self.schedule_pretranslate()
-        except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # réseau, page changée, disque…
-            # On garde la base précédente si elle existe : le coach continue avec les astuces déjà connues.
+        except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # network, page changed, disk…
+            # The previous database is kept if it exists: the coach carries on with the tips already known.
             await self._plonkit_status("ready" if self.plonkit_tips else "error", f"Plonk It : {exc}")
-        except Exception as exc:  # tâche de fond : ne jamais laisser l'interface sur « mise à jour en cours »
+        except Exception as exc:  # background task: never leave the UI on "update running"
             await self._plonkit_status("ready" if self.plonkit_tips else "error",
                                        f"Plonk It : erreur inattendue ({type(exc).__name__})")
             raise
 
     async def _classify_plonkit(self, summary: str) -> None:
-        """Classe par l'IA, par lots, les astuces restées sans catégorie ; reprend où il s'était arrêté."""
+        """Has the AI classify, in batches, the tips left without a category; resumes where it stopped."""
         pc, index = self.cfg.plonkit, self.plonkit_index
         if not (pc.ai_classify and self.vision.client and index):
             return
@@ -499,13 +499,13 @@ class Engine(MarksMixin, LocksMixin):
             await self._plonkit_status("ready", f"{summary} ; classement par l'IA : {done}/{len(pending)}")
             try:
                 found = await classify_tips(self.vision.client, model, batch)
-            except Exception as exc:  # 429, délai, modèle indisponible : on reprendra à la prochaine mise à jour
+            except Exception as exc:  # 429, timeout, model unavailable: we will resume at the next update
                 await self._plonkit_status("ready", f"{summary} ; classement par l'IA interrompu ({type(exc).__name__})")
                 break
-            if found:  # réponse exploitable : les astuces qu'elle laisse de côté restent « autre » pour de bon
+            if found:  # usable answer: the tips it leaves aside stay "autre" for good
                 await asyncio.to_thread(index.store_ai_categories, {h: found.get(h, "autre") for h, _ in batch})
                 done += len(batch)
-            # Lot sans aucune réponse valide (réponse illisible) : rien n'est mémorisé, il sera reproposé.
+            # Batch without any valid answer (unreadable answer): nothing is remembered, it will be offered again.
             if start + pc.ai_batch < len(pending):
                 await asyncio.sleep(pc.ai_pause_s)
         else:
@@ -521,24 +521,24 @@ class Engine(MarksMixin, LocksMixin):
         await asyncio.to_thread(index.rebuild, tips, pc.keywords)
         missing = await asyncio.to_thread(index.missing_embeddings, model)
         if missing:
-            async with self.gpu_lock:  # partage la carte graphique avec les captures
+            async with self.gpu_lock:  # shares the graphics card with the captures
                 vectors = await asyncio.to_thread(self.streetclip.encode_texts, [text for _, text in missing])
             await asyncio.to_thread(index.store_embeddings, model, zip([h for h, _ in missing], vectors, strict=True))
         return await asyncio.to_thread(index.load, model)
 
     @property
     def translation_lang(self) -> str | None:
-        """Langue cible des astuces, ou None si on les garde en anglais."""
+        """Target language of the tips, or None if they stay in English."""
         pc, lang = self.cfg.plonkit, self.cfg.coach.language
         return lang if pc.translate and lang != "en" and self.vision.client else None
 
     def similar(self, emb, pairs: list[tuple[str, float]], codes: list[str] | None = None
                 ) -> dict[str, list[dict[str, Any]]]:
-        """Astuces Plonk It les plus proches de la vue, pour les pays plausibles (ou codes : le pays verrouillé),
-        vide si désactivé, avec leur traduction si elle est déjà en cache. Appelée hors de la boucle : elle lit
-        la base."""
+        """Plonk It tips closest to the view, for the plausible countries (or codes: the locked country),
+        empty if disabled, with their translation if it is already cached. Called outside the loop: it reads
+        the database."""
         pc, m = self.cfg.plonkit, self.cfg.metas
-        tips, matrix = self.plonkit_base  # une seule lecture : astuces et matrice vont ensemble
+        tips, matrix = self.plonkit_base  # a single read: tips and matrix go together
         if not (pc.enabled and pc.similar_tips and tips and emb is not None):
             return {}
         if codes is None:
@@ -555,9 +555,9 @@ class Engine(MarksMixin, LocksMixin):
         }
 
     async def _translate_tips(self, capture_id: str, items: list[tuple[str, str]], lang: str) -> None:
-        """Traduit les astuces affichées sans traduction en cache, puis pousse le résultat à l'interface.
+        """Translates the displayed tips that have no cached translation, then pushes the result to the UI.
 
-        Un seul message par lot, quoi qu'il arrive : l'interface compte les lots pour savoir quand c'est fini.
+        A single message per batch, whatever happens: the UI counts the batches to know when it is over.
         """
         pc = self.cfg.plonkit
         model, t0 = pc.ai_model or self.cfg.vision.model, time.perf_counter()
@@ -567,13 +567,13 @@ class Engine(MarksMixin, LocksMixin):
             if found and self.plonkit_index:
                 await asyncio.to_thread(self.plonkit_index.store_translations, lang, found)
             message = {"type": "tips_translated", "id": capture_id, "translations": found}
-            if len(found) < len(items):  # réponse illisible ou incomplète : le reste garde son anglais
+            if len(found) < len(items):  # unreadable or incomplete answer: the rest keeps its English
                 message["error"] = "réponse du modèle incomplète"
-        except Exception as exc:  # délai, 429… : les astuces restent en anglais pour cette capture
+        except Exception as exc:  # timeout, 429…: the tips stay in English for this capture
             message = {"type": "tips_translated", "id": capture_id, "translations": {},
                        "error": f"traduction indisponible ({type(exc).__name__})"}
         entry = self.recent.get(capture_id)
-        if entry is not None:  # journal du mode débogage : chaque lot, sa durée, ce qu'il a rendu
+        if entry is not None:  # debug mode log: each batch, its duration, what it returned
             entry.setdefault("translation", []).append({
                 "tips": len(items), "translated": len(message["translations"]),
                 "seconds": round(time.perf_counter() - t0, 1), "error": message.get("error"),
@@ -581,17 +581,17 @@ class Engine(MarksMixin, LocksMixin):
             await self._log(capture_id, translation=list(entry["translation"]))
         await self.broadcast(message)
 
-    # --- traduction d'avance -------------------------------------------------------------------
+    # --- ahead-of-time translation -------------------------------------------------------------
     def schedule_pretranslate(self) -> None:
         if self.pretranslate_task and not self.pretranslate_task.done():
             return
         self.pretranslate_task = asyncio.create_task(self.pretranslate())
 
     async def pretranslate(self) -> None:
-        """Traduit toute la base en arrière-plan, par lots, en laissant passer les analyses en cours.
+        """Translates the whole database in the background, in batches, letting the running analyses go first.
 
-        Sans elle, chaque manche attend l'API pour ses astuces (mesuré : 50 s à 2 min). Reprend où le cache
-        s'arrête ; un lot raté est retenté au prochain démarrage.
+        Without it, each round waits for the API for its tips (measured: 50 s to 2 min). Resumes where the cache
+        stops; a failed batch is retried at the next start.
         """
         pc, index, lang = self.cfg.plonkit, self.plonkit_index, self.translation_lang
         if not (pc.enabled and pc.pretranslate and lang and index):
@@ -599,17 +599,17 @@ class Engine(MarksMixin, LocksMixin):
         pending = await asyncio.to_thread(index.untranslated, lang)
         total, done = len(pending), 0
         for start in range(0, total, PRETRANSLATE_BATCH):
-            while self.background:  # une manche en cours passe d'abord (analyse, marques, traduction affichée)
+            while self.background:  # a running round goes first (analysis, marks, displayed translation)
                 await asyncio.sleep(1)
             if not self.cfg.plonkit.pretranslate or self.translation_lang != lang:
-                return  # réglages changés entre-temps : la prochaine planification repartira du cache
+                return  # settings changed meanwhile: the next scheduling will start again from the cache
             await self._plonkit_status("ready", f"{self.plonkit_summary} ; traduction d'avance : {done}/{total}")
             batch = pending[start:start + PRETRANSLATE_BATCH]
             model = self.cfg.plonkit.ai_model or self.cfg.vision.model
             try:
                 found = await asyncio.wait_for(translate_tips(self.vision.client, model, batch, lang),
                                                max(self.cfg.plonkit.translate_timeout_s, 60))
-            except Exception as exc:  # 429, délai : on s'arrête là, reprise au prochain démarrage
+            except Exception as exc:  # 429, timeout: we stop there, resume at the next start
                 await self._plonkit_status(
                     "ready", f"{self.plonkit_summary} ; traduction d'avance interrompue ({type(exc).__name__})")
                 return
@@ -620,9 +620,9 @@ class Engine(MarksMixin, LocksMixin):
         await self._plonkit_status("ready", f"{self.plonkit_summary} ; {done} astuces traduites d'avance"
                                    if total else self.plonkit_summary)
 
-    # --- analyse ---------------------------------------------------------------------------
+    # --- analysis --------------------------------------------------------------------------
     async def _grab(self) -> tuple[Image.Image | None, str]:
-        """Image brute de la fenêtre partagée, ou None et l'erreur (déjà signalée) si le partage ne répond pas."""
+        """Raw image of the shared window, or None and the error (already reported) if the sharing does not respond."""
         try:
             return await asyncio.to_thread(self.capture.grab), ""
         except CaptureError as exc:
@@ -647,7 +647,7 @@ class Engine(MarksMixin, LocksMixin):
         if self.cfg.capture.save_to_disk:
             saved = await asyncio.to_thread(save_png, view, self.cfg.capture.path, f"capture-{capture_id}")
         if (self.cfg.capture.save_to_disk or self.cfg.debug.enabled) and self.cfg.capture.keep_last:
-            # Aussi en débogage sans copie des captures : les journaux seuls ne doivent pas s'accumuler.
+            # Also in debug mode without capture copies: the logs alone must not pile up.
             await asyncio.to_thread(prune_captures, self.cfg.capture.path, self.cfg.capture.keep_last)
         capture_ms = (time.perf_counter() - t0) * 1000
         if self.cfg.debug.enabled:
@@ -658,7 +658,7 @@ class Engine(MarksMixin, LocksMixin):
             "thumbnail": await asyncio.to_thread(data_url, view), "ms": round(capture_ms),
         })
 
-        if self.cfg.vision.enabled:  # niveau 2 en parallèle : il est lent, on ne l'attend pas
+        if self.cfg.vision.enabled:  # level 2 in parallel: it is slow, we do not wait for it
             task = asyncio.create_task(self._vision(capture_id, view))
             self.background.add(task)
             task.add_done_callback(self.background.discard)
@@ -667,17 +667,17 @@ class Engine(MarksMixin, LocksMixin):
             try:
                 async with self.gpu_lock:
                     scores, ms, emb, cls = await asyncio.to_thread(self.streetclip.analyse, view)
-            except Exception as exc:  # mémoire GPU saturée, pilote…
+            except Exception as exc:  # GPU memory full, driver…
                 await self.broadcast({"type": "error", "message": f"Niveau 1 indisponible : {exc}"})
                 return {"ok": False, "id": capture_id, "error": str(exc)}
             pairs = [(s.code, s.probability) for s in scores]
             if capture_id in self.recent and scores:
                 self.recent[capture_id].update(predicted=scores[0].code, scores=pairs, emb=emb)
             similar = await asyncio.to_thread(self.similar, emb, pairs)
-            if capture_id in self.recent:  # pays dont les astuces sont déjà envoyées (verrou : voir locks_engine)
+            if capture_id in self.recent:  # countries whose tips have already been sent (lock: see locks_engine)
                 self.recent[capture_id]["tips_for"] = set(similar)
                 locks = self.recent[capture_id].get("locks")
-                if locks and locks.country() and locks.country() not in similar:  # verrouillé avant la fin du calcul
+                if locks and locks.country() and locks.country() not in similar:  # locked before the computation ended
                     task = asyncio.create_task(self._tips_for(capture_id, locks.country()))
                     self.background.add(task)
                     task.add_done_callback(self.background.discard)
@@ -694,16 +694,16 @@ class Engine(MarksMixin, LocksMixin):
                 "scores": [s.__dict__ for s in scores],
                 "lookfor": [asdict(lf) for lf in self.look_for(pairs)],
                 "similar": similar, "translating": bool(lang and missing),
-                # Nombre de lots de traduction : un message « tips_translated » arrivera pour chacun.
+                # Number of translation batches: a "tips_translated" message will arrive for each.
                 "batches": -(-len(missing) // TRANSLATE_BATCH) if lang else 0,
-                "cloud": self.plonk is not None and cls is not None,  # nuage annoncé : la carte l'attend
+                "cloud": self.plonk is not None and cls is not None,  # cloud announced: the map waits for it
             })
             if self.plonk is not None and cls is not None:
                 task = asyncio.create_task(self._cloud(capture_id, cls))
                 self.background.add(task)
                 task.add_done_callback(self.background.discard)
-            if lang and missing:  # en parallèle, comme le niveau 2 : l'anglais s'affiche d'abord
-                # Petits lots simultanés (~10 s chacun) : chaque traduction s'affiche dès qu'elle arrive.
+            if lang and missing:  # in parallel, like level 2: the English shows first
+                # Small simultaneous batches (~10 s each): each translation shows as soon as it arrives.
                 for start in range(0, len(missing), TRANSLATE_BATCH):
                     task = asyncio.create_task(
                         self._translate_tips(capture_id, missing[start:start + TRANSLATE_BATCH], lang))
@@ -712,12 +712,12 @@ class Engine(MarksMixin, LocksMixin):
         return {"ok": True, "id": capture_id}
 
     def look_for(self, scores: list[tuple[str, float]]):
-        """Catégories d'indices qui départagent les pays plausibles d'une vue (vide sans metas)."""
+        """Clue categories that tell a view's plausible countries apart (empty without metas)."""
         m = self.cfg.metas
         return self.separate(select_candidates(scores, m.min_probability, m.max_candidates), m.max_categories)
 
     def separate(self, candidates: list[tuple[str, float]], max_categories: int):
-        """Départage de ces candidats-là, selon les metas chargées et les réglages."""
+        """Tie-break between these particular candidates, according to the loaded metas and the settings."""
         if not self.metas:
             return []
         m = self.cfg.metas
@@ -727,7 +727,7 @@ class Engine(MarksMixin, LocksMixin):
         )
 
     async def judge(self, req: JudgeRequest) -> dict[str, Any]:
-        """« Juste » / « Faux » sur un indice de l'amorce : écrit dans mes-metas.toml puis recharge les metas."""
+        """"Right" / "Wrong" on a seed clue: written to mes-metas.toml, then the metas are reloaded."""
         if not (self.cfg.metas.enabled and self.cfg.metas.judge_buttons):
             raise HTTPException(409, "verdicts désactivés dans la configuration")
         async with self.settings_lock:
@@ -736,9 +736,9 @@ class Engine(MarksMixin, LocksMixin):
                     judge_seed, self.cfg.metas.user_path, req.category, req.hint, req.verdict,
                     self.cfg.streetclip.countries.values(),
                 )
-            except UserMetasError as exc:  # le fichier du joueur est à corriger à la main
+            except UserMetasError as exc:  # the player's file must be fixed by hand
                 raise HTTPException(409, str(exc)) from exc
-            except MetaError as exc:  # indice absent de l'amorce
+            except MetaError as exc:  # clue not in the seed
                 raise HTTPException(422, str(exc)) from exc
             self.load_metas()
         await self.broadcast(self.state())
@@ -749,7 +749,7 @@ class Engine(MarksMixin, LocksMixin):
         return {"ok": True}
 
     async def truth(self, link: str) -> dict[str, Any]:
-        """Vrai lieu d'après un lien Google Maps : position, pays (frontières locales), région (lieu le plus proche)."""
+        """True place from a Google Maps link: position, country (local borders), region (closest place)."""
         found = coords_of(link)
         if found is None:
             raise HTTPException(422, "pas de coordonnées dans ce lien : colle le lien complet (pas un lien court "
@@ -766,7 +766,7 @@ class Engine(MarksMixin, LocksMixin):
         return {"lat": lat, "lon": lon, "country": country, "region": region, "region_name": region_name}
 
     def round_data(self, entry: dict[str, Any]) -> dict[str, Any]:
-        """Ce que le coach avait lu et conclu pendant la manche : rejoué ensuite par le banc (bench.py)."""
+        """What the coach had read and concluded during the round: replayed later by the bench (bench.py)."""
         locks = entry.get("locks")
         return {
             "at": entry.get("at"),
@@ -813,7 +813,7 @@ class Engine(MarksMixin, LocksMixin):
             return {}
         prog = asdict(progress(await asyncio.to_thread(self.dataset.labels)))
         prog["confusions"] = prog["confusions"][: self.cfg.dataset.max_confusions]
-        for c in prog["confusions"]:  # ce qui sépare les deux pays confondus, d'après tes metas et l'amorce
+        for c in prog["confusions"]:  # what separates the two confused countries, according to your metas and the seed
             pair = [(c["country"], 0.5), (c["guessed"], 0.5)]
             c["lookfor"] = [asdict(lf) for lf in self.separate(pair, max_categories=2)]
         return prog
@@ -832,7 +832,7 @@ class Engine(MarksMixin, LocksMixin):
             await self._log(capture_id, vision={"model": self.cfg.vision.model, "error": str(exc)})
             await self.broadcast({"type": "vision_error", "id": capture_id, "error": str(exc)})
 
-    # --- mode débogage : journal de chaque analyse -------------------------------------------------
+    # --- debug mode: log of each analysis ---------------------------------------------------------
     async def _start_log(self, capture_id: str, saved: Path | None) -> None:
         cfg = self.cfg
         base = {
@@ -843,7 +843,7 @@ class Engine(MarksMixin, LocksMixin):
         }
         try:
             log = await asyncio.to_thread(AnalysisLog, cfg.capture.path / f"capture-{capture_id}.json", base)
-        except OSError:  # disque plein, dossier interdit : le coach continue sans journal
+        except OSError:  # disk full, folder forbidden: the coach carries on without a log
             return
         if capture_id in self.recent:
             self.recent[capture_id]["log"] = log
@@ -852,12 +852,12 @@ class Engine(MarksMixin, LocksMixin):
         entry = self.recent.get(capture_id)
         log = entry.get("log") if entry else None
         if log is not None:
-            with suppress(OSError):  # un journal raté ne doit jamais casser l'analyse
+            with suppress(OSError):  # a failed log must never break the analysis
                 await asyncio.to_thread(log.update, **fields)
 
 
 async def _unix_trigger(engine: Engine) -> asyncio.AbstractServer:
-    """Socket Unix réservé à l'utilisateur (0600) : reçoit « capture » depuis le raccourci GNOME."""
+    """Unix socket restricted to the user (0600): receives "capture" from the GNOME shortcut."""
 
     async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         try:
@@ -899,17 +899,17 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
             await engine.stop()
 
     app = FastAPI(title="GeoNesClick", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-    app.state.engine = engine  # accès pour les tests
-    # Contre le « DNS rebinding » : un domaine piégé qui pointerait vers 127.0.0.1 garde son propre Host.
+    app.state.engine = engine  # access for the tests
+    # Against "DNS rebinding": a booby-trapped domain pointing to 127.0.0.1 keeps its own Host.
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
-    # Requêtes JSON de l'interface : pré-vérification CORS limitée aux origines autorisées.
+    # JSON requests from the UI: CORS preflight limited to the allowed origins.
     app.add_middleware(
         CORSMiddleware, allow_origins=sorted(allowed), allow_methods=["GET", "POST"], allow_headers=["Content-Type"]
     )
 
     @app.middleware("http")
     async def check_origin(request: Request, call_next):
-        # Un site web ouvert dans le navigateur pourrait viser 127.0.0.1 : on refuse toute origine inconnue.
+        # A website open in the browser could target 127.0.0.1: any unknown origin is refused.
         origin = request.headers.get("origin")
         if origin is not None and origin not in allowed:
             return JSONResponse({"error": "origine refusée"}, status_code=403)
@@ -925,40 +925,40 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/marks/freeze")
     async def freeze() -> dict[str, Any]:
-        """Bouton « Marquer » : fige la vue pour y entourer des indices."""
+        """"Mark" button: freezes the view to circle clues on it."""
         return await engine.freeze()
 
     @app.post("/marks/frame")
     async def frozen_frame(req: FrameRequest) -> dict[str, Any]:
-        """Image de la vue figée, pour la fenêtre des marques. POST : l'origine est toujours contrôlée."""
+        """Image of the frozen view, for the marks window. POST: the origin is always checked."""
         return await asyncio.to_thread(engine.frozen_image, req)
 
     @app.post("/marks/remove")
     async def remove_mark(req: DeleteRequest) -> dict[str, Any]:
-        """Retirer une marque dont la lecture est fausse : la conclusion est recalculée sans elle."""
+        """Remove a mark whose reading is wrong: the conclusion is recomputed without it."""
         return await engine.remove_mark(req)
 
     @app.post("/locks")
     async def set_lock(req: LockRequest) -> dict[str, Any]:
-        """Le joueur verrouille un pays, une région ou une ville (« je vois la tour Eiffel : Paris »)."""
+        """The player locks a country, a region or a city ("I can see the Eiffel Tower: Paris")."""
         return await engine.set_lock(req)
 
     @app.post("/locks/reject")
     async def reject_lock(req: RejectRequest) -> dict[str, Any]:
-        """✕ sur un verrou ou sur la ville proposée : écarté pour toute la capture."""
+        """✕ on a lock or on the suggested city: ruled out for the whole capture."""
         return await engine.reject_lock(req)
 
     @app.post("/locks/search")
     async def search_places(req: PlaceSearchRequest) -> dict[str, Any]:
-        """Recherche d'une région ou d'une ville dans l'index local (aucun réseau). POST : origine contrôlée."""
+        """Search for a region or a city in the local index (no network). POST: origin checked."""
         return await engine.search_places(req)
 
     @app.post("/marks")
     async def marks(req: MarksRequest) -> dict[str, Any]:
-        """Marques tracées sur la vue figée : découpées, agrandies, puis transcrites par le modèle de vision."""
+        """Marks drawn on the frozen view: cropped, enlarged, then transcribed by the vision model."""
         return await engine.add_marks(req)
 
-    restart_lock = asyncio.Lock()  # deux relances simultanées se disputeraient le thread GLib et le portail
+    restart_lock = asyncio.Lock()  # two simultaneous restarts would fight over the GLib thread and the portal
 
     async def _restart(message: str, forget_window: bool) -> dict[str, Any]:
         async with restart_lock:
@@ -974,27 +974,27 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/capture/reselect")
     async def reselect() -> dict[str, Any]:
-        """Changer de fenêtre (autre navigateur, écran, résolution) : rouvre le sélecteur de GNOME."""
+        """Change window (other browser, screen, resolution): reopens the GNOME picker."""
         return await _restart("choisis la fenêtre du jeu à partager…", forget_window=True)
 
     @app.post("/label")
     async def label(req: LabelRequest) -> dict[str, Any]:
-        """« C'était où ? » : ajoute la capture au jeu de test avec le pays réel."""
+        """"Where was it?": adds the capture to the test set with the real country."""
         return await engine.label(req)
 
     @app.post("/label/preview")
     async def label_preview(req: TruthRequest) -> dict[str, Any]:
-        """Ce que dit le lien collé dans « C'était où ? » (pays, région, position), avant d'enregistrer."""
+        """What the link pasted into "Where was it?" says (country, region, position), before saving."""
         return await engine.truth(req.link)
 
     @app.post("/metas/judge")
     async def judge(req: JudgeRequest) -> dict[str, Any]:
-        """Le joueur confirme (« Juste ») ou écarte (« Faux ») un indice de l'amorce."""
+        """The player confirms ("Right") or dismisses ("Wrong") a seed clue."""
         return await engine.judge(req)
 
     @app.post("/plonkit/refresh")
     async def plonkit_refresh() -> dict[str, Any]:
-        """Bouton « Mettre à jour » : contrôle la liste des guides maintenant, sans attendre refresh_days."""
+        """"Update" button: checks the guides list now, without waiting for refresh_days."""
         if not engine.cfg.plonkit.enabled:
             raise HTTPException(409, "Plonk It désactivé dans la configuration")
         if not engine.schedule_plonkit(check=True):
@@ -1003,7 +1003,7 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.get("/map/countries")
     async def map_countries() -> JSONResponse:
-        """Contours des pays (Natural Earth 1:50m, domaine public), avec leur seul code ISO."""
+        """Country outlines (Natural Earth 1:50m, public domain), with only their ISO code."""
         if engine.borders is None:
             engine.borders = await asyncio.to_thread(Borders)
         return JSONResponse(engine.borders.geojson, headers={"Cache-Control": "max-age=86400"})
@@ -1014,7 +1014,7 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.get("/settings/file-only")
     async def get_file_only() -> dict[str, Any]:
-        """Réglages réservés au fichier (sécurité), affichés en lecture seule avec leur raison."""
+        """File-only settings (security), shown read-only with their reason."""
         return file_only(engine.cfg)
 
     @app.post("/settings")
@@ -1023,13 +1023,13 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/settings/api-key")
     async def set_api_key(req: ApiKeyRequest) -> dict[str, Any]:
-        """Clé API saisie dans Réglages : écrite dans un fichier lisible par toi seul (0600), jamais renvoyée."""
+        """API key entered in Settings: written to a file readable by you only (0600), never sent back."""
         name = engine.cfg.vision.api_key_env
 
         def store() -> None:
             if req.key.strip():
                 apikey.save(name, req.key)
-            else:  # champ vidé : la clé est oubliée
+            else:  # field emptied: the key is forgotten
                 apikey.forget(name)
 
         try:
@@ -1049,7 +1049,7 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/models/test")
     async def test_model(req: ModelTestRequest) -> dict[str, Any]:
-        """Le modèle accepte-t-il les images, et en combien de temps répond-il ?"""
+        """Does the model accept images, and how fast does it answer?"""
         try:
             return {"ok": True, "seconds": round(await engine.vision.probe(req.model), 1)}
         except VisionError as exc:
@@ -1057,17 +1057,17 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.get("/storage")
     async def get_storage() -> dict[str, Any]:
-        """Ce que le coach garde sur le disque, et la taille de chaque élément."""
+        """What the coach keeps on disk, and the size of each item."""
         return await asyncio.to_thread(engine.storage_items)
 
     @app.get("/storage/erase")
     async def erase_plan() -> dict[str, Any]:
-        """Ce que « Tout effacer » supprimerait, avec les tailles (rien n'est supprimé ici)."""
+        """What "Erase everything" would delete, with the sizes (nothing is deleted here)."""
         return await asyncio.to_thread(engine.erase_plan)
 
     @app.post("/storage/erase")
     async def erase_all(req: EraseRequest) -> dict[str, Any]:
-        """« Tout effacer » (RGPD) : confirmé par le mot EFFACER ; le moteur est ensuite relancé par l'interface."""
+        """"Erase everything" (GDPR): confirmed by the word EFFACER; the engine is then restarted by the UI."""
         return await engine.erase_all(req.models)
 
     @app.post("/storage/clear")
@@ -1081,14 +1081,14 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     @app.websocket("/ws")
     async def ws(websocket: WebSocket) -> None:
         if websocket.headers.get("origin") not in allowed:
-            await websocket.close(code=1008)  # violation de politique
+            await websocket.close(code=1008)  # policy violation
             return
         await websocket.accept()
         engine.clients.add(websocket)
         try:
             await websocket.send_json(engine.state())
             while True:
-                await websocket.receive_text()  # l'interface n'envoie rien pour l'instant
+                await websocket.receive_text()  # the UI sends nothing for now
         except WebSocketDisconnect:
             pass
         finally:

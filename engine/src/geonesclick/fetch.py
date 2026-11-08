@@ -1,10 +1,10 @@
-"""Téléchargement des modèles, versions figées, pendant l'installation (assistant de premier lancement).
+"""Download of the models, pinned versions, during installation (first-launch assistant).
 
-    python -m geonesclick.fetch streetclip     # obligatoire (1,7 Go)
-    python -m geonesclick.fetch plonk          # option « zones probables sur la carte » (144 Mo)
+    python -m geonesclick.fetch streetclip     # required (1.7 GB)
+    python -m geonesclick.fetch plonk          # "likely zones on the map" option (144 MB)
 
-Seuls les fichiers nécessaires de la version figée sont téléchargés (StreetCLIP : poids en safetensors, jamais le
-pytorch_model.bin en pickle). Annoncés dans downloads.toml ; l'assistant suit la progression à la taille du cache.
+Only the necessary files of the pinned version are downloaded (StreetCLIP: weights in safetensors, never the
+pickled pytorch_model.bin). Listed in downloads.toml; the assistant tracks the progress from the cache size.
 """
 
 from __future__ import annotations

@@ -1,11 +1,11 @@
-//! Assistant de premier lancement (AppImage) : décidé avec l'utilisateur le 2026-11-07.
+//! First-launch assistant (AppImage): decided with the user on 2026-11-07.
 //!
-//! L'AppImage est légère : le moteur (Python, PyTorch, StreetCLIP) s'installe au premier lancement, dans
-//! ~/.local/share/geonesclick/engine/, APRÈS que l'assistant a montré TOUT ce qui sera téléchargé
-//! (engine-bundle/downloads.json) et recueilli ton accord. Le travail lui-même est fait par
-//! engine-bundle/install-engine.sh (testable sans interface) ; ce module vérifie le système, lance ce script, relaie
-//! sa progression à l'interface, installe les raccourcis GNOME et retire le moteur sur demande (« Tout effacer »).
-//! En développement (pas de engine-bundle), rien de tout cela : le moteur vient de engine/.venv.
+//! The AppImage is light: the engine (Python, PyTorch, StreetCLIP) is installed on first launch, in
+//! ~/.local/share/geonesclick/engine/, AFTER the assistant has shown EVERYTHING that will be downloaded
+//! (engine-bundle/downloads.json) and obtained your consent. The work itself is done by
+//! engine-bundle/install-engine.sh (testable without a UI); this module checks the system, runs that script, relays
+//! its progress to the UI, installs the GNOME shortcuts and removes the engine on request ("Erase everything").
+//! In development (no engine-bundle), none of this: the engine comes from engine/.venv.
 
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -18,7 +18,7 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
-/// Ressources embarquées dans l'AppImage (None en développement).
+/// Resources bundled in the AppImage (None in development).
 pub fn bundle_dir(app: &AppHandle) -> Option<PathBuf> {
     let dir = app.path().resource_dir().ok()?.join("engine-bundle");
     dir.join("VERSION").is_file().then_some(dir)
@@ -44,7 +44,7 @@ fn read_version(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
-/// Le moteur est-il à installer (premier lancement) ou à mettre à jour (version de l'AppImage différente) ?
+/// Does the engine need installing (first launch) or updating (different AppImage version)?
 pub fn needed(app: &AppHandle) -> bool {
     match bundle_dir(app) {
         None => false,
@@ -67,7 +67,7 @@ fn in_lib_dirs(rel: &str) -> bool {
     LIB_DIRS.iter().any(|d| Path::new(d).join(rel).exists())
 }
 
-/// Ce que la capture d'écran demande au système (présent d'office sur Ubuntu GNOME) ; paquet Ubuntu à installer sinon.
+/// What screen capture needs from the system (present by default on Ubuntu GNOME); Ubuntu package to install otherwise.
 fn system_checks() -> Vec<Check> {
     let portal = ["/usr/libexec", "/usr/lib", "/usr/lib/xdg-desktop-portal"]
         .iter()
@@ -148,10 +148,10 @@ fn dir_size(path: &Path) -> u64 {
         .sum()
 }
 
-/// Lance install-engine.sh (variante « cuda » ou « cpu »), après ton accord sur le bloc obligatoire. Tes options se
-/// choisissent pendant ce temps et sont appliquées ensuite par setup_apply, AVANT le premier démarrage du moteur.
-/// La progression arrive en événements « setup-progress » : phases du script, lignes de sortie, octets téléchargés
-/// (taille des caches de uv et de Hugging Face).
+/// Runs install-engine.sh ("cuda" or "cpu" variant), after your consent to the required block. Your options are
+/// chosen meanwhile and applied afterwards by setup_apply, BEFORE the engine's first start.
+/// Progress arrives as "setup-progress" events: script phases, output lines, downloaded bytes
+/// (size of the uv and Hugging Face caches).
 #[tauri::command]
 pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
     let bundle = bundle_dir(&app).ok_or("pas d'AppImage : rien à installer")?;
@@ -168,7 +168,7 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("installation impossible à lancer : {e}"))?;
 
-    // Octets téléchargés : caches de uv et de Hugging Face (les paquets et le modèle y arrivent d'abord).
+    // Downloaded bytes: uv and Hugging Face caches (packages and the model land there first).
     let running = Arc::new(AtomicBool::new(true));
     {
         let (app, running) = (app.clone(), running.clone());
@@ -184,7 +184,7 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
             }
         });
     }
-    // Erreurs du script (stderr) relayées telles quelles, comme sa sortie.
+    // Script errors (stderr) relayed as is, like its output.
     if let Some(err) = child.stderr.take() {
         let app = app.clone();
         std::thread::spawn(move || {
@@ -206,8 +206,8 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Tes options (réglages acceptés ou refusés) et ta clé API, écrites par le moteur installé AVANT son premier
-/// démarrage : il ne téléchargera jamais une option refusée. Mêmes contrôles que l'écran Réglages.
+/// Your options (settings accepted or declined) and your API key, written by the installed engine BEFORE its first
+/// start: it will never download a declined option. Same checks as the Settings screen.
 #[tauri::command]
 pub fn setup_apply(choices: Value, api_key: Option<String>) -> Result<(), String> {
     let mut child = Command::new(venv_python())
@@ -258,7 +258,7 @@ fn gsettings(args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
 }
 
-/// Raccourcis GNOME : Super+Maj+G (capture) et Super+Maj+Z (marques), vers le déclencheur du moteur installé.
+/// GNOME shortcuts: Super+Shift+G (capture) and Super+Shift+Z (marks), pointing to the installed engine's trigger.
 #[tauri::command]
 pub fn setup_shortcuts(app: AppHandle) -> Result<(), String> {
     let python = if bundle_dir(&app).is_some() {
@@ -286,8 +286,8 @@ pub fn setup_shortcuts(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// « Tout effacer » avec la case moteur : retire ~/.local/share/geonesclick/engine (AppImage seulement ; jamais le
-/// engine/.venv du développement). Le moteur doit être arrêté avant (voir lib.rs).
+/// "Erase everything" with the engine box ticked: removes ~/.local/share/geonesclick/engine (AppImage only; never the
+/// development engine/.venv). The engine must be stopped first (see lib.rs).
 pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
     if bundle_dir(app).is_none() {
         return Err("en développement, le moteur (engine/.venv) n'est pas retiré".into());

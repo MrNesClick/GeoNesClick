@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Niveaux d'aide 1 et 2 : où regarder pour départager les pays probables, sans en nommer aucun.
+// Help levels 1 and 2: where to look to tell the likely countries apart, without naming any.
 import type { LookFor } from "../engine";
 
 defineProps<{ lookfor: LookFor[] | null }>();

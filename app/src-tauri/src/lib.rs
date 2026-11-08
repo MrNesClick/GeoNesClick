@@ -1,10 +1,10 @@
-//! Fenêtres du coach et des marques. Au démarrage, lance le moteur Python et l'arrête à la fermeture.
+//! Coach and marks windows. On startup, launches the Python engine and stops it on close.
 //!
-//! AppImage : le moteur est installé au premier lancement par l'assistant (setup.rs) dans
-//! ~/.local/share/geonesclick/engine/venv ; tant qu'il n'est pas installé (ou à mettre à jour), rien ne démarre.
-//! Développement : le moteur vient de engine/.venv (variable GNC_ENGINE_DIR, par défaut ../../engine relativement à
-//! ce crate). Si un moteur tourne déjà (lancé à la main), le nouveau échoue à ouvrir le port et l'interface se
-//! connecte simplement à celui qui existe.
+//! AppImage: the engine is installed on first launch by the assistant (setup.rs) in
+//! ~/.local/share/geonesclick/engine/venv; while it is not installed (or needs an update), nothing starts.
+//! Development: the engine comes from engine/.venv (variable GNC_ENGINE_DIR, by default ../../engine relative to
+//! this crate). If an engine is already running (started by hand), the new one fails to open the port and the UI
+//! simply connects to the existing one.
 
 mod setup;
 
@@ -26,7 +26,7 @@ fn engine_dir() -> PathBuf {
 fn spawn_engine(app: &AppHandle) -> Option<Child> {
     let (python, dir) = if setup::bundle_dir(app).is_some() {
         if setup::needed(app) {
-            return None; // l'assistant de premier lancement installe d'abord le moteur
+            return None; // the first-launch assistant installs the engine first
         }
         (setup::venv_python(), setup::data_dir())
     } else {
@@ -35,8 +35,8 @@ fn spawn_engine(app: &AppHandle) -> Option<Child> {
     };
     let mut command = Command::new(&python);
     command.args(["-m", "geonesclick"]).current_dir(&dir);
-    // Si l'application meurt sans passer par RunEvent::Exit (signal, plantage), le noyau envoie
-    // SIGTERM au moteur : il ne reste jamais orphelin avec le partage d'écran ouvert.
+    // If the app dies without going through RunEvent::Exit (signal, crash), the kernel sends
+    // SIGTERM to the engine: it is never left orphaned with the screen share still open.
     unsafe {
         command.pre_exec(|| {
             if libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM) == -1 {
@@ -55,7 +55,7 @@ fn spawn_engine(app: &AppHandle) -> Option<Child> {
 }
 
 fn stop_engine(child: &mut Child) {
-    // SIGTERM : uvicorn s'arrête proprement (ferme la session de partage d'écran et le socket).
+    // SIGTERM: uvicorn shuts down cleanly (closes the screen-sharing session and the socket).
     let pid = child.id() as libc::pid_t;
     unsafe {
         libc::kill(pid, libc::SIGTERM);
@@ -66,12 +66,12 @@ fn stop_engine(child: &mut Child) {
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    let _ = child.kill(); // ne répond plus après 5 s
+    let _ = child.kill(); // no longer responding after 5 s
     let _ = child.wait();
 }
 
-/// Relance le moteur (après « Tout effacer » : plus rien de valide en mémoire). Arrête l'ancien proprement, puis en
-/// démarre un neuf, qui repart des dossiers vides.
+/// Restarts the engine (after "Erase everything": nothing valid is left in memory). Stops the old one cleanly, then
+/// starts a fresh one, which starts again from empty folders.
 #[tauri::command]
 fn restart_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
     let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
@@ -82,7 +82,7 @@ fn restart_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(),
     if slot.is_some() { Ok(()) } else { Err("moteur introuvable".into()) }
 }
 
-/// « Tout effacer » avec la case moteur : arrête le moteur puis retire son installation (AppImage seulement).
+/// "Erase everything" with the engine box ticked: stops the engine, then removes its installation (AppImage only).
 #[tauri::command]
 fn erase_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
     let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
@@ -95,7 +95,7 @@ fn erase_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), S
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
-        // Ouvre les pages Plonk It dans le navigateur ; adresses limitées par capabilities/default.json.
+        // Opens Plonk It pages in the browser; addresses restricted by capabilities/default.json.
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             restart_engine,
@@ -110,7 +110,7 @@ pub fn run() {
             app.manage(Engine(Mutex::new(child)));
             Ok(())
         })
-        // La fenêtre des marques reste ouverte (cachée) : fermer le coach doit quitter l'application.
+        // The marks window stays open (hidden): closing the coach must quit the app.
         .on_window_event(|window, event| {
             if window.label() == "main" && matches!(event, WindowEvent::CloseRequested { .. }) {
                 window.app_handle().exit(0);

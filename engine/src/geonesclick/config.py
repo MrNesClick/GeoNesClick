@@ -1,4 +1,4 @@
-"""Configuration : valeurs par défaut du paquet, surchargées par le fichier utilisateur."""
+"""Configuration: the package's default values, overridden by the user file."""
 
 from __future__ import annotations
 
@@ -11,17 +11,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
 from .metas import CATEGORIES
-from .paths import CONFIG_DIR, DATA_DIR  # un seul endroit pour les dossiers de l'application
+from .paths import CONFIG_DIR, DATA_DIR  # a single place for the app's folders
 from .plonkit import DATA_DIR as PLONKIT_DATA_DIR
 
 USER_CONFIG = CONFIG_DIR / "config.toml"
-PROJECT_ROOT = Path(__file__).resolve().parents[3]  # engine/src/geonesclick → racine du dépôt
+PROJECT_ROOT = Path(__file__).resolve().parents[3]  # engine/src/geonesclick → repository root
 
 Rect = list[float]
 
 
 def _check_rect(rect: Rect, name: str) -> Rect:
-    """Rectangle en fractions [gauche, haut, droite, bas], avec 0 ≤ gauche < droite ≤ 1 (idem en hauteur)."""
+    """Rectangle as fractions [left, top, right, bottom], with 0 ≤ left < right ≤ 1 (same for the height)."""
     if len(rect) != 4:
         raise ValueError(f"{name} : 4 valeurs attendues [gauche, haut, droite, bas], {len(rect)} reçues")
     left, top, right, bottom = rect
@@ -49,7 +49,7 @@ class CaptureConfig(BaseModel):
     @field_validator("crop")
     @classmethod
     def _crop(cls, v: Rect) -> Rect:
-        return _check_rect(v, "capture.crop") if v else v  # liste vide = image entière
+        return _check_rect(v, "capture.crop") if v else v  # empty list = whole image
 
     @field_validator("masks")
     @classmethod
@@ -62,15 +62,15 @@ class CaptureConfig(BaseModel):
 
 
 class CoachConfig(BaseModel):
-    # Ce qui s'affiche sans clic : 1 où regarder, 2 + ce que voit l'IA, 3 + pays probables et indices,
-    # 4 + synthèse de la réponse (pays, région si un texte la nomme, preuve).
+    # What is shown without a click: 1 where to look, 2 + what the AI sees, 3 + likely countries and clues,
+    # 4 + synthesis of the answer (country, region if a text names it, proof).
     help_level: int = Field(ge=1, le=4)
-    # Une preuve lue par l'IA avec une certitude forte (texte nommant un lieu…) met ce pays en tête et
-    # écarte les autres, au lieu des seuls pourcentages de StreetCLIP.
+    # A proof read by the AI with strong certainty (text naming a place…) puts that country first and
+    # rules out the others, instead of StreetCLIP's percentages alone.
     trust_proof: bool
-    language: Literal["fr", "en", "es", "de", "it", "pt"]  # langue des traductions (l'interface suivra)
-    # Un pays ne s'affiche en réponse que s'il se détache : au moins leader_min, et leader_margin d'avance
-    # sur le 2ᵉ. Sinon le coach parle d'hésitation entre les premiers, au lieu d'un faux gagnant.
+    language: Literal["fr", "en", "es", "de", "it", "pt"]  # language of the translations (the UI will follow)
+    # A country is shown as the answer only if it stands out: at least leader_min, and a leader_margin lead
+    # over the 2nd. Otherwise the coach talks of hesitation between the first ones, instead of a false winner.
     leader_min: float = Field(ge=0, le=1)
     leader_margin: float = Field(ge=0, le=1)
 
@@ -78,8 +78,8 @@ class CoachConfig(BaseModel):
 class DatasetConfig(BaseModel):
     enabled: bool
     directory: str
-    ask_guessed: bool  # demander le pays répondu (sinon : « Tu l'avais trouvé ? » Oui / Non)
-    max_confusions: int = Field(ge=0, le=10)  # 0 = confusions masquées
+    ask_guessed: bool  # ask for the answered country (otherwise: "Had you found it?" Yes / No)
+    max_confusions: int = Field(ge=0, le=10)  # 0 = confusions hidden
 
     @property
     def path(self) -> Path:
@@ -93,11 +93,11 @@ class MetasConfig(BaseModel):
     min_probability: float = Field(ge=0, le=1)
     max_candidates: int = Field(ge=2, le=20)
     max_categories: int = Field(ge=1, le=12)
-    show_looks: bool  # consignes « Regarde… » avant de révéler les pays
+    show_looks: bool  # "Look…" instructions before revealing the countries
     max_looks: int = Field(ge=1, le=5)
-    judge_buttons: bool  # boutons « Juste » / « Faux » sur les indices de l'amorce
-    category_looks: dict[str, str] = {}  # remplace la consigne par défaut d'une catégorie
-    category_weights: dict[str, float] = {}  # remplace le poids d'une catégorie dans le départage
+    judge_buttons: bool  # "Right" / "Wrong" buttons on the seed clues
+    category_looks: dict[str, str] = {}  # replaces a category's default instruction
+    category_weights: dict[str, float] = {}  # replaces a category's weight in the tie-break
 
     @field_validator("category_looks", "category_weights")
     @classmethod
@@ -119,20 +119,20 @@ class MetasConfig(BaseModel):
 
 
 class PlonkitConfig(BaseModel):
-    enabled: bool  # collecter et utiliser les guides Plonk It (base locale, jamais redistribuée)
-    data_dir: str  # vide = ~/.local/share/geonesclick/plonkit
-    refresh_days: int = Field(ge=1, le=365)  # contrôle de la liste des guides au plus tous les N jours
-    delay_s: float = Field(ge=1.0, le=60.0)  # pause entre deux pages lors d'une collecte
-    similar_tips: bool  # « les astuces qui ressemblent à ta vue », pour chaque pays candidat
+    enabled: bool  # collect and use the Plonk It guides (local database, never redistributed)
+    data_dir: str  # empty = ~/.local/share/geonesclick/plonkit
+    refresh_days: int = Field(ge=1, le=365)  # check the list of guides at most every N days
+    delay_s: float = Field(ge=1.0, le=60.0)  # pause between two pages during a collection
+    similar_tips: bool  # "the tips that look like your view", for each candidate country
     similar_per_country: int = Field(ge=1, le=5)
-    keywords: dict[str, list[str]] = {}  # remplace les mots-clés de classement d'une catégorie
-    ai_classify: bool  # faire classer par l'IA les astuces restées sans catégorie (une fois par texte)
-    ai_model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # vide = le modèle du niveau 2
-    ai_batch: int = Field(ge=5, le=50)  # astuces par appel
-    ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause entre deux appels (limites du palier gratuit)
-    translate: bool  # traduire les astuces affichées dans la langue du coach (à la demande, en cache)
-    translate_timeout_s: float = Field(ge=5.0, le=120.0)  # au-delà, le lot reste en anglais (pas de nouvel essai)
-    pretranslate: bool  # traduire d'avance toute la base en arrière-plan, après les analyses en cours
+    keywords: dict[str, list[str]] = {}  # replaces a category's ranking keywords
+    ai_classify: bool  # have the AI classify the tips left without a category (once per text)
+    ai_model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # empty = the level 2 model
+    ai_batch: int = Field(ge=5, le=50)  # tips per call
+    ai_pause_s: float = Field(ge=0.0, le=60.0)  # pause between two calls (free tier limits)
+    translate: bool  # translate the displayed tips into the coach's language (on demand, cached)
+    translate_timeout_s: float = Field(ge=5.0, le=120.0)  # beyond this, the batch stays in English (no new attempt)
+    pretranslate: bool  # translate the whole database ahead of time in the background, after the running analyses
 
     @field_validator("keywords")
     @classmethod
@@ -149,18 +149,18 @@ class PlonkitConfig(BaseModel):
 class StreetClipConfig(BaseModel):
     enabled: bool
     model: str = Field(pattern=r"^[\w.\-]+/[\w.\-]+$")
-    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # version figée des poids (safetensors) : celle mesurée
+    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # pinned version of the weights (safetensors): the one measured
     device: str = Field(pattern=r"^(auto|cpu|cuda(:\d+)?)$")
     prompt: str = Field(min_length=5, max_length=300)
     top_k: int = Field(ge=1, le=20)
-    countries: dict[str, str]  # nom anglais (prompt) → code ISO à 2 lettres
-    exclude_countries: list[str] = []  # codes retirés de la liste (la fusion des fichiers ne sait qu'ajouter)
-    _all_countries: dict[str, str] = PrivateAttr(default_factory=dict)  # avant exclusion (écran Réglages)
+    countries: dict[str, str]  # English name (prompt) → 2-letter ISO code
+    exclude_countries: list[str] = []  # codes removed from the list (merging the files can only add)
+    _all_countries: dict[str, str] = PrivateAttr(default_factory=dict)  # before exclusion (Settings screen)
 
     @field_validator("prompt")
     @classmethod
     def _placeholder(cls, v: str) -> str:
-        # Passé à str.format : une seule accolade {} et aucune autre (ni champ nommé, ni largeur géante).
+        # Passed to str.format: a single {} brace and no other (no named field, no giant width).
         if v.count("{}") != 1 or "{" in v.replace("{}", "") or "}" in v.replace("{}", ""):
             raise ValueError("le prompt doit contenir une fois {} (le nom du pays) et aucune autre accolade")
         return v
@@ -187,27 +187,27 @@ class StreetClipConfig(BaseModel):
 
 
 class PlonkConfig(BaseModel):
-    # Nuage de positions probables pour la carte (PLONK sur le vecteur de StreetCLIP), jamais un vote de pays.
+    # Cloud of likely positions for the map (PLONK on StreetCLIP's vector), never a country vote.
     enabled: bool
     model: str = Field(pattern=r"^[\w.\-]+/[\w.\-]+$")
-    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # commit Hugging Face des poids : version mesurée, figée
-    steps: int = Field(ge=10, le=250)  # pas du flot : 50 suffisent (mesuré), 25 dégradent le nuage
+    revision: str = Field(pattern=r"^[0-9a-f]{40}$")  # Hugging Face commit of the weights: measured version, pinned
+    steps: int = Field(ge=10, le=250)  # flow steps: 50 are enough (measured), 25 degrade the cloud
     points: int = Field(ge=64, le=2048)
-    zone_share: float = Field(gt=0.2, le=1.0)  # part des points (les plus denses) que les zones englobent
-    zone_link_km: float = Field(ge=20, le=1000)  # deux points plus proches que ça sont dans la même zone
-    zone_min_part: float = Field(ge=0.01, le=0.5)  # part minimale des points pour qu'une zone soit montrée
+    zone_share: float = Field(gt=0.2, le=1.0)  # share of the points (the densest) that the zones enclose
+    zone_link_km: float = Field(ge=20, le=1000)  # two points closer than this are in the same zone
+    zone_min_part: float = Field(ge=0.01, le=0.5)  # minimum share of the points for a zone to be shown
 
 
 class MapConfig(BaseModel):
-    # Carte du coach (niveau 3 et plus) : pays probables, nuage PLONK. Fond de carte en ligne.
+    # Coach's map (level 3 and up): likely countries, PLONK cloud. Online map background.
     enabled: bool
-    # Serveur de tuiles. Un autre serveur doit AUSSI être autorisé dans la CSP (img-src) de
-    # app/src-tauri/tauri.conf.json ; sinon ses tuiles sont bloquées.
+    # Tile server. Another server must ALSO be allowed in the CSP (img-src) of
+    # app/src-tauri/tauri.conf.json; otherwise its tiles are blocked.
     tile_url: str = Field(pattern=r"^https://[^\s\"'<>]+\{z\}[^\s\"'<>]*$")
-    attribution: str = Field(min_length=1, max_length=200)  # texte simple, affiché en permanence sur la carte
+    attribution: str = Field(min_length=1, max_length=200)  # plain text, always shown on the map
     attribution_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
-    tile_filter: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")  # filtre CSS des tuiles (thème sombre)
-    # De près (rues, villages), l'inversion des couleurs devient illisible : autre filtre à partir de close_zoom.
+    tile_filter: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")  # CSS filter for the tiles (dark theme)
+    # Up close (streets, villages), colour inversion becomes unreadable: another filter from close_zoom on.
     tile_filter_close: str = Field(max_length=200, pattern=r"^[a-z0-9().%,\s-]*$")
     close_zoom: int = Field(ge=2, le=19)
     max_zoom: int = Field(ge=2, le=19)
@@ -222,36 +222,36 @@ class VisionConfig(BaseModel):
     timeout_s: float = Field(ge=5, le=300)
     max_tokens: int = Field(ge=100, le=16000)
     temperature: float = Field(ge=0, le=2)
-    max_side_px: int = Field(ge=256, le=4096)  # au-delà, la requête devient lourde sans gain mesuré
+    max_side_px: int = Field(ge=256, le=4096)  # beyond this, the request gets heavy with no measured gain
     prompt: str = Field(min_length=20, max_length=20000)
 
 
 class MarksConfig(BaseModel):
-    # Marques : sur la vue figée, le joueur entoure des indices (panneau, plaque…) ; chacun est découpé dans
-    # l'image brute, agrandi s'il est petit, puis transcrit par le modèle de vision.
+    # Marks: on the frozen view, the player circles clues (sign, plate…); each is cropped from
+    # the raw image, enlarged if small, then transcribed by the vision model.
     enabled: bool
-    max_marks: int = Field(ge=1, le=20)  # marques par image figée (numérotées ① à ⑳)
-    # Agrandissement : le plus grand côté de la découpe est porté à upscale_to_px, sans dépasser max_upscale.
+    max_marks: int = Field(ge=1, le=20)  # marks per frozen image (numbered ① to ⑳)
+    # Enlargement: the longest side of the crop is brought to upscale_to_px, without exceeding max_upscale.
     upscale_to_px: int = Field(ge=64, le=2048)
     max_upscale: float = Field(ge=1.0, le=8.0)
-    parallel: int = Field(ge=1, le=8)  # lectures simultanées (limites de l'API)
-    model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # vide = le modèle du niveau 2
+    parallel: int = Field(ge=1, le=8)  # simultaneous readings (API limits)
+    model: str = Field(max_length=120, pattern=r"^$|^[\w.\-]+/[\w.\-]+$")  # empty = the level 2 model
     max_tokens: int = Field(ge=50, le=4000)
     prompt: str = Field(min_length=20, max_length=5000)
 
 
 class RulesConfig(BaseModel):
-    # Règles locales appliquées au texte des marques (evidence.py) : elles concluent à la place du modèle.
-    scripts: bool  # l'alphabet écarte les pays qui ne l'écrivent pas
-    letters: bool  # lettres et mots de rue propres à une langue
-    places: bool  # noms de lieux (GeoNames)
-    place_min_len: int = Field(ge=3, le=20)  # noms plus courts ignorés (sigles, mots courants)
-    place_max_spread_km: float = Field(ge=50, le=3000)  # lieux d'une même manche : voisins, sinon homonymes lointains
-    prior_min: float = Field(ge=0, le=1)  # un lieu seul est confirmé si StreetCLIP donne son pays à ce seuil
-    detail: bool  # répertoire complet (villages) du pays en tête, téléchargé une fois par pays
+    # Local rules applied to the text of the marks (evidence.py): they conclude instead of the model.
+    scripts: bool  # the alphabet rules out the countries that do not write it
+    letters: bool  # letters and street words specific to a language
+    places: bool  # place names (GeoNames)
+    place_min_len: int = Field(ge=3, le=20)  # shorter names ignored (acronyms, common words)
+    place_max_spread_km: float = Field(ge=50, le=3000)  # a round's places are neighbours; else distant namesakes
+    prior_min: float = Field(ge=0, le=1)  # a lone place is confirmed if StreetCLIP gives its country at this threshold
+    detail: bool  # full directory (villages) of the leading country, downloaded once per country
     places_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")
-    detail_url: str = Field(pattern=r"^https://[^\s\"'<>{}]*\{\}[^\s\"'<>{}]*$")  # {} = code du pays
-    regions_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")  # noms des régions (verrou Région)
+    detail_url: str = Field(pattern=r"^https://[^\s\"'<>{}]*\{\}[^\s\"'<>{}]*$")  # {} = country code
+    regions_url: str = Field(pattern=r"^https://[^\s\"'<>]+$")  # region names (Region lock)
     places_dir: str
 
     @property
@@ -260,25 +260,25 @@ class RulesConfig(BaseModel):
 
 
 class LocksConfig(BaseModel):
-    # Verrous pays › région › ville (décidés avec l'utilisateur le 2026-11-07) : chaque niveau verrouillé restreint
-    # la recherche du suivant. Le coach ne verrouille seul que le « certain » ; tu peux toujours rejeter (✕) ou
-    # verrouiller toi-même. Ils durent une capture : une nouvelle capture remet tout à zéro.
+    # Country › region › city locks (decided with the user on 2026-11-07): each locked level narrows down
+    # the search of the next one. The coach locks on its own only what is "certain"; you can always reject (✕) or
+    # lock yourself. They last one capture: a new capture resets everything.
     enabled: bool
-    auto_country: bool  # le coach verrouille le pays quand les marques le rendent certain
-    auto_region: bool  # … et la région quand la position estimée est nette et tombe dans une seule région
-    propose_city: bool  # le coach PROPOSE une ville (un clic pour la verrouiller), jamais seul
-    region_radius_km: float = Field(ge=1, le=100)  # lieux autour du point qui doivent tous être de la même région
-    region_places_km: float = Field(ge=5, le=300)  # sans point : 2 lieux lus de la même région, à moins de ça
+    auto_country: bool  # the coach locks the country when the marks make it certain
+    auto_region: bool  # … and the region when the estimated position is sharp and falls in a single region
+    propose_city: bool  # the coach SUGGESTS a city (one click to lock it), never on its own
+    region_radius_km: float = Field(ge=1, le=100)  # places around the point that must all be in the same region
+    region_places_km: float = Field(ge=5, le=300)  # no point: 2 places read in one region, closer than this
 
 
 class StorageConfig(BaseModel):
-    # Taille maximale des caches QUI GROSSISSENT (villages par pays, plus tard rues et Nominatim) ; le socle
-    # (index GeoNames, Plonk It) ne part jamais tout seul. Réglages › Stockage : tailles et boutons « Vider ».
+    # Maximum size of the caches THAT GROW (villages per country, later streets and Nominatim); the base
+    # (GeoNames index, Plonk It) never goes on its own. Settings › Storage: sizes and "Empty" buttons.
     max_cache_mb: int = Field(ge=50, le=100000)
 
 
 class DebugConfig(BaseModel):
-    # Mode débogage : journal JSON de chaque analyse à côté de sa capture, pour relire une manche après coup.
+    # Debug mode: JSON log of each analysis next to its capture, to replay a round afterwards.
     enabled: bool
 
 
@@ -301,7 +301,7 @@ class Config(BaseModel):
 
 
 def merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """Fusion récursive : les tables sont fusionnées, les autres valeurs remplacées."""
+    """Recursive merge: tables are merged, other values replaced."""
     out = dict(base)
     for key, value in override.items():
         if isinstance(value, dict) and isinstance(out.get(key), dict):
@@ -319,7 +319,7 @@ def load_config(path: Path = USER_CONFIG) -> Config:
 
 
 def read_secret(name: str) -> str | None:
-    """Clé API : variable d'environnement, sinon fichier protégé ~/.config/geonesclick/<nom>.key (apikey.py)."""
+    """API key: environment variable, otherwise the protected file ~/.config/geonesclick/<name>.key (apikey.py)."""
     from .apikey import read
 
     return read(name)

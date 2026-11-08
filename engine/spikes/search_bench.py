@@ -1,17 +1,17 @@
-"""Banc d'essai : comment chercher dans les astuces Plonk It collectées ?
+"""Benchmark: how to search the collected Plonk It tips?
 
-Compare, sur les mêmes données locales (python -m geonesclick.plonkit collect) :
-  dict      dictionnaire en mémoire (référence)
-  fts5      SQLite FTS5, classement BM25 (inclus dans Python)
-  tantivy   Tantivy (moteur façon Lucene, en Rust), avec tolérance aux fautes de frappe
-  e5        recherche sémantique : intfloat/multilingual-e5-small (local, multilingue)
-  clip      StreetCLIP : la capture comparée directement aux textes des astuces (sans niveau 2)
+Compares, on the same local data (python -m geonesclick.plonkit collect):
+  dict      in-memory dictionary (baseline)
+  fts5      SQLite FTS5, BM25 ranking (included in Python)
+  tantivy   Tantivy (Lucene-style engine, in Rust), with typo tolerance
+  e5        semantic search: intfloat/multilingual-e5-small (local, multilingual)
+  clip      StreetCLIP: the capture compared directly to the tips' texts (without level 2)
 
-Mesures : construction de l'index, taille, latence (recherche par pays, par mots, avec fautes), et justesse
-sur le jeu de test étiqueté : la fiche du niveau 2 (FR, et une variante EN) sert de requête, et on regarde à
-quel rang chaque approche place le bon pays (parmi tous, et parmi le top 5 de StreetCLIP).
+Measures: index build, size, latency (search by country, by words, with typos), and accuracy
+on the labelled test set: the level 2 sheet (FR, and an EN variant) is the query, and we look at
+which rank each approach gives the right country (among all, and among StreetCLIP's top 5).
 
-Lancer : uv run --with tantivy==0.26.2 python spikes/search_bench.py
+Run: uv run --with tantivy==0.26.2 python spikes/search_bench.py
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def clean(md: str) -> str:
 
 
 def timeit(fn, repeat=200) -> float:
-    """Latence médiane en microsecondes."""
+    """Median latency in microseconds."""
     samples = []
     for _ in range(repeat):
         t0 = time.perf_counter()
@@ -78,7 +78,7 @@ def observations(fiche: dict) -> list[str]:
     return out
 
 
-# --- moteurs ---------------------------------------------------------------------------------------
+# --- engines ---------------------------------------------------------------------------------------
 class Fts5:
     def __init__(self, tips, path: Path):
         path.unlink(missing_ok=True)
@@ -102,7 +102,7 @@ class Fts5:
         words = re.findall(r"\w{3,}", text.lower())
         if not words:
             return []
-        match = " OR ".join(f'"{w}"' for w in words)  # chaque mot entre guillemets : pas d'injection de syntaxe
+        match = " OR ".join(f'"{w}"' for w in words)  # each word in quotes: no syntax injection
         rows = self.con.execute(
             "SELECT rowid, -bm25(tip_fts) FROM tip_fts WHERE tip_fts MATCH ? ORDER BY bm25(tip_fts) LIMIT ?", (match, k)
         )
@@ -154,7 +154,7 @@ class E5Search:
         self.emb = torch.cat([self._encode([f"passage: {clean(t.text)}" for t in tips[i:i + 64]])
                               for i in range(0, len(tips), 64)])
         self.build_s = time.perf_counter() - t0
-        self.size = self.emb.numel() * 4  # stocké en float32
+        self.size = self.emb.numel() * 4  # stored as float32
 
     @torch.inference_mode()
     def _encode(self, texts):
@@ -171,7 +171,7 @@ class E5Search:
 
 
 class ClipTips:
-    """La capture comparée directement aux astuces (texte tronqué à 77 jetons par CLIP)."""
+    """The capture compared directly to the tips (text truncated to 77 tokens by CLIP)."""
 
     def __init__(self, tips, clip: StreetClip):
         self.clip = clip
@@ -195,9 +195,9 @@ class ClipTips:
         return list(zip(top.indices.tolist(), top.values.tolist(), strict=True))
 
 
-# --- justesse -------------------------------------------------------------------------------------
+# --- accuracy -------------------------------------------------------------------------------------
 def country_ranking(tips, per_observation_hits) -> list[str]:
-    """Pour chaque observation, le meilleur score de chaque pays (normalisé à 1) ; somme sur les observations."""
+    """For each observation, the best score of each country (normalised to 1); summed over the observations."""
     total = defaultdict(float)
     for hits in per_observation_hits:
         best = {}
@@ -237,8 +237,8 @@ async def fiches_for(labels, cfg) -> dict:
 
 
 def fusion(labels, tips, clip, cliptips, top_n=3):
-    """StreetCLIP (pays) × image → astuces (moyenne des 3 meilleures astuces du pays), sans paramètre à régler :
-    chaque score devient une probabilité avec la température de CLIP, puis on multiplie."""
+    """StreetCLIP (countries) × image → tips (mean of the country's 3 best tips), with no parameter to tune:
+    each score becomes a probability with CLIP's temperature, then they are multiplied."""
     codes = [clip.cfg.countries[n] for n in clip.names]
     of_country = defaultdict(list)
     for i, t in enumerate(tips):
@@ -285,7 +285,7 @@ def main() -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     report: dict = {"corpus": {"tips": len(tips), "countries": len({t.country for t in tips}), "chars": chars}}
 
-    # Construction
+    # Build
     t0 = time.perf_counter()
     by_country = defaultdict(list)
     for i, t in enumerate(tips):
@@ -310,7 +310,7 @@ def main() -> None:
         "clip": {"s": cliptips.build_s, "bytes": cliptips.emb.numel() * 4},
     }
 
-    # Latences
+    # Latencies
     five = ["NO", "SE", "FI", "EE", "LV"]
     assert sorted(fts.by_country(five)) == sorted(i for c in five for i in by_country[c])
     assert sorted(tan.by_country(five)) == sorted(i for c in five for i in by_country[c])
@@ -334,7 +334,7 @@ def main() -> None:
                            "tantivy_fuzzy": len(tan.search(q, fuzzy=True))} for q in TYPOS}
     report["keywords_hits"] = {q: {"fts5": len(fts.search(q)), "tantivy": len(tan.search(q))} for q in KEYWORDS}
 
-    # Justesse sur le jeu de test
+    # Accuracy on the test set
     labels = tomllib.loads((ROOT / "dataset" / "labels.toml").read_text())["capture"]
     fiches = asyncio.run(fiches_for(labels, cfg))
     rows = []

@@ -1,9 +1,9 @@
-"""Chemins partagés, sans dépendance lourde (importé par le client du raccourci clavier).
+"""Shared paths, without heavy dependencies (imported by the keyboard shortcut client).
 
-Nom de l'application : GeoNesClick (décidé avec l'utilisateur le 2026-11-07, d'après son pseudo MrNesClick ;
-« GeoNesClick » était trop proche de la marque GeoGuessr). Les dossiers de l'ancien nom sont DÉPLACÉS une fois
-vers les nouveaux au démarrage (migrate_legacy), jamais supprimés : réglages, metas, index des lieux, et des heures
-de traductions Plonk It.
+App name: GeoNesClick (decided with the user on 2026-11-07, after their handle MrNesClick;
+"GeoNesClick" was too close to the GeoGuessr trademark). The folders of the old name are MOVED once
+to the new ones at startup (migrate_legacy), never deleted: settings, metas, places index, and hours
+of Plonk It translations.
 """
 
 import os
@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 APP = "geonesclick"
-LEGACY = "geonesclick"  # ancien nom des dossiers
+LEGACY = "geonesclick"  # old name of the folders
 
 
 def config_home() -> Path:
@@ -23,36 +23,36 @@ def data_home() -> Path:
 
 
 CONFIG_DIR = config_home() / APP  # config.toml, mes-metas.toml, screencast.token
-DATA_DIR = data_home() / APP  # places/ (GeoNames), plonkit/ (guides et traductions)
+DATA_DIR = data_home() / APP  # places/ (GeoNames), plonkit/ (guides and translations)
 SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / f"{APP}.sock"
 
 
 def hf_hub_cache() -> Path:
-    """Cache des modèles Hugging Face (StreetCLIP, PLONK), sans importer la bibliothèque."""
+    """Hugging Face model cache (StreetCLIP, PLONK), without importing the library."""
     hf_home = Path(os.environ.get("HF_HOME") or Path.home() / ".cache" / "huggingface")
     return Path(os.environ.get("HF_HUB_CACHE") or hf_home / "hub")
 
 
 def migrate_legacy() -> list[str]:
-    """Déplace les dossiers de l'ancien nom vers les nouveaux, s'ils n'existent pas encore ; ne supprime jamais.
+    """Moves the folders of the old name to the new ones, if they do not exist yet; never deletes.
 
-    Si les deux existent, rien n'est touché (l'ancien reste là, à vérifier à la main). Renvoie ce qui a été déplacé.
+    If both exist, nothing is touched (the old one stays there, to be checked by hand). Returns what was moved.
     """
     moved = []
     for base in (config_home(), data_home()):
         old, new = base / LEGACY, base / APP
         if old.is_dir() and not old.is_symlink() and not new.exists():
-            old.rename(new)  # même système de fichiers : instantané, rien n'est copié ni perdu
+            old.rename(new)  # same file system: instant, nothing is copied or lost
             moved.append(f"{old} → {new}")
     return moved
 
 
 def migrate_repo_data(project_root: Path) -> list[str]:
-    """Captures et jeu de test sortent du dossier du code (en lecture seule dans une AppImage) vers DATA_DIR.
+    """Captures and the test set move out of the code folder (read-only in an AppImage) to DATA_DIR.
 
-    Décidé le 2026-11-07 : les captures sont DÉPLACÉES (ignorées par git) ; le jeu de test est COPIÉ, pour que
-    l'exemplaire suivi par git dans le dépôt (et les bancs de spikes/ qui le lisent) reste intact. Une seule fois :
-    rien n'est fait si la destination existe déjà.
+    Decided on 2026-11-07: the captures are MOVED (ignored by git); the test set is COPIED, so that
+    the copy tracked by git in the repository (and the spikes/ benches that read it) stays intact. Only once:
+    nothing is done if the destination already exists.
     """
     done = []
     target = data_home() / APP

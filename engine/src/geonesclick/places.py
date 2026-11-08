@@ -1,15 +1,15 @@
-"""Noms de lieux : répertoire GeoNames (cities1000, CC BY 4.0), pour reconnaître une ville lue sur une marque.
+"""Place names: GeoNames directory (cities1000, CC BY 4.0), to recognise a city read on a mark.
 
-Téléchargé une fois (~11 Mo) puis indexé en local (SQLite) : chaque nom et ses variantes (autres langues, autres
-alphabets) → pays. Mesuré le 2026-11-07 sur la manche bulgare : Благоевград, София, Гърмен, Гоце Делчев → BG
-seulement ; Казань (inventé par le modèle) → RU ; « Gare » → FR, LU (des quartiers) : un mot courant peut passer
-pour un lieu, d'où la règle de certitude prudente d'evidence.py.
+Downloaded once (~11 MB) then indexed locally (SQLite): each name and its variants (other languages, other
+alphabets) → country. Measured on 2026-11-07 on the Bulgarian round: Благоевград, София, Гърмен, Гоце Делчев → BG
+only; Казань (invented by the model) → RU; "Gare" → FR, LU (districts): a common word can pass
+for a place, hence evidence.py's cautious certainty rule.
 
-Les petits villages (Laas, L'Hôpital-d'Orion, ~150 habitants) n'y sont pas : dès qu'un pays mène, le répertoire
-COMPLET de ce pays (GeoNames <CC>.zip, lieux habités seulement) est téléchargé une fois et ajouté (decided with the
-user, 2026-11-07). Les homonymes lointains (« Laas » = Lasa, Italie) sont écartés par la proximité (locate.py).
+Small villages (Laas, L'Hôpital-d'Orion, ~150 inhabitants) are not in it: as soon as a country leads, the FULL
+directory of that country (GeoNames <CC>.zip, inhabited places only) is downloaded once and added (decided with the
+user, 2026-11-07). Distant namesakes ("Laas" = Lasa, Italy) are ruled out by proximity (locate.py).
 
-Données : GeoNames, https://www.geonames.org (CC BY 4.0), attribution affichée dans l'application et le README.
+Data: GeoNames, https://www.geonames.org (CC BY 4.0), attribution shown in the app and the README.
 """
 
 from __future__ import annotations
@@ -28,45 +28,45 @@ from typing import Any
 from .evidence import STREET_AFTER, STREET_BEFORE, Evidence
 from .locate import haversine
 
-# v3 : comparaison sans accents latins ni traits d'union (« Sauveterre de Bearn ») ; v4 : région de chaque lieu
-# (code admin1 GeoNames) et index des latitudes, pour les verrous pays › région › ville (2026-11-07).
+# v3: comparison without Latin accents or hyphens ("Sauveterre de Bearn"); v4: region of each place
+# (GeoNames admin1 code) and latitude index, for the country › region › city locks (2026-11-07).
 VERSION = "v4"
 DB_NAME = f"places-{VERSION}.sqlite"
 OLD_DBS = ("places.sqlite", "places-v2.sqlite", "places-v3.sqlite")
-ARCHIVE = "source.zip"  # archive gardée : un changement de format reconstruit sans retélécharger
-REGIONS = "admin1.txt"  # noms des régions (admin1CodesASCII.txt de GeoNames, ~140 Ko), gardé de même
-MAX_RESULTS = 20  # résultats d'une recherche de lieu (champ « + » du bandeau des verrous)
-PER_NAME = 3  # homonymes gardés par nom et par pays (les plus peuplés), départagés par les distances
+ARCHIVE = "source.zip"  # archive kept: a format change rebuilds without downloading again
+REGIONS = "admin1.txt"  # region names (GeoNames admin1CodesASCII.txt, ~140 KB), kept likewise
+MAX_RESULTS = 20  # results of a place search ("+" field of the locks banner)
+PER_NAME = 3  # namesakes kept per name and per country (the most populous), decided between by the distances
 SOURCE = "https://www.geonames.org"
 USER_AGENT = "GeoNesClick/0.1 (personal training app, one-time download)"
-MAX_WORDS = 4  # noms de lieux d'au plus 4 mots (« Gotse Delchev », « San Carlos de Bariloche »)
-MAX_BYTES = 64 * 1024 * 1024  # garde-fou : l'archive fait ~11 Mo
-MAX_UNZIPPED = 600 * 1024 * 1024  # garde-fou contre une archive piégée (cities1000 : ~31 Mo ; FR : ~50 Mo)
-COUNTRY = re.compile(r"[A-Z]{2}")  # code pays : sert à une adresse et à un nom de fichier
-REGION = re.compile(r"[A-Z]{2}\.[0-9A-Z]{1,20}")  # code de région GeoNames : « FR.75 »
-NUMBER_LINE = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)\s*(?:km)?\.?\s*", re.IGNORECASE)  # « 162 », « 11 km »
-LEADING_NUMBER = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)(\s*(?:km)?\s+)", re.IGNORECASE)  # « 10 Aarup »
+MAX_WORDS = 4  # place names of at most 4 words ("Gotse Delchev", "San Carlos de Bariloche")
+MAX_BYTES = 64 * 1024 * 1024  # safeguard: the archive is ~11 MB
+MAX_UNZIPPED = 600 * 1024 * 1024  # safeguard against a booby-trapped archive (cities1000: ~31 MB; FR: ~50 MB)
+COUNTRY = re.compile(r"[A-Z]{2}")  # country code: used in an address and a file name
+REGION = re.compile(r"[A-Z]{2}\.[0-9A-Z]{1,20}")  # GeoNames region code: "FR.75"
+NUMBER_LINE = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)\s*(?:km)?\.?\s*", re.IGNORECASE)  # "162", "11 km"
+LEADING_NUMBER = re.compile(r"\s*(\d{1,4}(?:[.,]\d)?)(\s*(?:km)?\s+)", re.IGNORECASE)  # "10 Aarup"
 
 
 class PlacesError(RuntimeError):
     pass
 
 
-ARTICLES = ("l ", "le ", "la ", "les ")  # « L'Hôpital-d'Orion » est écrit « HOPITAL D'ORION » sur le panneau
+ARTICLES = ("l ", "le ", "la ", "les ")  # "L'Hôpital-d'Orion" is written "HOPITAL D'ORION" on the sign
 
 
 def _fold(ch: str) -> str:
-    """Lettre latine sans son accent (é → e) ; les autres alphabets gardent leurs signes (й ≠ и)."""
+    """Latin letter without its accent (é → e); the other alphabets keep their marks (й ≠ и)."""
     if unicodedata.name(ch, "").startswith("LATIN"):
         return "".join(c for c in unicodedata.normalize("NFKD", ch) if not unicodedata.combining(c))
     return ch
 
 
 def normalise(name: str) -> str:
-    """Forme de comparaison : minuscules, accents latins retirés, traits d'union et apostrophes en espaces.
+    """Comparison form: lower case, Latin accents removed, hyphens and apostrophes as spaces.
 
-    L'IA recopie un panneau en capitales, souvent sans accents ni traits d'union (« SAUVETERRE DE BEARN ») ;
-    GeoNames écrit « Sauveterre-de-Béarn ».
+    The AI copies a sign in capitals, often without accents or hyphens ("SAUVETERRE DE BEARN");
+    GeoNames writes "Sauveterre-de-Béarn".
     """
     name = unicodedata.normalize("NFC", name).casefold()
     name = "".join(_fold(ch) for ch in name)
@@ -75,7 +75,7 @@ def normalise(name: str) -> str:
 
 
 def variants(key: str) -> list[str]:
-    """La forme normalisée, et sans article en tête (« l hopital d orion » → « hopital d orion »)."""
+    """The normalised form, without a leading article ("l hopital d orion" → "hopital d orion")."""
     out = [key]
     for article in ARTICLES:
         if key.startswith(article) and len(key) > len(article) + 3:
@@ -84,10 +84,10 @@ def variants(key: str) -> list[str]:
 
 
 def _fetch(url: str) -> bytes:
-    """Téléchargement de l'archive (remplacé dans les tests : aucun accès réseau)."""
+    """Download of the archive (replaced in the tests: no network access)."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (https vérifié par build)
+        with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (https checked by build)
             data = resp.read(MAX_BYTES + 1)
     except OSError as exc:
         raise PlacesError(f"téléchargement impossible ({exc})") from exc
@@ -97,9 +97,9 @@ def _fetch(url: str) -> bytes:
 
 
 def _regions(url: str | None, directory: Path) -> dict[str, str]:
-    """Noms des régions (« FR.75 » → « Nouvelle-Aquitaine »), gardés à côté de l'archive.
+    """Region names ("FR.75" → "Nouvelle-Aquitaine"), kept next to the archive.
 
-    Facultatif : sans réseau, l'index se construit quand même et une région s'affiche par son code.
+    Optional: offline, the index is still built and a region is shown by its code.
     """
     if not url:
         return {}
@@ -119,17 +119,17 @@ def _regions(url: str | None, directory: Path) -> dict[str, str]:
         cols = line.split("\t")
         if len(cols) >= 2 and REGION.fullmatch(cols[0]):
             out[cols[0]] = cols[1][:200]
-    if fresh and out:  # une page d'erreur à la place du fichier n'est pas gardée : retentée la prochaine fois
+    if fresh and out:  # an error page instead of the file is not kept: retried next time
         cached.write_text(text, encoding="utf-8")
     return out
 
 
 def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, archive_name: str | None = ARCHIVE,
           populated_only: bool = False, regions_url: str | None = None) -> Path:
-    """Télécharge le répertoire et construit l'index local ; écriture atomique de la base.
+    """Downloads the directory and builds the local index; atomic write of the database.
 
-    populated_only : fichier complet d'un pays (montagnes, rivières…) dont on ne garde que les lieux habités (P).
-    regions_url : noms des régions (répertoire général seulement ; les détails des pays partagent ces codes).
+    populated_only: full file of a country (mountains, rivers…) of which only the inhabited places (P) are kept.
+    regions_url: region names (general directory only; the countries' details share these codes).
     """
     if not url.startswith("https://"):
         raise PlacesError("adresse du répertoire refusée : https attendu")
@@ -138,7 +138,7 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
     data = cached.read_bytes() if cached and cached.exists() else _fetch(url)
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            # Les archives par pays contiennent aussi un readme.txt : on prend le fichier de données.
+            # The per-country archives also contain a readme.txt: we take the data file.
             member = next((n for n in archive.namelist()
                            if n.endswith(".txt") and "/" not in n and n.lower() != "readme.txt"), None)
             if member is None:
@@ -179,7 +179,7 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
             con.executemany("INSERT INTO place VALUES (?, ?, ?, ?, ?, ?, ?)",
                             [(k, c, *row) for (k, c), rows in best.items() for row in rows])
             con.execute("CREATE INDEX place_norm ON place(norm)")
-            con.execute("CREATE INDEX place_lat ON place(lat)")  # lieux autour d'une position (région du point)
+            con.execute("CREATE INDEX place_lat ON place(lat)")  # places around a position (region of the point)
             con.execute("CREATE TABLE region(code TEXT PRIMARY KEY, name TEXT NOT NULL)")
             con.executemany("INSERT INTO region VALUES (?, ?)", sorted(regions.items()))
     finally:
@@ -187,14 +187,14 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
     path = directory / db_name
     tmp.replace(path)
     if cached and not cached.exists():
-        cached.write_bytes(data)  # gardée seulement une fois l'index construit (archive valide)
+        cached.write_bytes(data)  # kept only once the index is built (valid archive)
     return path
 
 
 def _distance_after(words: list[str], end: int, line: str) -> float | None:
-    """Distance écrite juste après le nom, sur la même ligne (« Гърмен 3 », « Sofia 219 km »), en km.
+    """Distance written right after the name, on the same line ("Гърмен 3", "Sofia 219 km"), in km.
 
-    Seulement si plus aucun mot ne suit le nom : « 197 » seul sur sa ligne est un numéro de route, pas une distance.
+    Only if no word follows the name any more: "197" alone on its line is a road number, not a distance.
     """
     if end < len(words) and words[end].lower() not in ("km",):
         return None
@@ -207,22 +207,22 @@ def _distance_after(words: list[str], end: int, line: str) -> float | None:
 
 
 def _read_table(table: list[float | list[Evidence]], ahead: dict[int, float]) -> None:
-    """Distances d'un panneau directionnel que l'IA a recopié colonne par colonne (décidé le 2026-11-07).
+    """Distances of a direction sign that the AI copied column by column (decided on 2026-11-07).
 
-    Mesuré ce soir-là : « SARANSK » / « 162 » / « СТАРЫЙ ГОРОД » / « 11 » (chaque distance sous son lieu) ;
-    « 10 Aarup » / « 5 Ørsted » / « 329 » (distance DEVANT le nom, puis le numéro de route) ; « 329 Faaborg » /
-    « Glamsbjerg » / « 28 » / « 3 » (route devant, les deux distances à la fin). Règles, du plus sûr au moins sûr :
-    1. une distance écrite après le nom, sur sa ligne, n'est jamais remplacée ;
-    2. des nombres seuls qui suivent un bloc de lieux leur reviennent dans l'ordre s'ils sont aussi nombreux que
-       les lieux du bloc (Faaborg 28, Glamsbjerg 3 : le « 329 » devant Faaborg était une route) ;
-    3. sinon, un nombre seul juste sous un lieu sans distance lui revient (Saransk 162) ;
-    4. enfin, un lieu encore sans distance prend le nombre écrit devant son nom (Aarup 10, Ørsted 5) ;
-    un nombre en trop est ignoré (« 329 » sous « 5 Ørsted », « 197 » sous « Гърмен 3 ») : un numéro de route.
+    Measured that evening: "SARANSK" / "162" / "СТАРЫЙ ГОРОД" / "11" (each distance under its place);
+    "10 Aarup" / "5 Ørsted" / "329" (distance BEFORE the name, then the road number); "329 Faaborg" /
+    "Glamsbjerg" / "28" / "3" (road first, both distances at the end). Rules, from most to least certain:
+    1. a distance written after the name, on its line, is never replaced;
+    2. lone numbers following a block of places go to them in order if there are as many of them as
+       places in the block (Faaborg 28, Glamsbjerg 3: the "329" before Faaborg was a road);
+    3. otherwise, a lone number right under a place without a distance goes to it (Saransk 162);
+    4. finally, a place still without a distance takes the number written before its name (Aarup 10, Ørsted 5);
+    an extra number is ignored ("329" under "5 Ørsted", "197" under "Гърмен 3"): a road number.
     """
     def fits(km: float) -> bool:
         return 0 < km <= 2000
 
-    block: list[Evidence] = []  # lieux depuis la dernière suite de nombres
+    block: list[Evidence] = []  # places since the last run of numbers
     i = 0
     while i < len(table):
         row = table[i]
@@ -255,7 +255,7 @@ def detail_name(country: str) -> str:
 
 
 def _unique(rows) -> dict[tuple, tuple]:
-    """Un même lieu peut venir du répertoire général et du détail du pays : on le garde une fois."""
+    """The same place can come from the general directory and from the country's detail: it is kept once."""
     return {(c, n, round(lat, 2), round(lon, 2)): (c, p, n, lat, lon, r) for c, p, n, lat, lon, r in rows}
 
 
@@ -264,8 +264,8 @@ def _open(path: Path) -> sqlite3.Connection:
 
 
 class Places:
-    """Index local des noms de lieux (lecture seule) : localités de plus de 1 000 habitants, plus le détail de
-    certains pays (tous leurs lieux habités), ajouté au fil des manches."""
+    """Local index of place names (read-only): localities with more than 1,000 inhabitants, plus the detail of
+    some countries (all their inhabited places), added as rounds go by."""
 
     def __init__(self, path: Path) -> None:
         if not path.exists():
@@ -274,13 +274,13 @@ class Places:
         self._lock = threading.Lock()
         self.count = self.con.execute("SELECT COUNT(*) FROM place").fetchone()[0]
         self.details: dict[str, sqlite3.Connection] = {}
-        self._bounds: dict[str, list[float] | None] = {}  # étendue des régions déjà demandées
+        self._bounds: dict[str, list[float] | None] = {}  # extent of the regions already requested
 
     def add_detail(self, country: str, path: Path) -> None:
         con = _open(path)
         with self._lock:
             self.details[country] = con
-            self._bounds.clear()  # les villages élargissent l'étendue connue des régions
+            self._bounds.clear()  # villages widen the known extent of the regions
 
     def remove_detail(self, country: str) -> None:
         with self._lock:
@@ -294,20 +294,20 @@ class Places:
             return [r for con in (self.con, *self.details.values()) for r in con.execute(sql, args)]
 
     def lookup(self, name: str) -> list[tuple[str, int, str, float, float, str]]:
-        """[(pays, population, nom GeoNames, latitude, longitude, région)] pour un nom (forme normalisée),
-        répertoire général et détails des pays réunis, sans doublon (même lieu dans les deux)."""
+        """[(country, population, GeoNames name, latitude, longitude, region)] for a name (normalised form),
+        general directory and country details together, without duplicates (same place in both)."""
         rows = self._rows("SELECT country, population, name, lat, lon, region FROM place WHERE norm = ?",
                           (normalise(name),))
         return sorted(_unique(rows).values(), key=lambda r: -r[1])
 
     def region_name(self, code: str) -> str:
-        """Nom d'une région (« FR.75 » → « Nouvelle-Aquitaine ») ; son code si les noms sont absents."""
+        """Name of a region ("FR.75" → "Nouvelle-Aquitaine"); its code if the names are missing."""
         with self._lock:
             row = self.con.execute("SELECT name FROM region WHERE code = ?", (code,)).fetchone()
         return row[0] if row else code
 
     def region_bounds(self, code: str) -> list[float] | None:
-        """[sud, ouest, nord, est] des lieux de la région (cadrage de la carte, sans contour), gardé en mémoire."""
+        """[south, west, north, east] of the region's places (map framing, without an outline), kept in memory."""
         if code not in self._bounds:
             rows = self._rows("SELECT MIN(lat), MIN(lon), MAX(lat), MAX(lon) FROM place WHERE region = ?", (code,))
             found = [r for r in rows if r[0] is not None]
@@ -316,7 +316,7 @@ class Places:
         return self._bounds[code]
 
     def regions(self, country: str, query: str = "") -> list[dict[str, str]]:
-        """Régions d'un pays dont le nom commence par query (sans accents ni casse), par ordre alphabétique."""
+        """Regions of a country whose name starts with query (ignoring accents and case), in alphabetical order."""
         with self._lock:
             rows = self.con.execute("SELECT code, name FROM region WHERE code LIKE ? ORDER BY name",
                                     (f"{country}.%",)).fetchall()
@@ -325,21 +325,21 @@ class Places:
                 if not key or any(w.startswith(key) for w in [normalise(n), *normalise(n).split()])][:MAX_RESULTS]
 
     def search(self, query: str, country: str, region: str = "") -> list[dict[str, Any]]:
-        """Lieux habités dont un nom commence par query, dans le pays (et la région) ; les plus peuplés d'abord."""
+        """Inhabited places with a name starting with query, in the country (and the region); most populous first."""
         key = normalise(query)
         if len(key) < 2:
             return []
         sql = ("SELECT country, population, name, lat, lon, region FROM place"
                " WHERE norm >= ? AND norm < ? AND country = ?" + (" AND region = ?" if region else "") +
-               f" ORDER BY population DESC LIMIT {MAX_RESULTS * 10}")  # « sa » : des milliers de villages
+               f" ORDER BY population DESC LIMIT {MAX_RESULTS * 10}")  # "sa": thousands of villages
         args = (key, key + "\U0010ffff", country, *((region,) if region else ()))
         found = sorted(_unique(self._rows(sql, args)).values(), key=lambda r: -r[1])[:MAX_RESULTS]
         return [{"name": n, "country": c, "region": r, "region_name": self.region_name(r) if r else "",
                  "lat": lat, "lon": lon, "population": p} for c, p, n, lat, lon, r in found]
 
     def around(self, lat: float, lon: float, km: float, country: str) -> list[tuple[float, str, str, float, float]]:
-        """[(distance, nom, région, latitude, longitude)] des lieux du pays à moins de km de la position, le plus
-        proche d'abord."""
+        """[(distance, name, region, latitude, longitude)] of the country's places within km of the position, closest
+        first."""
         dlat = km / 111.0
         dlon = km / max(1.0, 111.0 * math.cos(math.radians(lat)))
         sql = ("SELECT country, population, name, lat, lon, region FROM place"
@@ -349,16 +349,16 @@ class Places:
         return sorted(x for x in near if x[0] <= km)
 
     def match(self, lines: list[str], min_len: int = 4) -> list[Evidence]:
-        """Lieux nommés dans le texte d'une marque : groupes de mots consécutifs, le plus long d'abord.
+        """Places named in a mark's text: groups of consecutive words, longest first.
 
-        Les mots d'un nom de rue sont écartés (« Via Paolo Lo Manto » : « Manto » n'est pas un lieu où l'on est) et
-        rendus comme preuve « rue », qui ne compte pas mais s'affiche.
+        The words of a street name are ruled out ("Via Paolo Lo Manto": "Manto" is not a place where you are) and
+        returned as a "rue" proof, which does not count but is shown.
         """
         out: list[Evidence] = []
         seen: set[str] = set()
-        street_next = ""  # ligne réduite à un mot de rue (« VIA ») : la ligne suivante est le nom de la rue
-        table: list[float | list[Evidence]] = []  # le panneau ligne par ligne : un nombre seul, ou les lieux lus
-        ahead: dict[int, float] = {}  # lieu → nombre écrit DEVANT son nom (« 10 Aarup »)
+        street_next = ""  # line reduced to a street word ("VIA"): the next line is the street name
+        table: list[float | list[Evidence]] = []  # the sign line by line: a lone number, or the places read
+        ahead: dict[int, float] = {}  # place → number written BEFORE its name ("10 Aarup")
         for line in lines:
             alone = NUMBER_LINE.fullmatch(line)
             if alone:
@@ -410,11 +410,11 @@ class Places:
 
 
 def main() -> int:
-    """python -m geonesclick.places : (re)construit l'index des lieux (appelé par scripts/install.sh)."""
+    """python -m geonesclick.places: (re)builds the places index (called by scripts/install.sh)."""
     from .config import load_config
     from .paths import migrate_legacy
 
-    migrate_legacy()  # index déjà construit sous l'ancien nom : on le retrouve au lieu de le retélécharger
+    migrate_legacy()  # index already built under the old name: it is reused instead of downloaded again
     cfg = load_config().rules
     try:
         path = build(cfg.places_url, cfg.places_path, regions_url=cfg.regions_url)

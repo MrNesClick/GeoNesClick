@@ -1,13 +1,13 @@
 <script setup lang="ts">
-// Astuces Plonk It des pays candidats, classées par ressemblance avec l'image (une piste, pas une preuve),
-// traduites à la demande. Pays écartés par une preuve lue : pas d'astuces.
+// Plonk It tips for the candidate countries, ranked by similarity to the image (a lead, not a proof),
+// translated on demand. Countries ruled out by proof that was read: no tips.
 import { computed, reactive } from "vue";
 import type { Analysis, SimilarTip } from "../engine";
 import { CATEGORY_LABELS, countryName, flag, markdownSegments, openPlonkit, tipsByCountry } from "../engine";
 
 const props = defineProps<{ analysis: Analysis }>();
 
-// Astuces dont le joueur a demandé le texte original (anglais) plutôt que la traduction.
+// Tips for which the player asked for the original text (English) rather than the translation.
 const showOriginal = reactive(new Set<string>());
 const tipText = (tip: SimilarTip) => (showOriginal.has(tip.id) || !tip.translated ? tip.text : tip.translated);
 const toggleOriginal = (id: string) => (showOriginal.has(id) ? showOriginal.delete(id) : showOriginal.add(id));

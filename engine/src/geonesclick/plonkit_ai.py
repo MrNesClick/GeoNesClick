@@ -1,8 +1,8 @@
-"""Classement par l'IA des astuces Plonk It que les étiquettes et les mots-clés n'ont pas su ranger.
+"""AI classification of the Plonk It tips that the tags and keywords could not file.
 
-Par lots, une seule fois par texte (cache dans plonkit.sqlite). La réponse est validée strictement :
-seules les catégories connues sont retenues, donc un texte d'astuce qui contiendrait des instructions ne
-peut rien produire d'autre qu'une catégorie.
+In batches, only once per text (cached in plonkit.sqlite). The response is strictly validated:
+only the known categories are kept, so a tip text that contained instructions
+cannot produce anything other than a category.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ Réponds UNIQUEMENT par un objet JSON {{"numéro": "clé"}}, par exemple {{"0": 
 
 Astuces :
 {tips}"""
-MAX_CHARS = 400  # début de l'astuce : assez pour savoir de quoi elle parle
+MAX_CHARS = 400  # start of the tip: enough to know what it is about
 
 
 def build_prompt(texts: list[str]) -> str:
@@ -31,7 +31,7 @@ def build_prompt(texts: list[str]) -> str:
 
 
 def parse_answer(content: str, count: int) -> dict[int, str]:
-    """{position: catégorie} pour les seules réponses valides ; tout le reste est ignoré."""
+    """{position: category} for the valid answers only; everything else is ignored."""
     start, end = content.find("{"), content.rfind("}")
     if start == -1 or end < start:
         return {}
@@ -49,7 +49,7 @@ def parse_answer(content: str, count: int) -> dict[int, str]:
 
 
 async def classify(client, model: str, items: list[tuple[str, str]], max_tokens: int = 800) -> dict[str, str]:
-    """{empreinte: catégorie} pour un lot [(empreinte, texte)]."""
+    """{hash: category} for a batch [(hash, text)]."""
     resp = await client.chat.completions.create(
         model=model,
         temperature=0,
@@ -61,7 +61,7 @@ async def classify(client, model: str, items: list[tuple[str, str]], max_tokens:
     return {items[i][0]: category for i, category in answers.items()}
 
 
-# --- Traduction des astuces affichées -----------------------------------------------------------------
+# --- Translation of the displayed tips ---------------------------------------------------------------
 LANGUAGES = {"fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand", "it": "italien", "pt": "portugais"}
 GLOSSARY = {
     "fr": "Glossaire à respecter : bollard → borne ; delineator → délinéateur ; guardrail → glissière de sécurité ;"
@@ -86,7 +86,7 @@ def build_translate_prompt(texts: list[str], lang: str) -> str:
 
 
 def parse_translations(content: str, originals: list[str]) -> dict[int, str]:
-    """{position: traduction} ; une traduction vide ou démesurée par rapport à l'original est ignorée."""
+    """{position: translation}; a translation that is empty or oversized compared to the original is ignored."""
     start, end = content.find("{"), content.rfind("}")
     if start == -1 or end < start:
         return {}
@@ -107,7 +107,7 @@ def parse_translations(content: str, originals: list[str]) -> dict[int, str]:
 
 
 async def translate(client, model: str, items: list[tuple[str, str]], lang: str, max_tokens: int = 4000) -> dict[str, str]:
-    """{empreinte: traduction} pour un lot [(empreinte, texte anglais)]."""
+    """{hash: translation} for a batch [(hash, English text)]."""
     texts = [text for _, text in items]
     resp = await client.chat.completions.create(
         model=model,

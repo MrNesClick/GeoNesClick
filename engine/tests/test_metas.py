@@ -46,13 +46,13 @@ def metas():
 
 def test_category_that_shares_one_hint_does_not_discriminate(metas):
     cats = [r.category for r in tiebreak([("NO", 0.5), ("SE", 0.3), ("FI", 0.2)], metas)]
-    assert "conduite" not in cats  # tous à droite : aucun départage
+    assert "conduite" not in cats  # all drive on the right: no tie-break
 
 
 def test_categories_ranked_by_probability_weighted_separation(metas):
     res = tiebreak([("NO", 0.5), ("SE", 0.3), ("FI", 0.2)], metas)
-    # marquage sépare NO|SE et SE|FI : 0.5*0.3 + 0.3*0.2 = 0.21
-    # langue ne connaît pas NO : seule la paire SE|FI compte : 0.06
+    # marquage separates NO|SE and SE|FI: 0.5*0.3 + 0.3*0.2 = 0.21
+    # langue does not know NO: only the SE|FI pair counts: 0.06
     assert [r.category for r in res] == ["marquage", "langue"]
     assert res[0].score == pytest.approx(0.21)
 
@@ -61,8 +61,8 @@ def test_hints_only_list_candidate_countries_in_probability_order(metas):
     res = tiebreak([("FI", 0.6), ("SE", 0.4)], metas)
     marquage = next(r for r in res if r.category == "marquage")
     jaune = next(h for h in marquage.hints if h.hint == "Ligne centrale jaune")
-    assert jaune.countries == ["FI"]  # NO n'est pas candidat
-    assert marquage.hints[0].hint == "Ligne centrale jaune"  # indice du favori en premier
+    assert jaune.countries == ["FI"]  # NO is not a candidate
+    assert marquage.hints[0].hint == "Ligne centrale jaune"  # the favourite's clue first
 
 
 def test_user_metas_come_first():
@@ -138,6 +138,6 @@ def test_every_category_has_a_default_look():
 def test_category_looks_and_weights_can_be_overridden(metas):
     probs = [("NO", 0.5), ("SE", 0.3), ("FI", 0.2)]
     res = tiebreak(probs, metas, looks={"langue": "les panneaux"}, weights={"marquage": 0})
-    assert [r.category for r in res] == ["langue"]  # poids 0 : catégorie ignorée
+    assert [r.category for r in res] == ["langue"]  # weight 0: category ignored
     assert res[0].looks == ["les panneaux"]
     assert all(not r.looks for r in tiebreak(probs, metas, max_looks=0))

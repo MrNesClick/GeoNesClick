@@ -1,4 +1,4 @@
-"""Route /label (« C'était où ? ») : validation des entrées et ajout au jeu de test."""
+"""Route /label ("Where was it?"): input validation and addition to the test set."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -81,7 +81,7 @@ def test_confusions_can_be_hidden(setup):
     assert res.json()["progress"]["confusions"] == []
 
 
-# --- vrai lieu : lien Google Maps de l'écran de fin (jamais ouvert, seulement lu) ---------------------
+# --- true place: Google Maps link from the end screen (never opened, only read) ---------------------
 from geonesclick.dataset import coords_of  # noqa: E402
 
 
@@ -91,7 +91,7 @@ from geonesclick.dataset import coords_of  # noqa: E402
     ("https://www.google.com/maps/place/X/@55.0,10.0,15z/data=!3d55.27!4d10.10", (55.27, 10.10)),
     ("https://www.google.com/maps/search/?api=1&query=-33.86%2C151.21", (-33.86, 151.21)),
     ("  43.4883, -0.7727 ", (43.4883, -0.7727)),
-    ("https://maps.app.goo.gl/AbCdEf", None),  # lien court : il faudrait l'ouvrir, on ne le fait pas
+    ("https://maps.app.goo.gl/AbCdEf", None),  # short link: it would have to be opened, we do not do it
     ("@95.0,10.0", None),
 ])
 def test_coordinates_are_read_from_the_link(text, expected):
@@ -103,7 +103,7 @@ def test_label_with_a_link_stores_the_true_place_and_the_round(setup):
 
     client, engine, ds = setup
     engine.recent[CAPTURE_ID].update(scores=[("RS", 0.6)], marks=[{"n": 1, "status": "done", "text": ["Ниш 12"]}])
-    link = "https://www.google.com/maps/@43.3209,21.8958,3a"  # Niš, Serbie
+    link = "https://www.google.com/maps/@43.3209,21.8958,3a"  # Niš, Serbia
     assert client.post("/label/preview", json={"link": link}, headers=ORIGIN).json()["country"] == "RS"
     res = client.post("/label", json={"id": CAPTURE_ID, "link": link, "guessed": "HR"}, headers=ORIGIN)
     assert res.status_code == 200

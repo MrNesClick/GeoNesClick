@@ -1,4 +1,4 @@
-// Connexion au moteur Python : WebSocket pour les résultats poussés, HTTP pour les commandes.
+// Connection to the Python engine: WebSocket for pushed results, HTTP for commands.
 import { reactive } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
@@ -18,22 +18,22 @@ export interface Hint {
   verified: boolean;
 }
 
-/** Une catégorie à regarder pour départager les pays candidats. */
+/** A category to look at to tell the candidate countries apart. */
 export interface LookFor {
   category: string;
   label: string;
   score: number;
-  /** Quoi observer pour trancher, sans nommer de pays. */
+  /** What to observe to decide, without naming a country. */
   looks: string[];
   hints: Hint[];
 }
 
-/** Une astuce Plonk It dont le texte ressemble à la vue (comparaison CLIP, en local). */
+/** A Plonk It tip whose text resembles the view (CLIP comparison, local). */
 export interface SimilarTip {
-  /** Empreinte du texte : clé de la traduction. */
+  /** Hash of the text: key of the translation. */
   id: string;
   text: string;
-  /** Traduction dans la langue du coach, si elle est déjà connue. */
+  /** Translation into the coach's language, if already known. */
   translated: string | null;
   section: string;
   category: string;
@@ -41,7 +41,7 @@ export interface SimilarTip {
   score: number;
 }
 
-/** Un pays réel souvent pris pour un autre, avec les metas qui les séparent. */
+/** A real country often taken for another, with the metas that tell them apart. */
 export interface Confusion {
   country: string;
   guessed: string;
@@ -60,20 +60,20 @@ export interface Progress {
 
 export type Fiche = Record<string, unknown>;
 
-/** Conclusion : celle des règles locales sur tes marques, sinon celle du modèle de vision (vue entière). */
+/** Conclusion: the local rules' one on your marks, otherwise the vision model's (whole view). */
 export interface Conclusion {
-  /** marks : règles locales sur le texte de tes marques ; vision : lecture de la vue entière par l'IA. */
+  /** marks: local rules on the text of your marks; vision: reading of the whole view by the AI. */
   source: "marks" | "vision";
   country: string;
   region: string;
   proof: string;
   certainty: string;
-  /** Confirmée par une règle locale (mot, domaine, indicatif…). Mesuré : le modèle seul se trompe parfois
-   * avec « certitude forte » (Slovaquie sur « utca » mal lu) ; sans confirmation, jamais « certain ». */
+  /** Confirmed by a local rule (word, domain, dialling code…). Measured: the model alone is sometimes wrong
+   * with "strong certainty" (Slovakia on a misread "utca"); without confirmation, never "certain". */
   confirmed: boolean;
 }
 
-/** Lit la clé « conclusion » de la fiche ; null si absente, vide ou pays inconnu de la configuration. */
+/** Reads the "conclusion" key of the sheet; null if missing, empty or a country unknown to the configuration. */
 export function conclusionOf(fiche: Fiche): Conclusion | null {
   const c = fiche.conclusion;
   if (!c || typeof c !== "object") return null;
@@ -86,51 +86,51 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
   return {
     source: "vision", country, region: field("region"), proof: field("preuve"),
     certainty: field("certitude").toLowerCase(),
-    confirmed: false, // l'IA seule n'est jamais « certaine » : seules les règles locales confirment
+    confirmed: false, // the AI alone is never "certain": only the local rules confirm
   };
 }
 
-/** Une preuve tirée d'une marque par une règle locale. */
+/** A proof drawn from a mark by a local rule. */
 export interface Evidence {
   kind: "alphabet" | "lettres" | "mot" | "lieu" | "rue";
   value: string;
   label: string;
   countries: string[];
   source: string;
-  /** Pourquoi elle ne compte pas (« hors de tes pays candidats ») ; vide sinon. */
+  /** Why it does not count ("outside your candidate countries"); empty otherwise. */
   note?: string;
-  /** Lieu : homonymes retenus [latitude, longitude, pays, nom GeoNames, région]. */
+  /** Place: namesakes kept [latitude, longitude, country, GeoNames name, region]. */
   points?: [number, number, string, string, string?][];
 }
 
-/** Un verrou : ce qui est fixé pour la capture (pays › région › ville), par le coach ou par toi. */
+/** A lock: what is set for the capture (country › region › city), by the coach or by you. */
 export interface Lock {
   level: "country" | "region" | "city";
   country: string;
-  /** Code GeoNames de la région (« FR.75 ») : région, et ville si on la connaît. */
+  /** GeoNames code of the region ("FR.75"): region, and city if known. */
   region: string;
-  /** Nom de la région ou de la ville (le pays : countryName). */
+  /** Name of the region or city (the country: countryName). */
   name: string;
   lat: number | null;
   lon: number | null;
   by: "coach" | "user";
-  /** Ce qui l'a fait poser par le coach (« marques 1, 2 »). */
+  /** What made the coach set it ("marks 1, 2"). */
   why: string;
 }
 
 export interface Locks {
   held: Partial<Record<Lock["level"], Lock>>;
-  /** Rejetés pour toute la capture : le coach ne les reverrouille pas. */
+  /** Rejected for the whole capture: the coach does not lock them again. */
   rejected: Lock[];
-  /** Ville proposée par le coach : jamais verrouillée sans toi. */
+  /** City suggested by the coach: never locked without you. */
   proposal: Lock | null;
-  /** Régions des lieux lus dans tes marques, proposées en un clic (plusieurs : à toi de trancher). */
+  /** Regions of the places read in your marks, offered in one click (several: your call). */
   read_regions: { code: string; name: string; marks: number[]; places: string[] }[];
-  /** Étendue de la région choisie [sud, ouest, nord, est], d'après ses lieux GeoNames (pas de contour). */
+  /** Extent of the chosen region [south, west, north, east], from its GeoNames places (no outline). */
   region_bounds: [number, number, number, number] | null;
 }
 
-/** Résultat de la recherche du « + » (index GeoNames local). */
+/** Result of the "+" search (local GeoNames index). */
 export interface PlaceFound {
   name: string;
   code?: string;
@@ -142,31 +142,31 @@ export interface PlaceFound {
   population?: number;
 }
 
-/** Pays verrouillé (par toi ou par le coach), ou null. */
+/** Locked country (by you or by the coach), or null. */
 export const lockedCountry = (a: Analysis): string | null => a.locks?.held.country?.country ?? null;
 
-/** Ce que les marques prouvent ensemble (règles locales du moteur, evidence.py). */
+/** What the marks prove together (the engine's local rules, evidence.py). */
 export interface Verdict {
   country: string;
-  /** certain (lieu + autre preuve, aucune marque contraire), probable (très probable), ou "" */
+  /** certain (place + other proof, no contrary mark), probable (very likely), or "" */
   level: "certain" | "probable" | "";
-  /** Pays que l'alphabet laisse possibles ; null : aucun écarté. */
+  /** Countries the alphabet leaves possible; null: none ruled out. */
   allowed: string[] | null;
   scripts: string[];
   cites: { n: number; items: string[] }[];
   against: { n: number; country: string; items: string[] }[];
   conflict: string;
-  /** Position estimée d'après les lieux lus (et les distances d'un panneau), null sans lieu. */
+  /** Position estimated from the places read (and a sign's distances), null without a place. */
   location: Location | null;
-  /** Homonymes lointains écartés (« LAAS » → Lasa, Italie, loin des autres lieux lus) : ne comptent pas. */
+  /** Distant namesakes ruled out ("LAAS" → Lasa, Italy, far from the other places read): they do not count. */
   ignored: { n: number; value: string; label: string; countries: string[] }[];
-  /** Lieux seuls, sans confirmation (2ᵉ lieu, lettre ou mot, StreetCLIP) : de simples indices. */
+  /** Lone places, unconfirmed (2nd place, letter or word, StreetCLIP): mere clues. */
   unconfirmed: { n: number; value: string; country: string }[];
-  /** Lieux lus que tes choix écartent (hors de ton pays ou de ta région) : grisés sur la carte. */
+  /** Places read that your choices rule out (outside your country or region): greyed out on the map. */
   outside?: { n: number; name: string; label: string; lat: number; lon: number }[];
 }
 
-/** Un lieu lu sur une marque, placé sur la carte (GeoNames). */
+/** A place read on a mark, plotted on the map (GeoNames). */
 export interface PlaceRead {
   n: number;
   name: string;
@@ -176,20 +176,20 @@ export interface PlaceRead {
   lon: number;
 }
 
-/** point : triangulée (plusieurs distances) ; ring : à une distance d'un lieu ; places : dans les parages des lieux. */
+/** point: triangulated (several distances); ring: at a distance from a place; places: around the places. */
 export type Location =
   | { kind: "point"; lat: number; lon: number; radius_km: number; places: PlaceRead[] }
   | { kind: "ring"; lat: number; lon: number; radius_km: number; spread_km: number; places: PlaceRead[] }
   | { kind: "places"; places: PlaceRead[] }
-  /** Distances incohérentes (chiffre mal lu) : au plus radius_km du lieu le plus proche, toujours vrai. */
+  /** Inconsistent distances (misread digit): at most radius_km from the closest place, always true. */
   | { kind: "rough"; lat: number; lon: number; radius_km: number; doubtful: { n: number; name: string; km: number }[];
       places: PlaceRead[] };
 
-/** Pays écarté par l'alphabet de tes marques (« cyrillique » exclut la France). */
+/** Country ruled out by the alphabet of your marks ("Cyrillic" excludes France). */
 export const excluded = (a: Analysis, code: string): boolean =>
   !!a.verdict?.allowed && !a.verdict.allowed.includes(code);
 
-/** Conclusion des règles locales sur tes marques, citant les marques qui la prouvent. */
+/** Conclusion of the local rules on your marks, citing the marks that prove it. */
 export function marksConclusion(a: Analysis): Conclusion | null {
   const v = a.verdict;
   if (!v?.country || !v.level) return null;
@@ -200,13 +200,13 @@ export function marksConclusion(a: Analysis): Conclusion | null {
   };
 }
 
-/** Conclusion de l'IA sur la vue entière que l'alphabet de tes marques contredit (France sur du cyrillique). */
+/** AI conclusion on the whole view that the alphabet of your marks contradicts (France on Cyrillic). */
 export function rejectedVision(a: Analysis): Conclusion | null {
   const c = a.vision.status === "done" ? conclusionOf(a.vision.fiche) : null;
   return c && excluded(a, c.country) ? c : null;
 }
 
-/** La preuve qui compte : tes marques d'abord ; sinon la lecture de l'IA, si l'alphabet ne l'exclut pas. */
+/** The proof that counts: your marks first; otherwise the AI's reading, if the alphabet does not exclude it. */
 export function proofOf(a: Analysis): Conclusion | null {
   const marks = marksConclusion(a);
   if (marks) return marks;
@@ -214,20 +214,20 @@ export function proofOf(a: Analysis): Conclusion | null {
   return vision && !excluded(a, vision.country) ? vision : null;
 }
 
-/** Libellé d'une preuve selon sa source et sa confirmation. */
+/** Label of a proof according to its source and its confirmation. */
 export function proofLabel(c: Conclusion): string {
   if (c.source === "marks") return c.confirmed ? "Certain : lu dans tes marques" : "Très probable : lu dans tes marques";
   return c.certainty === "forte" ? "Très probable : lu par l'IA, à confirmer" : "Probable : lu par l'IA, à confirmer";
 }
 
-/** Preuve CERTAINE : forte, confirmée par une règle locale, et réglage « une preuve lue tranche » actif. */
+/** CERTAIN proof: strong, confirmed by a local rule, and the "a proof read settles it" setting on. */
 export function certainProof(a: Analysis): Conclusion | null {
   const proof = proofOf(a);
   return engine.trustProof && proof?.certainty === "forte" && proof.confirmed ? proof : null;
 }
 
-/** Pays qui se détache nettement d'après StreetCLIP, ou null : le coach parle alors d'hésitation. */
-/** Pays de StreetCLIP que l'alphabet de tes marques n'écarte pas. */
+/** Country that clearly stands out according to StreetCLIP, or null: the coach then talks of hesitation. */
+/** StreetCLIP countries that the alphabet of your marks does not rule out. */
 export const viable = (a: Analysis): CountryScore[] => (a.scores ?? []).filter((s) => !excluded(a, s.code));
 
 export function clearLeader(a: Analysis): CountryScore | null {
@@ -237,11 +237,11 @@ export function clearLeader(a: Analysis): CountryScore | null {
   return ok ? first : null;
 }
 
-/** Pays entre lesquels StreetCLIP hésite : les premiers, au moins 10 % chacun (quatre au plus). */
+/** Countries StreetCLIP hesitates between: the first ones, at least 10 % each (four at most). */
 export const contenders = (a: Analysis): CountryScore[] =>
   viable(a).filter((s, i) => i === 0 || s.probability >= 0.1).slice(0, 4);
 
-/** Le modèle de vision a vu du texte sans pouvoir le lire (trop petit ou flou). */
+/** The vision model saw text without being able to read it (too small or blurry). */
 export function unreadableText(a: Analysis): boolean {
   if (a.vision.status !== "done") return false;
   const text = a.vision.fiche.panneaux_et_texte;
@@ -249,20 +249,20 @@ export function unreadableText(a: Analysis): boolean {
   return /illisible/i.test(all);
 }
 
-/** Pays en tête : prouvé (certain, les autres écartés) ou lu par l'IA (très probable, les autres restent). */
+/** Leading country: proven (certain, the others ruled out) or read by the AI (very likely, the others stay). */
 export function headCountry(a: Analysis): { code: string; certain: boolean; source: Conclusion["source"] | "lock" } | null {
   const locked = lockedCountry(a);
-  if (locked) return { code: locked, certain: true, source: "lock" }; // verrou : astuces et zones s'y centrent
+  if (locked) return { code: locked, certain: true, source: "lock" }; // lock: tips and zones centre on it
   const certain = certainProof(a);
   if (certain) return { code: certain.country, certain: true, source: certain.source };
   const proof = proofOf(a);
   return proof ? { code: proof.country, certain: false, source: proof.source } : null;
 }
 
-/** Astuces Plonk It à afficher : le pays en tête d'abord (seul lui s'il est certain), puis les probables. */
+/** Plonk It tips to show: the leading country first (only it if it is certain), then the likely ones. */
 export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }[] {
   const head = headCountry(a);
-  // Pays verrouillé hors des candidats de StreetCLIP : ses astuces arrivent à part (message « similar »).
+  // Locked country outside StreetCLIP's candidates: its tips arrive separately ("similar" message).
   if (head?.source === "lock") return [{ code: head.code, tips: a.similar?.[head.code] ?? [] }].filter((c) => c.tips.length);
   return viable(a)
     .filter((s) => !head?.certain || s.code === head.code)
@@ -271,33 +271,33 @@ export function tipsByCountry(a: Analysis): { code: string; tips: SimilarTip[] }
     .filter((c) => c.tips.length);
 }
 
-/** Zone où la vue se trouve probablement : contour arrondi autour des positions PLONK les plus denses. */
+/** Zone where the view probably is: rounded outline around the densest PLONK positions. */
 export interface Zone {
-  /** Contour [latitude, longitude] en degrés. */
+  /** Outline [latitude, longitude] in degrees. */
   polygon: [number, number][];
-  /** Part des positions du nuage dans cette zone (0 à 1). */
+  /** Share of the cloud's positions in this zone (0 to 1). */
   part: number;
   width_km: number;
   height_km: number;
-  /** Pays principaux de la zone et leur part dans la zone (au plus deux). */
+  /** Main countries of the zone and their share in it (two at most). */
   countries: [string, number][];
 }
 
-/** Nuage PLONK de la vue, résumé en zones par le moteur (une piste pour la carte, jamais un vote de pays). */
+/** PLONK cloud of the view, summarised in zones by the engine (a lead for the map, never a country vote). */
 export interface Cloud {
   zones: Zone[];
-  /** Les mêmes zones calculées pays par pays (pays d'au moins 5 % des positions), pour suivre une preuve. */
+  /** The same zones computed country by country (countries with at least 5 % of the positions), to follow a proof. */
   zones_by_country: Record<string, Zone[]>;
   ms: number;
 }
 
-/** Zones à dessiner : celles du pays en tête (prouvé ou lu par l'IA), sinon toutes. Un pays lu mais sans
- * zone à lui garde les zones de tous les pays : il n'est pas certain. */
+/** Zones to draw: those of the leading country (proven or read by the AI), otherwise all. A country read but
+ * without a zone of its own keeps the zones of all countries: it is not certain. */
 export function visibleZones(a: Analysis): Zone[] {
   if (a.cloud.status !== "done") return [];
   const head = headCountry(a);
   if (!head) {
-    // L'alphabet de tes marques écarte des pays : seulement les zones des pays qui restent possibles.
+    // The alphabet of your marks rules out countries: only the zones of the countries that remain possible.
     const allowed = a.verdict?.allowed;
     const kept = allowed ? allowed.flatMap((c) => a.cloud.status === "done" ? a.cloud.data.zones_by_country[c] ?? [] : []) : [];
     return kept.length ? kept : a.cloud.data.zones;
@@ -305,61 +305,61 @@ export function visibleZones(a: Analysis): Zone[] {
   return a.cloud.data.zones_by_country[head.code] ?? (head.certain ? [] : a.cloud.data.zones);
 }
 
-/** Une marque : un indice entouré sur la vue figée, découpé dans l'image brute et transcrit par l'IA. */
+/** A mark: a clue circled on the frozen view, cropped from the raw image and transcribed by the AI. */
 export interface Mark {
-  /** Numéro affiché (①, ②…), continu sur toute l'analyse. */
+  /** Displayed number (①, ②…), continuous over the whole analysis. */
   n: number;
   status: "pending" | "done" | "error";
-  /** Découpe telle qu'envoyée au modèle (agrandie si elle était petite). */
+  /** Crop as sent to the model (enlarged if it was small). */
   thumbnail: string;
-  /** Facteur d'agrandissement appliqué (1 = taille d'origine). */
+  /** Enlargement factor applied (1 = original size). */
   scale: number;
-  /** Ce que les règles locales tirent de son texte (alphabet, lettres, mots, lieux). */
+  /** What the local rules draw from its text (alphabet, letters, words, places). */
   evidence?: Evidence[];
-  /** Lignes lues mot pour mot (vide : pas de texte). */
+  /** Lines read word for word (empty: no text). */
   text: string[];
   unreadable: boolean;
-  /** Ce que montre la marque (plaque de rue, enseigne…), selon l'IA. */
+  /** What the mark shows (street sign, shop sign…), according to the AI. */
   object: string;
   script: string;
   seconds?: number;
   error?: string;
-  /** Début de la lecture (horloge locale) : le bandeau d'activité compte depuis là, pas depuis la capture. */
+  /** Start of the reading (local clock): the activity banner counts from there, not from the capture. */
   startedAt?: number;
 }
 
-/** Numéro de marque en chiffre cerclé (① à ⑳). */
+/** Mark number as a circled digit (① to ⑳). */
 export const circled = (n: number) => (n >= 1 && n <= 20 ? String.fromCodePoint(0x245f + n) : `(${n})`);
 
 export interface Analysis {
   id: string;
   at: string;
-  /** Instant de réception de la capture (horloge locale), pour afficher le temps écoulé. */
+  /** Time the capture was received (local clock), to show the elapsed time. */
   receivedAt: number;
   thumbnail: string;
   captureMs: number;
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
   similar: Record<string, SimilarTip[]> | null;
-  /** Traduction des astuces en cours (null : rien à traduire), terminée, ou ce qui est resté en anglais. */
+  /** Tip translation running (null: nothing to translate), finished, or what stayed in English. */
   translation: "pending" | "done" | string | null;
-  /** Lots de traduction pas encore revenus : à 0, la traduction est finie, réussie ou non. */
+  /** Translation batches not back yet: at 0, the translation is over, successful or not. */
   translationLeft: number;
   translationError: string | null;
   clipMs: number | null;
   labelled: { country: string; guessed: string; found: boolean | null } | null;
-  /** Nuage de la carte : off (PLONK désactivé ou absent), en cours, prêt, ou en échec. */
+  /** Map cloud: off (PLONK disabled or missing), running, ready, or failed. */
   cloud: { status: "off" } | { status: "pending" } | { status: "done"; data: Cloud } | { status: "error"; error: string };
   vision:
     | { status: "off" }
     | { status: "pending"; model: string }
     | { status: "done"; model: string; seconds: number; fiche: Fiche }
     | { status: "error"; error: string };
-  /** Indices entourés par le joueur, dans l'ordre de leur numéro. */
+  /** Clues circled by the player, in the order of their number. */
   marks: Mark[];
-  /** Ce que les marques lues prouvent ensemble (null : aucune marque lue). */
+  /** What the marks read prove together (null: no mark read). */
   verdict: Verdict | null;
-  /** Verrous de la capture (null : aucun pour l'instant). */
+  /** Locks of the capture (null: none so far). */
   locks: Locks | null;
 }
 
@@ -367,26 +367,26 @@ export const engine = reactive({
   connected: false,
   capture: { alive: false, starting: true, message: "connexion au moteur…" },
   streetclip: { ready: false, message: "" },
-  /** key : d'où vient la clé API et ses 4 derniers caractères (jamais la clé), null si absente. */
+  /** key: where the API key comes from and its last 4 characters (never the key), null if missing. */
   vision: { enabled: false, ready: false, model: "", key: null as { source: string; end: string } | null },
   metas: { count: 0, message: "", judge: true },
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
   plonk: { enabled: false, ready: false, message: "" },
-  /** uses / not_yet : ce que le coach tire d'une marque, rappelé sur l'écran des marques. */
+  /** uses / not_yet: what the coach draws from a mark, recalled on the marks screen. */
   marks: { enabled: false, max: 9, uses: [] as string[], not_yet: [] as string[] },
   places: { enabled: false, ready: false, message: "" },
   locks: { enabled: false },
   map: { enabled: false, tile_url: "", attribution: "", attribution_url: "", tile_filter: "", tile_filter_close: "",
          close_zoom: 11, max_zoom: 13 },
   countries: [] as string[],
-  /** Niveau d'aide : 1 où regarder, 2 + ce que voit l'IA, 3 + pays et indices, 4 + synthèse de la réponse. */
+  /** Help level: 1 where to look, 2 + what the AI sees, 3 + countries and clues, 4 + synthesis of the answer. */
   helpLevel: 4,
-  /** Une preuve lue avec certitude forte met son pays en tête et écarte les autres. */
+  /** A proof read with strong certainty puts its country first and rules out the others. */
   trustProof: true,
-  /** Sans preuve, un pays n'est donné en réponse que s'il se détache (probabilité et avance sur le 2ᵉ). */
+  /** Without proof, a country is given as the answer only if it stands out (probability and lead over the 2nd). */
   leader: { min: 0.4, margin: 0.15 },
-  /** « Tout effacer » fait : le moteur attend d'être relancé. */
+  /** "Erase everything" done: the engine is waiting to be restarted. */
   erased: false,
   busy: false,
   error: null as string | null,
@@ -489,7 +489,7 @@ function handle(msg: Message) {
       if (cur?.id === msg.id) {
         cur.scores = msg.scores;
         cur.lookfor = msg.lookfor;
-        cur.similar = { ...(cur.similar ?? {}), ...msg.similar }; // le pays verrouillé a pu arriver avant
+        cur.similar = { ...(cur.similar ?? {}), ...msg.similar }; // the locked country may have arrived before
         if (msg.translating) cur.translation = "pending";
         cur.translationLeft += msg.batches;
         cur.clipMs = msg.ms;
@@ -505,7 +505,7 @@ function handle(msg: Message) {
       if (cur?.id === msg.id && cur.similar) {
         const all = Object.values(cur.similar).flat();
         for (const tip of all) tip.translated = msg.translations[tip.id] ?? tip.translated;
-        // Un message par lot, réussi ou non : « en cours » jusqu'au dernier, jamais au-delà.
+        // One message per batch, successful or not: "running" until the last one, never beyond.
         cur.translationLeft = Math.max(0, cur.translationLeft - 1);
         if (msg.error) cur.translationError = msg.error;
         if (cur.translationLeft === 0 || all.every((tip) => tip.translated)) {
@@ -514,7 +514,7 @@ function handle(msg: Message) {
         }
       }
       break;
-    case "lookfor": // recalculé après un verdict « Juste » / « Faux »
+    case "lookfor": // recomputed after a "Right" / "Wrong" verdict
       if (cur?.id === msg.id) cur.lookfor = msg.lookfor;
       break;
     case "vision_pending":
@@ -552,7 +552,7 @@ function handle(msg: Message) {
                       region_bounds: msg.region_bounds ?? null };
       }
       break;
-    case "similar": // astuces du pays verrouillé, ajoutées à celles des candidats
+    case "similar": // tips of the locked country, added to those of the candidates
       if (cur?.id === msg.id) {
         cur.similar = { ...(cur.similar ?? {}), ...msg.similar };
         if (msg.batches) {
@@ -580,7 +580,7 @@ export function connect() {
   ws.onmessage = (event) => handle(JSON.parse(event.data) as Message);
   ws.onclose = () => {
     engine.connected = false;
-    setTimeout(connect, 1500); // le moteur démarre en quelques secondes
+    setTimeout(connect, 1500); // the engine starts in a few seconds
   };
 }
 
@@ -610,21 +610,21 @@ async function loadProgress() {
     const res = await fetch(ENGINE_URL + "/progress");
     if (res.ok) engine.progress = (await res.json()) as Progress;
   } catch {
-    /* sans importance : la progression arrivera avec la prochaine étiquette */
+    /* no matter: the progress will come with the next label */
   }
 }
 
 export const requestCapture = () => request("/capture");
-/** « Marquer » : fige la vue ; la fenêtre des marques s'ouvre en plein écran. */
+/** "Mark": freezes the view; the marks window opens in full screen. */
 export const requestFreeze = () => request("/marks/freeze");
-/** Retire une marque dont la lecture est fausse : la conclusion est recalculée sans elle. */
+/** Removes a mark whose reading is wrong: the conclusion is recomputed without it. */
 export const removeMark = (id: string, n: number) => request("/marks/remove", { id, n });
 export const restartSharing = () => request("/capture/restart");
 export const reselectWindow = () => request("/capture/reselect");
-/** « C'était où ? » : pays réel, et pays répondu (vide si tu ne sais plus) ou simple « trouvé ? ». */
+/** "Where was it?": real country, and answered country (empty if you no longer know) or a simple "found?". */
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null, link = "") =>
   request("/label", { id, country, guessed, found, link });
-/** Vrai lieu lu dans un lien Google Maps (jamais ouvert) : position, pays, région ; ou la raison du refus. */
+/** True place read from a Google Maps link (never opened): position, country, region; or the reason for refusal. */
 export async function previewTruth(link: string): Promise<
   { lat: number; lon: number; country: string; region: string; region_name: string } | { error: string }> {
   try {
@@ -638,17 +638,17 @@ export async function previewTruth(link: string): Promise<
   }
 }
 export const refreshPlonkit = () => request("/plonkit/refresh");
-/** « Tout effacer » (RGPD) : ce qui partirait, avec les tailles. */
+/** "Erase everything" (GDPR): what would go, with the sizes. */
 export interface EraseGroup { id: string; label: string; files: number; size: number; precious: boolean; optional: boolean }
 export const erasePlan = () => getJSON<{ groups: EraseGroup[] }>("/storage/erase");
-/** Efface tout ce qui te concerne, puis relance le moteur (Tauri) et l'interface, qui repartent de zéro. */
+/** Erases everything about you, then restarts the engine (Tauri) and the UI, which start again from scratch. */
 export async function eraseEverything(models: boolean): Promise<string | null> {
   const res = await request("/storage/erase", { confirm: "EFFACER", models });
   if (!res?.ok) return engine.error ?? "Effacement impossible.";
   try {
-    localStorage.clear(); // l'état de l'interface (sections ouvertes…) part aussi
+    localStorage.clear(); // the UI state (open sections…) goes too
   } catch {
-    /* stockage indisponible : rien à effacer */
+    /* storage unavailable: nothing to erase */
   }
   try {
     const { invoke } = await import("@tauri-apps/api/core");
@@ -659,18 +659,18 @@ export async function eraseEverything(models: boolean): Promise<string | null> {
   window.location.reload();
   return null;
 }
-/** Clé API NVIDIA : écrite par le moteur dans un fichier lisible par toi seul ; vide = l'oublier. */
+/** NVIDIA API key: written by the engine to a file readable by you only; empty = forget it. */
 export async function saveApiKey(key: string): Promise<string | null> {
   const res = await request("/settings/api-key", { key });
   return res?.ok ? null : engine.error ?? "Enregistrement impossible.";
 }
-/** Verrouille un pays, une région ou une ville pour la capture (ou accepte la ville proposée). */
+/** Locks a country, a region or a city for the capture (or accepts the suggested city). */
 export const setLock = (id: string, lock: Pick<Lock, "level" | "country"> & Partial<Lock>) =>
   request("/locks", { id, level: lock.level, country: lock.country, region: lock.region ?? "", name: lock.name ?? "",
                       lat: lock.lat ?? null, lon: lock.lon ?? null });
-/** ✕ sur un verrou ou sur la ville proposée : écarté pour toute la capture. */
+/** ✕ on a lock or on the suggested city: ruled out for the whole capture. */
 export const rejectLock = (id: string, level: Lock["level"] | "proposal") => request("/locks/reject", { id, level });
-/** Recherche d'une région ou d'une ville dans l'index local (sans réseau, sans bloquer les boutons). */
+/** Search for a region or a city in the local index (offline, without blocking the buttons). */
 export async function searchPlaces(level: "region" | "city", q: string, country: string, region = ""): Promise<PlaceFound[]> {
   try {
     const res = await fetch(ENGINE_URL + "/locks/search", {
@@ -683,19 +683,19 @@ export async function searchPlaces(level: "region" | "city", q: string, country:
     return [];
   }
 }
-/** Vide un élément du stockage (Réglages › Stockage) ; renvoie l'inventaire à jour et la place libérée. */
+/** Empties a storage item (Settings › Storage); returns the updated inventory and the space freed. */
 export async function clearStorage(id: string): Promise<{ freed: number; items: unknown[] } | null> {
   const res = await request("/storage/clear", { id });
   return res?.ok ? ((await res.json()) as { freed: number; items: unknown[] }) : null;
 }
 
-/** Change le niveau d'aide tout de suite, puis l'enregistre dans config.toml. */
+/** Changes the help level right away, then saves it in config.toml. */
 export async function setHelpLevel(level: number) {
   engine.helpLevel = level;
   await saveSettings({ coach: { help_level: level } });
 }
 
-/** Libellés des catégories de metas (mêmes clés que metas.py). */
+/** Labels of the metas categories (same keys as metas.py). */
 export const CATEGORY_LABELS: Record<string, string> = {
   langue: "Langue et alphabet",
   conduite: "Sens de circulation",
@@ -710,7 +710,7 @@ export const CATEGORY_LABELS: Record<string, string> = {
   architecture: "Architecture",
   autre: "Autres indices",
 };
-/** Ouvre une page Plonk It dans le navigateur (seules ces adresses sont autorisées par Tauri). */
+/** Opens a Plonk It page in the browser (only these addresses are allowed by Tauri). */
 export async function openPlonkit(url: string) {
   if (!url.startsWith("https://www.plonkit.net/")) return;
   try {
@@ -720,27 +720,27 @@ export async function openPlonkit(url: string) {
   }
 }
 
-/** Texte Markdown d'une astuce en segments (gras ou non), sans jamais interpréter de HTML. */
+/** Markdown text of a tip as segments (bold or not), never interpreting HTML. */
 export function markdownSegments(md: string): { text: string; bold: boolean }[] {
   const plain = md.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace(/[_`#>]/g, "");
   return plain.split("**").map((text, i) => ({ text, bold: i % 2 === 1 })).filter((s) => s.text);
 }
 
-/** Verdict du joueur sur un indice de l'amorce ; le moteur l'écrit dans mes-metas.toml. */
+/** Player's verdict on a seed clue; the engine writes it to mes-metas.toml. */
 export const judgeHint = (category: string, hint: string, verdict: "right" | "wrong") =>
   request("/metas/judge", { category, hint, verdict, id: engine.current?.id ?? "" });
 
-/** Contours des pays (Natural Earth, servis par le moteur), chargés une seule fois. */
+/** Country outlines (Natural Earth, served by the engine), loaded only once. */
 let outlines: Promise<GeoJSON.FeatureCollection | null> | null = null;
 export function countryOutlines(): Promise<GeoJSON.FeatureCollection | null> {
   outlines ??= getJSON<GeoJSON.FeatureCollection>("/map/countries").then((g) => {
-    if (!g) outlines = null; // moteur pas encore prêt : on réessaiera à la prochaine carte
+    if (!g) outlines = null; // engine not ready yet: we will retry on the next map
     return g;
   });
   return outlines;
 }
 
-/** Ouvre la page d'attribution du fond de carte (seule l'adresse OpenStreetMap est autorisée par Tauri). */
+/** Opens the attribution page of the map background (only the OpenStreetMap address is allowed by Tauri). */
 export async function openAttribution() {
   const url = engine.map.attribution_url;
   if (!url.startsWith("https://")) return;
@@ -751,22 +751,22 @@ export async function openAttribution() {
   }
 }
 
-// --- Pays : noms français et drapeaux ------------------------------------------------------------
+// --- Countries: French names and flags ------------------------------------------------------------
 const regionNames = new Intl.DisplayNames(["fr"], { type: "region" });
 export const countryName = (code: string) => regionNames.of(code) ?? code;
-/** Forme de comparaison d'un nom : minuscules, sans accents (« Égypte » ~ « egy »). */
+/** Comparison form of a name: lower case, without accents ("Égypte" ~ "egy"). */
 export const normalise = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
-/** Nombre à la française : « 13,2 ». */
+/** Number in French format: "13,2". */
 export const fr = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 export const flag = (code: string) =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
 
-// --- Réglages ------------------------------------------------------------------------------------
+// --- Settings ------------------------------------------------------------------------------------
 export type Settings = Record<string, Record<string, unknown>>;
-/** Réglages réservés au fichier (sécurité) : valeur et raison, affichés en lecture seule. */
+/** File-only settings (security): value and reason, shown read-only. */
 export type FileOnly = Record<string, Record<string, { value: unknown; why: string }>>;
 
-/** Enregistre un seul réglage, tout de suite ; renvoie l'erreur éventuelle et s'il attend un redémarrage. */
+/** Saves a single setting, right away; returns the error, if any, and whether it awaits a restart. */
 export async function saveSetting(section: string, key: string, value: unknown): Promise<{ error: string | null; restart: boolean }> {
   try {
     const res = await fetch(ENGINE_URL + "/settings", {
@@ -800,7 +800,7 @@ export async function saveSettings(settings: Settings): Promise<string | null> {
   return engine.error ?? "Enregistrement impossible.";
 }
 
-/** Test d'un modèle : appel séparé, pour ne pas bloquer la capture pendant ces quelques secondes. */
+/** Model test: separate call, so as not to block the capture during these few seconds. */
 export async function testModel(model: string): Promise<{ ok: boolean; seconds?: number; error?: string }> {
   try {
     const res = await fetch(ENGINE_URL + "/models/test", {

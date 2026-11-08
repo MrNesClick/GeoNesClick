@@ -1,8 +1,8 @@
-"""Frontières des pays : pays d'un point GPS (filtrage du nuage PLONK) et contours pour la carte du coach.
+"""Country borders: country of a GPS point (filtering the PLONK cloud) and outlines for the coach's map.
 
-Données : Natural Earth 1:50m, Admin 0 – Countries, v5.1.2 (domaine public, https://www.naturalearthdata.com),
-fichier data/ne_50m_admin_0_countries.geojson. Le code pays vient de ISO_A2_EH, qui corrige les « -99 »
-de ISO_A2 (France, Norvège) ; les territoires sans code (-99) sont ignorés.
+Data: Natural Earth 1:50m, Admin 0 – Countries, v5.1.2 (public domain, https://www.naturalearthdata.com),
+file data/ne_50m_admin_0_countries.geojson. The country code comes from ISO_A2_EH, which fixes the "-99"
+of ISO_A2 (France, Norway); territories without a code (-99) are ignored.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ DATA_FILE = "ne_50m_admin_0_countries.geojson"
 
 @dataclass(frozen=True)
 class Polygon:
-    outer: np.ndarray  # (n, 2) : lon, lat
-    holes: tuple[np.ndarray, ...]  # enclaves (le Lesotho dans l'Afrique du Sud…)
+    outer: np.ndarray  # (n, 2): lon, lat
+    holes: tuple[np.ndarray, ...]  # enclaves (Lesotho inside South Africa…)
 
 
 @dataclass(frozen=True)
@@ -32,7 +32,7 @@ class Country:
 
 
 def _inside(ring: np.ndarray, lon: np.ndarray, lat: np.ndarray) -> np.ndarray:
-    """Test du rayon (règle pair-impair), vectorisé sur les points."""
+    """Ray test (even-odd rule), vectorised over the points."""
     x0, y0 = ring[:-1, 0][:, None], ring[:-1, 1][:, None]
     x1, y1 = ring[1:, 0][:, None], ring[1:, 1][:, None]
     crosses = (y0 > lat) != (y1 > lat)
@@ -60,11 +60,11 @@ class Borders:
             lo, hi = pts.min(0), pts.max(0)
             self.countries.append(Country(code, (lo[0], lo[1], hi[0], hi[1]), polys))
             features.append({"type": "Feature", "properties": {"code": code}, "geometry": geom})
-        # Contours allégés pour l'interface : seul le code est gardé (le fichier d'origine porte ~100 champs).
+        # Lightweight outlines for the UI: only the code is kept (the original file has ~100 fields).
         self.geojson: dict[str, Any] = {"type": "FeatureCollection", "features": features}
 
     def countries_of(self, lat: np.ndarray, lon: np.ndarray) -> list[str]:
-        """Code du pays de chaque point ("" en mer ou hors des pays connus)."""
+        """Country code of each point ("" at sea or outside the known countries)."""
         lat, lon = np.asarray(lat, dtype=np.float64), np.asarray(lon, dtype=np.float64)
         found = np.full(lat.shape, "", dtype=object)
         for country in self.countries:

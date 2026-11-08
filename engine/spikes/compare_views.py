@@ -1,13 +1,13 @@
-"""Expérience : que gagne-t-on à recadrer la vue et à masquer l'interface du jeu ?
+"""Experiment: what do we gain by cropping the view and masking the game's UI?
 
-Compare trois variantes sur le jeu de test étiqueté (dataset/labels.toml) :
-  fenetre  la fenêtre du navigateur entière
-  cadre    la vue Street View seule (sans la barre du navigateur)
-  masques  la vue, avec l'interface GeoGuessr masquée (logo, boussole, scores, boutons, mini-carte)
-Mesure, pour chaque variante : rang et probabilité du bon pays selon StreetCLIP, et pour le modèle de
-vision, les noms de pays recopiés depuis l'image (fuite de la mini-carte).
+Compares three variants on the labelled test set (dataset/labels.toml):
+  fenetre  the whole browser window
+  cadre    the Street View view alone (without the browser bar)
+  masques  the view, with the GeoGuessr UI masked (logo, compass, scores, buttons, mini-map)
+Measures, for each variant: rank and probability of the right country according to StreetCLIP, and for the
+vision model, the country names copied from the image (mini-map leak).
 
-Usage : .venv/bin/python spikes/compare_views.py [--no-vision]
+Usage: .venv/bin/python spikes/compare_views.py [--no-vision]
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-os.environ.setdefault("HF_HUB_OFFLINE", "1")  # StreetCLIP déjà en cache : aucun appel réseau
+os.environ.setdefault("HF_HUB_OFFLINE", "1")  # StreetCLIP already cached: no network call
 
 from PIL import Image  # noqa: E402
 
@@ -32,19 +32,19 @@ from geonesclick.vision import VisionClient, VisionError  # noqa: E402
 
 DATASET = Path(__file__).resolve().parent.parent / "dataset"
 
-# Mise en page « partie classique, fenêtre de navigateur 1920x1200 », mesurée sur les captures.
+# Layout "classic game, 1920x1200 browser window", measured on the captures.
 CROP = [0.0, 122 / 1200, 1.0, 1.0]
 MASKS = [
     [0.00, 0.00, 0.08, 0.05],   # logo
-    [0.42, 0.00, 0.58, 0.05],   # boussole
+    [0.42, 0.00, 0.58, 0.05],   # compass
     [0.76, 0.00, 1.00, 0.14],   # scores
-    [0.00, 0.15, 0.05, 0.96],   # boutons
-    [0.80, 0.69, 1.00, 1.00],   # mini-carte + bouton « placez votre épingle »
-    [0.00, 0.975, 1.00, 1.00],  # bandeau Google du bas
+    [0.00, 0.15, 0.05, 0.96],   # buttons
+    [0.80, 0.69, 1.00, 1.00],   # mini-map + "placez votre épingle" (place your pin) button
+    [0.00, 0.975, 1.00, 1.00],  # Google banner at the bottom
 ]
 VARIANTS = {"fenetre": ([], []), "cadre": (CROP, []), "masques": (CROP, MASKS)}
 
-# Noms de pays visibles sur la mini-carte (en français) et leurs équivalents anglais.
+# Country names visible on the mini-map (in French) and their English equivalents.
 MAP_NAMES = ["Norvège", "Finlande", "Suède", "Pologne", "Ukraine", "Roumanie", "France", "Allemagne",
              "Royaume-Uni", "Autriche", "Espagne", "Italie", "Norway", "Finland", "Sweden", "Poland",
              "Romania", "Germany", "Lettonie", "Lituanie", "Serbie", "Latvia", "Lithuania", "Serbia"]
@@ -58,10 +58,10 @@ def leaked_names(fiche: dict) -> list[str]:
 async def main(with_vision: bool) -> None:
     labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
     cfg = load_config()
-    clip = StreetClip(cfg.streetclip.model_copy(update={"top_k": 20}))  # rang du bon pays jusqu'à 20
+    clip = StreetClip(cfg.streetclip.model_copy(update={"top_k": 20}))  # rank of the right country, up to 20
     vision = VisionClient(cfg.vision) if with_vision else None
     code_to_name = {v: k for k, v in cfg.streetclip.countries.items()}
-    sem = asyncio.Semaphore(3)  # limite de débit du palier gratuit
+    sem = asyncio.Semaphore(3)  # free tier rate limit
 
     async def describe(img):
         async with sem:

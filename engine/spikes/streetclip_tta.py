@@ -1,9 +1,9 @@
-"""Expérience : moyenner StreetCLIP sur plusieurs recadrages améliore-t-il le niveau 1 ?
+"""Experiment: does averaging StreetCLIP over several crops improve level 1?
 
-Compare, sur le jeu de test étiqueté, une prédiction sur l'image entière et la moyenne des
-probabilités sur plusieurs vues (entière, moitié gauche, centre, moitié droite).
+Compares, on the labelled test set, a prediction on the whole image and the mean of the
+probabilities over several views (whole, left half, centre, right half).
 
-Usage : .venv/bin/python spikes/streetclip_tta.py
+Usage: .venv/bin/python spikes/streetclip_tta.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from geonesclick.config import load_config  # noqa: E402
 from geonesclick.streetclip import StreetClip  # noqa: E402
 
 DATASET = Path(__file__).resolve().parent.parent / "dataset"
-VIEWS = {  # fractions [gauche, haut, droite, bas]
+VIEWS = {  # fractions [left, top, right, bottom]
     "entière": (0.0, 0.0, 1.0, 1.0),
     "gauche": (0.0, 0.0, 0.55, 1.0),
     "centre": (0.225, 0.0, 0.775, 1.0),
@@ -46,7 +46,7 @@ def main() -> None:
     clip = StreetClip(cfg.streetclip)
     codes = list(cfg.streetclip.countries.values())
     labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
-    stats = {k: [0, 0, 0.0] for k in ("simple", "moyenne")}  # top-1, top-3, proba du bon pays
+    stats = {k: [0, 0, 0.0] for k in ("simple", "moyenne")}  # top-1, top-3, probability of the right country
     for item in labels:
         img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
         w, h = img.size

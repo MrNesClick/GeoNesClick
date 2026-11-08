@@ -1,7 +1,7 @@
 <script setup lang="ts">
-// Réglages › Stockage : ce que le coach garde sur le disque, la taille de chaque élément, et « Vider ».
-// Vider se fait en deux temps (Vider → Confirmer, avec ce que ça coûte) : rien ne part sur un clic égaré.
-// Le jeu de test, tes metas et ta config n'y figurent pas : ils ne sont jamais vidés.
+// Settings › Storage: what the coach keeps on disk, the size of each item, and "Empty".
+// Emptying takes two steps (Empty → Confirm, with what it costs): nothing goes on a stray click.
+// The test set, your metas and your config are not listed: they are never emptied.
 import { computed, onMounted, ref } from "vue";
 import type { EraseGroup } from "../engine";
 import { clearStorage, engine, erasePlan, eraseEverything, fr, getJSON } from "../engine";
@@ -17,7 +17,7 @@ interface Item {
 }
 const props = defineProps<{ maxMb: number }>();
 const items = ref<Item[] | null>(null);
-const asking = ref<string | null>(null); // élément en attente de confirmation
+const asking = ref<string | null>(null); // item awaiting confirmation
 const busy = ref(false);
 const done = ref<string | null>(null);
 
@@ -35,8 +35,8 @@ async function load() {
 }
 onMounted(load);
 
-// « Tout effacer » (droit à l'effacement, RGPD) : la liste avec les tailles, le mot EFFACER à taper, puis le moteur
-// et l'interface repartent de zéro. Les modèles (rien de personnel) seulement si la case est cochée.
+// "Erase everything" (right to erasure, GDPR): the list with the sizes, the word EFFACER to type, then the engine
+// and the UI start again from scratch. The models (nothing personal) only if the box is ticked.
 const erase = ref<EraseGroup[] | null>(null);
 const typed = ref("");
 const withModels = ref(false);
@@ -104,7 +104,7 @@ async function clear(item: Item) {
     </ul>
     <p v-if="done" class="text-[0.85rem] text-foret" role="status">{{ done }}</p>
 
-    <!-- Tout effacer : remise à zéro complète (RGPD) -->
+    <!-- Erase everything: full reset (GDPR) -->
     <div class="mt-6 rounded-md border border-alerte/50 px-3 py-3">
       <p class="font-bold text-papier">Tout effacer</p>
       <p class="mt-0.5 text-[0.85rem] text-courbe">

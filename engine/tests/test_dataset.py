@@ -16,7 +16,7 @@ def test_add_saves_raw_image_and_label(tmp_path, frame):
     assert (tmp_path / "images" / label.file).exists()
     [read] = ds.labels()
     assert (read.country, read.found, read.predicted, read.layout) == ("LV", True, "EE", "fenêtre 64x40")
-    assert read.area == 'côte "ouest"'  # guillemets correctement échappés en TOML
+    assert read.area == 'côte "ouest"'  # quotes correctly escaped in TOML
 
 
 def test_found_false_is_kept(tmp_path, frame):
@@ -50,7 +50,7 @@ def test_progress(tmp_path, frame):
     ds.add("20261107-080000-001", frame, "RS", found=False, predicted="HR")
     ds.add("20261107-080000-002", frame, "RS", found=True, predicted="RS")
     ds.add("20261107-080000-003", frame, "NO", found=True, predicted="NO")
-    ds.add("20261107-080000-004", frame, "SE")  # non renseigné : ignoré pour le joueur
+    ds.add("20261107-080000-004", frame, "SE")  # not filled in: ignored for the player
     p = progress(ds.labels())
     assert (p.rounds, p.found) == (3, 2)
     assert p.by_country == {"RS": (2, 1), "NO": (1, 1)}
@@ -68,7 +68,7 @@ def test_prune_keeps_most_recent(tmp_path):
 
 def test_guessed_country_decides_found_and_feeds_confusions(tmp_path, frame):
     ds = Dataset(tmp_path)
-    ds.add("20261107-080000-001", frame, "RS", guessed="HR", found=True)  # « found » se déduit de la réponse
+    ds.add("20261107-080000-001", frame, "RS", guessed="HR", found=True)  # "found" follows from the answer
     ds.add("20261107-080000-002", frame, "RS", guessed="HR")
     ds.add("20261107-080000-003", frame, "SE", guessed="NO")
     ds.add("20261107-080000-004", frame, "NO", guessed="NO")

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-// Section repliable du coach : un en-tête d'une ligne (titre + résumé lisible même replié) et son contenu.
-// L'état ouvert/replié de chaque section est mémorisé dans ce navigateur (confort personnel).
+// Collapsible coach section: a one-line header (title + summary readable even when collapsed) and its content.
+// The open/collapsed state of each section is remembered in this browser (personal convenience).
 import { onBeforeUnmount, ref, watch } from "vue";
 
 const props = withDefaults(
@@ -22,10 +22,10 @@ function toggle() {
   try {
     localStorage.setItem(KEY, JSON.stringify({ ...saved(), [props.id]: isOpen.value }));
   } catch {
-    /* stockage indisponible : l'état ne sera simplement pas mémorisé */
+    /* storage unavailable: the state will simply not be remembered */
   }
 }
-// Le résumé change après coup (réponse de l'IA, traduction…) : l'en-tête s'illumine brièvement.
+// The summary changes afterwards (AI answer, translation…): the header lights up briefly.
 const flash = ref(false);
 let timer: ReturnType<typeof setTimeout> | undefined;
 watch(

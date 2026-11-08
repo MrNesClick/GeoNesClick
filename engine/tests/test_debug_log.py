@@ -1,4 +1,4 @@
-"""Mode débogage : journal JSON de chaque analyse, seulement s'il est activé."""
+"""Debug mode: JSON log of each analysis, only if it is enabled."""
 
 import asyncio
 import json
@@ -56,7 +56,7 @@ def test_debug_log_collects_every_result(tmp_path):
     assert log["capture"] == f"capture-{capture_id}.png"
     assert log["streetclip"]["scores"][0]["code"] == "HU"
     assert "Repkény utca" in log["vision"]["fiche"]["panneaux_et_texte"]
-    assert not list((tmp_path / "captures").glob("*.tmp"))  # écriture atomique terminée
+    assert not list((tmp_path / "captures").glob("*.tmp"))  # atomic write finished
 
 
 def test_old_logs_are_pruned_with_their_capture(tmp_path):
@@ -86,11 +86,11 @@ def test_logs_are_pruned_even_without_capture_copies(tmp_path):
         for _ in range(4):
             await engine.analyse()
             await asyncio.gather(*engine.background)
-            await asyncio.sleep(0.002)  # identifiants horodatés distincts
+            await asyncio.sleep(0.002)  # distinct timestamped identifiers
 
     asyncio.run(run())
     files = list((tmp_path / "captures").glob("capture-*"))
-    assert len(files) <= 3 and all(f.suffix == ".json" for f in files)  # 2 gardés (+ celui en cours d'écriture)
+    assert len(files) <= 3 and all(f.suffix == ".json" for f in files)  # 2 kept (+ the one being written)
 
 
 def test_mark_crops_are_pruned_with_their_capture(tmp_path):

@@ -7,6 +7,6 @@ declare module "*.vue" {
 }
 
 interface ImportMetaEnv {
-  /** URL du moteur Python (défaut : http://127.0.0.1:47615) */
+  /** URL of the Python engine (default: http://127.0.0.1:47615) */
   readonly VITE_ENGINE_URL?: string;
 }

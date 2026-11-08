@@ -1,9 +1,9 @@
-"""Essai d'un modèle de vision NVIDIA : image → fiche d'indices structurée (JSON).
+"""Trial of an NVIDIA vision model: image → structured clue sheet (JSON).
 
-Usage : .venv/bin/python spikes/vlm_probe.py [--model ID] [--crop G,H,D,B] image.png
+Usage: .venv/bin/python spikes/vlm_probe.py [--model ID] [--crop L,T,R,B] image.png
 
-Le modèle ne fait que DÉCRIRE ce qu'il voit (rôle « vision » de l'architecture) : aucun pays n'est
-demandé ici. La clé est lue dans le fichier .env à la racine du projet (variable NVAPI).
+The model only DESCRIBES what it sees (the "vision" role in the architecture): no country is
+asked for here. The key is read from the .env file at the project root (variable NVAPI).
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[2]
 BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_MODEL = "z-ai/glm-5.3-flash"
-MAX_SIDE = 1280  # px : compromis entre détails lisibles et taille de requête
+MAX_SIDE = 1280  # px: trade-off between readable details and request size
 
 PROMPT = """Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue
 Street View, sans deviner de pays. Réponds par un objet JSON valide, en français, avec ces clés :
@@ -80,7 +80,7 @@ def main() -> None:
             ],
         }],
         temperature=0.2,
-        max_tokens=4000,  # les modèles à raisonnement consomment des jetons avant de répondre
+        max_tokens=4000,  # reasoning models consume tokens before answering
     )
     elapsed = time.perf_counter() - t0
     text = resp.choices[0].message.content or ""

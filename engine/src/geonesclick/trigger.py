@@ -1,6 +1,6 @@
-"""Commandes des raccourcis GNOME : python -m geonesclick.trigger [capture|mark]
+"""GNOME shortcut commands: python -m geonesclick.trigger [capture|mark]
 
-capture (par défaut) analyse la vue ; mark la fige en plein écran pour y entourer des indices (marques).
+capture (default) analyses the view; mark freezes it in full screen to circle clues on it (marks).
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
             print(s.recv(4096).decode().strip())
         return 0
     except (FileNotFoundError, ConnectionRefusedError):
-        from .notify import Notifier  # import tardif : évite de charger GLib quand tout va bien
+        from .notify import Notifier  # late import: avoids loading GLib when all is well
 
         Notifier(enabled=True, sound=True).send(
             "Coach non lancé", "Ouvre l'application GeoNesClick avant de capturer.", error=True

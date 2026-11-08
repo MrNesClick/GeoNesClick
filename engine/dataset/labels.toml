@@ -1,5 +1,5 @@
-# Jeu de test étiqueté. Les images (engine/dataset/images/) restent locales et ne sont pas versionnées.
-# Une entrée par capture : pays réel (ISO 3166-1 alpha-2), zone si connue, mode de jeu et mise en page.
+# Labelled test set. The images (engine/dataset/images/) stay local and are not versioned.
+# One entry per capture: real country (ISO 3166-1 alpha-2), zone if known, game mode and layout.
 
 [[capture]]
 file = "capture-20261107-080023-137.png"

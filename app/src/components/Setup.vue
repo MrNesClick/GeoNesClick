@@ -1,11 +1,11 @@
 <script setup lang="ts">
-// Assistant de premier lancement (AppImage), décidé avec l'utilisateur le 2026-11-07 :
-// - par ÉTAPES, l'obligatoire d'abord ;
-// - 100 % transparent : TOUT ce qui sera téléchargé (quoi, d'où, taille, licence, quand, ce qui part de ta machine)
-//   s'affiche AVANT le moindre octet, paquet par paquet si tu le veux ; un accord pour le bloc obligatoire, puis
-//   chaque option a son Valider / Passer, avec ma recommandation précochée ;
-// - les gros téléchargements tournent pendant que tu choisis tes options ; celles-ci sont écrites AVANT le premier
-//   démarrage du moteur (il ne télécharge jamais une option refusée). Tout reste modifiable dans les Réglages.
+// First-launch assistant (AppImage), decided with the user on 2026-11-07:
+// - in STEPS, the required part first;
+// - 100 % transparent: EVERYTHING that will be downloaded (what, from where, size, licence, when, what leaves your
+//   machine) is shown BEFORE a single byte, package by package if you want; one consent for the required block,
+//   then each option has its Accept / Skip, with my recommendation pre-ticked;
+// - the big downloads run while you choose your options; these are written BEFORE the engine's first
+//   start (it never downloads a declined option). Everything stays editable in the Settings.
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { fr } from "../engine";
 
@@ -34,7 +34,7 @@ async function load() {
   if (status.value.checks.every((c) => c.ok)) step.value = "downloads";
 }
 
-// --- liste des téléchargements ---------------------------------------------------------------------
+// --- list of downloads -----------------------------------------------------------------------------
 const all = computed(() => status.value?.downloads?.download ?? []);
 const byId = (id: string) => all.value.find((d) => d.id === id);
 const packages = computed(() => (variant.value === "cuda" ? status.value?.packages_cuda : status.value?.packages_cpu) ?? []);
@@ -53,11 +53,11 @@ const WHEN: Record<Download["when"], string> = {
 const missing = computed(() => (status.value?.checks ?? []).filter((c) => !c.ok));
 const aptCommand = computed(() => `sudo apt install ${missing.value.map((c) => c.package).join(" ")}`);
 
-// --- installation (en fond) ------------------------------------------------------------------------
+// --- installation (in the background) --------------------------------------------------------------
 const phase = ref("");
 const bytes = ref(0);
 const lines = ref<string[]>([]);
-const installDone = ref<boolean | null>(null); // null : en cours ; true / false : terminé
+const installDone = ref<boolean | null>(null); // null: running; true / false: finished
 const installing = ref(false);
 const PHASES: Record<string, string> = {
   python: "Python 3.12", paquets: "Bibliothèques du moteur", moteur: "Moteur GeoNesClick", modele: "Modèle StreetCLIP",
@@ -85,7 +85,7 @@ async function startInstall() {
 const percent = computed(() => Math.min(99, Math.round((bytes.value / 1e6 / Math.max(1, requiredMb.value)) * 100)));
 onBeforeUnmount(() => unlisten?.());
 
-// --- options : Valider / Passer, recommandation précochée ------------------------------------------
+// --- options: Accept / Skip, recommendation pre-ticked ---------------------------------------------
 interface Option { id: string; label: string; detail: string; download?: string; recommended: boolean; settings: Record<string, Record<string, unknown>> }
 const OPTIONS: Option[] = [
   { id: "places", label: "Noms de lieux (GeoNames)", recommended: true, download: "geonames",
@@ -127,7 +127,7 @@ const choices = computed(() => {
   return out;
 });
 
-// --- fin : options écrites, raccourcis, premier démarrage -------------------------------------------
+// --- end: options written, shortcuts, first start ---------------------------------------------------
 const finishing = ref(false);
 const finishError = ref("");
 async function finish() {
@@ -162,7 +162,7 @@ const secondary = "rounded-md border border-courbe-fonce px-3 py-1.5 text-papier
     </p>
     <p v-if="!status" class="mt-4 text-courbe">Vérification…</p>
 
-    <!-- 1. Système -->
+    <!-- 1. System -->
     <section v-else-if="step === 'system'" class="mt-4 space-y-3" aria-labelledby="etape-systeme">
       <h2 id="etape-systeme" class="font-bold text-papier">1. Ton système</h2>
       <p class="text-courbe">La capture de la fenêtre du jeu passe par des composants de GNOME, présents d'habitude.</p>
@@ -183,7 +183,7 @@ const secondary = "rounded-md border border-courbe-fonce px-3 py-1.5 text-papier
       </div>
     </section>
 
-    <!-- 2. Tout ce qui sera téléchargé -->
+    <!-- 2. Everything that will be downloaded -->
     <section v-else-if="step === 'downloads'" class="mt-4 space-y-4" aria-labelledby="etape-telechargements">
       <h2 id="etape-telechargements" class="font-bold text-papier">2. Ce que GeoNesClick va télécharger</h2>
       <p class="text-courbe">Rien n'a encore été téléchargé. Voici tout, avant ton accord.</p>
@@ -245,7 +245,7 @@ const secondary = "rounded-md border border-courbe-fonce px-3 py-1.5 text-papier
       </button>
     </section>
 
-    <!-- 3. Options pendant l'installation -->
+    <!-- 3. Options during the installation -->
     <section v-else class="mt-4 space-y-4" aria-labelledby="etape-options">
       <div :class="box" role="status" aria-live="polite">
         <p class="text-papier">

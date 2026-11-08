@@ -1,15 +1,15 @@
-"""Garde-fous communs à tous les tests."""
+"""Safeguards shared by all the tests."""
 
 import atexit
 import os
 import shutil
 import tempfile
 
-# AVANT tout import de l'application : ses dossiers (config, données, socket, modèles) pointent vers un dossier
-# temporaire. Constaté le 2026-11-07 : sans cela, les tests construisaient de faux villages GeoNames par-dessus les
-# vrais (~/.local/share/geonesclick/places), et leur dossier empêchait la migration de l'ancien nom.
+# BEFORE any import of the app: its folders (config, data, socket, models) point to a temporary
+# folder. Seen on 2026-11-07: without it, the tests built fake GeoNames villages on top of the
+# real ones (~/.local/share/geonesclick/places), and their folder blocked the migration from the old name.
 _SANDBOX = tempfile.mkdtemp(prefix="geonesclick-tests-")
-atexit.register(shutil.rmtree, _SANDBOX, ignore_errors=True)  # rien ne s'accumule dans /tmp (disque presque plein)
+atexit.register(shutil.rmtree, _SANDBOX, ignore_errors=True)  # nothing piles up in /tmp (disk almost full)
 for _var, _sub in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"), ("XDG_RUNTIME_DIR", "run"),
                    ("HF_HOME", "hf")):
     os.environ[_var] = os.path.join(_SANDBOX, _sub)
@@ -25,7 +25,7 @@ assert str(paths.DATA_DIR).startswith(_SANDBOX) and str(paths.CONFIG_DIR).starts
 
 @pytest.fixture(autouse=True)
 def no_network_to_plonkit(monkeypatch):
-    """Aucun test ne doit contacter plonkit.net : un test qui l'oublierait échoue au lieu de collecter."""
+    """No test may contact plonkit.net: a test that forgot it fails instead of collecting."""
 
     def blocked(url, timeout=20.0):
         raise AssertionError(f"accès réseau interdit pendant les tests : {url}")
@@ -35,7 +35,7 @@ def no_network_to_plonkit(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def no_model_download(monkeypatch):
-    """Aucun test ne télécharge de poids (PLONK…) : les tests fournissent leur propre petit réseau."""
+    """No test downloads weights (PLONK…): the tests provide their own small network."""
     import huggingface_hub
 
     def blocked(repo_id, *_args, **_kwargs):
@@ -46,13 +46,13 @@ def no_model_download(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def no_api_key(monkeypatch):
-    """Les tests ne voient jamais la clé NVIDIA de .env : aucun appel réel à l'API, même par oubli."""
+    """The tests never see the NVIDIA key from .env: no real API call, even by mistake."""
     monkeypatch.setattr(vision, "read_secret", lambda _name: None)
 
 
 @pytest.fixture(autouse=True)
 def no_geonames_download(monkeypatch):
-    """Aucun test ne télécharge le répertoire GeoNames : les tests fournissent leur petite archive."""
+    """No test downloads the GeoNames directory: the tests provide their own small archive."""
 
     def blocked(url):
         raise AssertionError(f"téléchargement interdit pendant les tests : {url}")
@@ -62,7 +62,7 @@ def no_geonames_download(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def no_real_key_file(monkeypatch, tmp_path_factory):
-    """Les tests ne lisent ni n'écrivent jamais ta vraie clé (~/.config/geonesclick/nvapi.key)."""
+    """The tests never read or write your real key (~/.config/geonesclick/nvapi.key)."""
     from geonesclick import paths
 
     monkeypatch.setattr(paths, "CONFIG_DIR", tmp_path_factory.mktemp("config"))
@@ -71,7 +71,7 @@ def no_real_key_file(monkeypatch, tmp_path_factory):
 
 @pytest.fixture(autouse=True)
 def no_real_shortcuts(monkeypatch):
-    """Aucun test ne lit ni ne modifie tes raccourcis GNOME."""
+    """No test reads or modifies your GNOME shortcuts."""
     from geonesclick import storage
 
     def blocked(args):
