@@ -2,7 +2,7 @@ import os
 
 from .apikey import key_file, migrate_env
 from .config import PROJECT_ROOT, load_config
-from .paths import hf_hub_cache, migrate_repo_data
+from .paths import hf_hub_cache, migrate_repo_data, quiet_token_nag
 
 
 def _hf_model_cached(model_id: str, revision: str) -> bool:
@@ -25,6 +25,7 @@ _models = [(_cfg.streetclip.model, _cfg.streetclip.revision)] + (
     [(_cfg.plonk.model, _cfg.plonk.revision)] if _cfg.plonk.enabled else [])
 if all(_hf_model_cached(m, r) for m, r in _models):
     os.environ.setdefault("HF_HUB_OFFLINE", "1")
+quiet_token_nag()  # a model still missing (PLONK turned on later) is downloaded at startup
 
 from .server import main  # noqa: E402
 

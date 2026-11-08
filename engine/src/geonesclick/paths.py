@@ -3,6 +3,7 @@
 App name: GeoNesClick (decided with the user on 2026-11-07, after their handle MrNesClick).
 """
 
+import logging
 import os
 import shutil
 from pathlib import Path
@@ -27,6 +28,21 @@ def hf_hub_cache() -> Path:
     """Hugging Face model cache (StreetCLIP, PLONK), without importing the library."""
     hf_home = Path(os.environ.get("HF_HOME") or Path.home() / ".cache" / "huggingface")
     return Path(os.environ.get("HF_HUB_CACHE") or hf_home / "hub")
+
+
+class _TokenNagFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "unauthenticated requests" not in record.getMessage()  # not "HF_TOKEN": keeps a bad-token warning
+
+
+def quiet_token_nag() -> None:
+    """Hides the Hub's "unauthenticated requests, set a HF_TOKEN" warning: the models are public, nothing to do.
+
+    The Hub sends it in an X-HF-Warning header and huggingface_hub logs it; its other warnings still show.
+    """
+    log = logging.getLogger("huggingface_hub.utils._http")
+    if not any(isinstance(f, _TokenNagFilter) for f in log.filters):
+        log.addFilter(_TokenNagFilter())
 
 
 def migrate_repo_data(project_root: Path) -> list[str]:

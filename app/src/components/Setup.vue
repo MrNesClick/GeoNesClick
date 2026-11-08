@@ -129,7 +129,7 @@ const OPTIONS: Option[] = [
     detail: "Onglet Carte : pays, lieux lus, position estimée. Le serveur de cartes reçoit l'adresse IP et les zones affichées.",
     settings: { map: { enabled: true } } },
   { id: "plonk", label: "Zones probables sur la carte (PLONK)", recommended: false,
-    detail: "Calculées en local, environ 120 Mo de mémoire vidéo en plus. Indicatives, pas une preuve.",
+    detail: "Calculées en local, environ 120 Mo de mémoire en plus (celle de la carte NVIDIA, sinon la mémoire vive). Indicatives, pas une preuve.",
     settings: { plonk: { enabled: true } } },
 ];
 const OFF: Record<string, Record<string, Record<string, unknown>>> = {
@@ -290,7 +290,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
             Utiliser la version processeur (plus légère, sans accélération GPU)
           </label>
           <p v-else class="mt-2 text-[1rem] text-courbe">Aucune carte NVIDIA détectée : version processeur.</p>
-          <p class="mt-1 text-[1rem] text-courbe">Installés dans ~/.local/share/geonesclick, rien n'est modifié dans le système.</p>
+          <p class="mt-1 text-[1rem] text-courbe">Moteur dans ~/.local/share/geonesclick, modèles d'IA dans ~/.cache/huggingface : rien n'est modifié dans le système.</p>
           <details class="mt-3">
             <summary :class="disclosure">Sources, licences et liste des paquets</summary>
             <table class="mt-2 w-full text-[1rem]">

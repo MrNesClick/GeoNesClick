@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 
 from .config import load_config
+from .paths import quiet_token_nag
 
 FILES = {
     "streetclip": ("config.json", "preprocessor_config.json", "tokenizer.json", "tokenizer_config.json",
@@ -23,6 +24,7 @@ FILES = {
 def fetch(which: str) -> None:
     from huggingface_hub import hf_hub_download
 
+    quiet_token_nag()
     cfg = load_config()
     model, revision = {"streetclip": (cfg.streetclip.model, cfg.streetclip.revision),
                        "plonk": (cfg.plonk.model, cfg.plonk.revision)}[which]

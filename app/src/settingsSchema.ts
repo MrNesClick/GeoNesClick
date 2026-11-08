@@ -171,7 +171,7 @@ export const GROUPS: Group[] = [
       { section: "map", key: "enabled", label: "Onglet Carte", kind: "bool",
         hint: "Fond OpenStreetMap en ligne : le serveur de tuiles voit ton adresse IP et les zones affichées." },
       { section: "plonk", key: "enabled", label: "Zones probables (PLONK, en local)", kind: "bool",
-        hint: "Environ 120 Mo de mémoire vidéo. Une piste pour la carte, pas un vote sur le pays." },
+        hint: "Environ 120 Mo de mémoire (celle de la carte NVIDIA, sinon la mémoire vive). Une piste pour la carte, pas un vote sur le pays." },
       { section: "map", key: "max_zoom", label: "Zoom maximal", kind: "int", min: 2, max: 19,
         hint: "13 : les rues autour d'une position estimée par tes marques. Plus haut : plus de tuiles chargées en ligne.",
         needs: ["map", "enabled"] },

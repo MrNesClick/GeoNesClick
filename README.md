@@ -23,7 +23,8 @@ The interface is in French for now.
 ## Requirements
 
 - Ubuntu 24.04 or later with GNOME (Wayland or Xorg)
-- About 11 GB of free disk space during the installation, 8 GB used afterwards (about half without an NVIDIA card)
+- About 11 GB of free disk space during the installation, 8 GB used afterwards (about 3 GB without an NVIDIA card)
+- 8 GB of RAM (without an NVIDIA card, the engine alone uses about 2.5 GB)
 - An NVIDIA card (recommended; without one, the local AI runs on the processor, more slowly)
 - A free NVIDIA API key from [build.nvidia.com](https://build.nvidia.com) (recommended: it reads the text in the
   view and translates the tips)
@@ -35,8 +36,8 @@ The interface is in French for now.
 2. Make it executable (right click › Properties › *Executable as Program*, or `chmod +x GeoNesClick_*.AppImage`),
    then open it.
 3. On first launch, an assistant checks your system and lists everything it will download, with the size and the
-   licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/`: nothing is
-   installed in the system.
+   licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/` and the AI models in
+   `~/.cache/huggingface/`: nothing is installed in the system.
 4. Choose your options, enter your API key if you have one, and you are ready.
 
 To update, download the new AppImage and open it: the assistant updates the engine.

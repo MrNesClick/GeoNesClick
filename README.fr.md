@@ -24,8 +24,8 @@ tu le souhaites.
 ## Prérequis
 
 - Ubuntu 24.04 ou plus récent, avec GNOME (Wayland ou Xorg)
-- Environ 11 Go d'espace disque libre pendant l'installation, 8 Go occupés ensuite (environ moitié moins sans carte
-  NVIDIA)
+- Environ 11 Go d'espace disque libre pendant l'installation, 8 Go occupés ensuite (environ 3 Go sans carte NVIDIA)
+- 8 Go de mémoire vive (sans carte NVIDIA, le moteur seul en occupe environ 2,5 Go)
 - Une carte NVIDIA (recommandé ; sans elle, l'IA locale tourne sur le processeur, plus lentement)
 - Une clé API NVIDIA gratuite sur [build.nvidia.com](https://build.nvidia.com) (recommandée : elle lit le texte de
   la vue et traduit les astuces)
@@ -38,7 +38,8 @@ tu le souhaites.
    `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
 3. Au premier lancement, un assistant vérifie ton système et liste tout ce qu'il va télécharger, avec la taille et
    la licence de chaque élément. Une fois ton accord donné, il installe le moteur dans
-   `~/.local/share/geonesclick/` : rien n'est installé dans le système.
+   `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien n'est installé dans le
+   système.
 4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt.
 
 Pour mettre à jour, télécharge la nouvelle AppImage et ouvre-la : l'assistant met le moteur à jour.
