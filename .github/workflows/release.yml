@@ -22,6 +22,7 @@ jobs:
       contents: write  # create the release and upload the AppImage
     env:
       APPIMAGE_EXTRACT_AND_RUN: "1"  # linuxdeploy is an AppImage itself: no FUSE on the runners
+      UV_HTTP_RETRIES: "10"  # Python comes from GitHub releases, which answered 504 for minutes (default: 3 tries)
     steps:
       # The runner image leaves too little room for the engine venv (CUDA torch) and the Rust build: the disk was at
       # 97% before the AppImage step of v0.1.0. None of these preinstalled SDKs is used by this job.
