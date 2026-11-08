@@ -7,8 +7,9 @@
 > deleted; if both exist, nothing is touched). Run `scripts/install.sh --setup-shortcut` again to replace the old
 > GNOME shortcuts.
 
-AI-assisted GeoGuessr training coach. It analyses what you see on screen and guides you, according to a
-**configurable help level**, towards the useful clues: where to look, what can be seen there, what it implies.
+AI-assisted geolocation coach for OSINT and GeoGuessr training. It analyses what you see on screen and guides
+you, according to a **configurable help level**, towards the useful clues: where to look, what can be seen there,
+what it implies.
 
 > **The app's interface is in French for now.** In this README, UI labels are given in English, followed by the
 > French label shown on screen in italics the first time, e.g. **Settings** (*Réglages*).
