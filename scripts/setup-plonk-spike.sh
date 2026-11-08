@@ -24,7 +24,7 @@ NE_URL="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/ge
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
 fail() { printf '  \033[31m✘\033[0m %s\n' "$1"; exit 1; }
 
-[[ -x "$PY" ]] || fail "venv du moteur absent : lance d'abord scripts/install.sh"
+[[ -x "$PY" ]] || fail "engine venv missing: run scripts/install.sh first"
 mkdir -p "$VENDOR"
 
 # PLONK code, pinned: we check that the commit obtained is indeed the expected one.
@@ -34,16 +34,16 @@ if [[ "$(git -C "$VENDOR/plonk" rev-parse HEAD 2>/dev/null)" != "$PLONK_COMMIT" 
   git -C "$VENDOR/plonk" fetch -q --depth 1 "$PLONK_REPO" "$PLONK_COMMIT"
   git -C "$VENDOR/plonk" checkout -q FETCH_HEAD
 fi
-[[ "$(git -C "$VENDOR/plonk" rev-parse HEAD)" == "$PLONK_COMMIT" ]] || fail "commit PLONK inattendu"
-ok "code PLONK ${PLONK_COMMIT:0:7}"
+[[ "$(git -C "$VENDOR/plonk" rev-parse HEAD)" == "$PLONK_COMMIT" ]] || fail "unexpected PLONK commit"
+ok "PLONK code ${PLONK_COMMIT:0:7}"
 
 uv pip install -q --python "$PY" --target "$VENDOR/deps" --no-deps "${DEPS[@]}"
-ok "dépendances : ${DEPS[*]}"
+ok "dependencies: ${DEPS[*]}"
 
 if [[ ! -s "$VENDOR/ne_50m_admin_0_countries.geojson" ]]; then
   curl -sSfL -o "$VENDOR/ne_50m_admin_0_countries.geojson.part" "$NE_URL"
   mv "$VENDOR/ne_50m_admin_0_countries.geojson.part" "$VENDOR/ne_50m_admin_0_countries.geojson"
 fi
-ok "frontières Natural Earth v5.1.2"
+ok "Natural Earth v5.1.2 borders"
 
-printf '\nPrêt. Lancer : cd engine && .venv/bin/python spikes/plonk_bench.py\n'
+printf '\nReady. Run: cd engine && .venv/bin/python spikes/plonk_bench.py\n'

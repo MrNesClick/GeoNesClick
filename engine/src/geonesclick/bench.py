@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import sys
 from dataclasses import asdict, dataclass
-from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -66,18 +65,18 @@ def replay(label: Label, data: dict[str, Any], cfg: Config, places: Places | Non
     c = conclude(done, [tuple(s) for s in data.get("scores", [])], cfg.rules)
     v, loc = c.verdict, c.result["location"]
     _, region, _, _ = LocksMixin._candidates(rules, v, c.cited, loc, c.target)
-    verdict = "aucun" if not v.country else "juste" if v.country == label.country else "FAUX"
-    region_ok = "aucune" if region is None else "?" if not label.region else (
-        "juste" if region.region == label.region else "FAUSSE")
+    verdict = "none" if not v.country else "right" if v.country == label.country else "WRONG"
+    region_ok = "none" if region is None else "?" if not label.region else (
+        "right" if region.region == label.region else "WRONG")
     error, promise = None, "?"
     if loc and label.lat is not None and label.lon is not None:
         truth = (label.lat, label.lon)
         if "lat" in loc:
             error = haversine(truth, (loc["lat"], loc["lon"]))
             if loc["kind"] in ("point", "rough"):
-                promise = "tenue" if error <= loc["radius_km"] else "ROMPUE"
+                promise = "held" if error <= loc["radius_km"] else "BROKEN"
             elif loc["kind"] == "ring":  # on the circle, within the announced margin
-                promise = "tenue" if abs(error - loc["radius_km"]) <= loc["spread_km"] / 2 + 2 else "ROMPUE"
+                promise = "held" if abs(error - loc["radius_km"]) <= loc["spread_km"] / 2 + 2 else "BROKEN"
         elif loc["places"]:
             error = min(haversine(truth, (p["lat"], p["lon"])) for p in loc["places"])
     missing = "" if places is None or label.country in places.details else label.country
@@ -100,17 +99,17 @@ def summary(rounds: list[Round]) -> dict[str, Any]:
     with_marks = [r for r in rounds if r.marks]
     count = lambda pred: sum(1 for r in with_marks if pred(r))  # noqa: E731
     return {
-        "manches": len(rounds), "avec marques": len(with_marks),
-        "FAUSSES CERTITUDES": count(lambda r: r.level == "certain" and r.verdict == "FAUX")
-        + count(lambda r: r.region == "FAUSSE") + count(lambda r: r.promise == "ROMPUE"),
-        "pays certain juste": count(lambda r: r.level == "certain" and r.verdict == "juste"),
-        "pays certain FAUX": count(lambda r: r.level == "certain" and r.verdict == "FAUX"),
-        "pays très probable juste/faux": f"{count(lambda r: r.level == 'probable' and r.verdict == 'juste')}"
-                                         f"/{count(lambda r: r.level == 'probable' and r.verdict == 'FAUX')}",
-        "sans conclusion": count(lambda r: r.verdict == "aucun"),
-        "région juste/FAUSSE/aucune": f"{count(lambda r: r.region == 'juste')}/{count(lambda r: r.region == 'FAUSSE')}"
-                                      f"/{count(lambda r: r.region == 'aucune')}",
-        "rayon tenu/ROMPU": f"{count(lambda r: r.promise == 'tenue')}/{count(lambda r: r.promise == 'ROMPUE')}",
+        "rounds": len(rounds), "with marks": len(with_marks),
+        "FALSE CERTAINTIES": count(lambda r: r.level == "certain" and r.verdict == "WRONG")
+        + count(lambda r: r.region == "WRONG") + count(lambda r: r.promise == "BROKEN"),
+        "certain country right": count(lambda r: r.level == "certain" and r.verdict == "right"),
+        "certain country WRONG": count(lambda r: r.level == "certain" and r.verdict == "WRONG"),
+        "very likely country right/wrong": f"{count(lambda r: r.level == 'probable' and r.verdict == 'right')}"
+                                           f"/{count(lambda r: r.level == 'probable' and r.verdict == 'WRONG')}",
+        "no conclusion": count(lambda r: r.verdict == "none"),
+        "region right/WRONG/none": f"{count(lambda r: r.region == 'right')}/{count(lambda r: r.region == 'WRONG')}"
+                                   f"/{count(lambda r: r.region == 'none')}",
+        "radius held/BROKEN": f"{count(lambda r: r.promise == 'held')}/{count(lambda r: r.promise == 'BROKEN')}",
     }
 
 
@@ -122,14 +121,14 @@ def main(argv: list[str] | None = None) -> int:
                          indent=1))
         return 0
     if not rounds:
-        print("Corpus vide : remplis « C'était où ? » après tes manches (avec le lien Google Maps du vrai lieu).")
+        print("Empty corpus: fill in \"Where was it?\" after your rounds (with the Google Maps link of the true place).")
         return 0
-    head = f"{'manche':20} {'vrai':4} {'marq':>4} {'conclu':8} {'pays':6} {'région':7} {'position':8} {'km':>7} rayon"
+    head = f"{'round':20} {'real':4} {'mrks':>4} {'conclud.':8} {'ctry':6} {'region':7} {'position':8} {'km':>7} radius"
     print(head)
     for r in rounds:
         km = "" if r.error_km is None else f"{r.error_km:7.1f}"
         print(f"{r.id:20} {r.truth:4} {r.marks:4} {(r.country + ' ' + r.level)[:8]:8} {r.verdict:6} {r.region:7} "
-              f"{r.position:8} {km:>7} {r.promise}{'  (villages ' + r.missing + ' absents)' if r.missing else ''}")
+              f"{r.position:8} {km:>7} {r.promise}{'  (' + r.missing + ' villages missing)' if r.missing else ''}")
     print()
     for key, value in summary(rounds).items():
         print(f"{key:32} {value}")

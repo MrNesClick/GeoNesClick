@@ -1,9 +1,6 @@
 """Shared paths, without heavy dependencies (imported by the keyboard shortcut client).
 
-App name: GeoNesClick (decided with the user on 2026-11-07, after their handle MrNesClick;
-"GeoNesClick" was too close to the GeoGuessr trademark). The folders of the old name are MOVED once
-to the new ones at startup (migrate_legacy), never deleted: settings, metas, places index, and hours
-of Plonk It translations.
+App name: GeoNesClick (decided with the user on 2026-11-07, after their handle MrNesClick).
 """
 
 import os
@@ -11,7 +8,6 @@ import shutil
 from pathlib import Path
 
 APP = "geonesclick"
-LEGACY = "geonesclick"  # old name of the folders
 
 
 def config_home() -> Path:
@@ -31,20 +27,6 @@ def hf_hub_cache() -> Path:
     """Hugging Face model cache (StreetCLIP, PLONK), without importing the library."""
     hf_home = Path(os.environ.get("HF_HOME") or Path.home() / ".cache" / "huggingface")
     return Path(os.environ.get("HF_HUB_CACHE") or hf_home / "hub")
-
-
-def migrate_legacy() -> list[str]:
-    """Moves the folders of the old name to the new ones, if they do not exist yet; never deletes.
-
-    If both exist, nothing is touched (the old one stays there, to be checked by hand). Returns what was moved.
-    """
-    moved = []
-    for base in (config_home(), data_home()):
-        old, new = base / LEGACY, base / APP
-        if old.is_dir() and not old.is_symlink() and not new.exists():
-            old.rename(new)  # same file system: instant, nothing is copied or lost
-            moved.append(f"{old} → {new}")
-    return moved
 
 
 def migrate_repo_data(project_root: Path) -> list[str]:

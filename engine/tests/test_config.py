@@ -74,22 +74,6 @@ def test_countries_can_be_excluded(tmp_path):
     assert "RU" not in codes and "UA" not in codes and "SE" in codes
 
 
-def test_old_folders_are_moved_once_never_deleted(tmp_path, monkeypatch):
-    """Old name (GeoNesClick) → GeoNesClick: your data follows, nothing is erased."""
-    from geonesclick import paths
-
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
-    monkeypatch.setenv("XDG_DATA_HOME", str(tmp_path / "data"))
-    (tmp_path / "config" / "geonesclick").mkdir(parents=True)
-    (tmp_path / "config" / "geonesclick" / "config.toml").write_text("[coach]\n")
-    (tmp_path / "data" / "geonesclick" / "plonkit").mkdir(parents=True)
-    (tmp_path / "data" / "geonesclick").mkdir()  # already there: left untouched
-    moved = paths.migrate_legacy()
-    assert (tmp_path / "config" / "geonesclick" / "config.toml").read_text() == "[coach]\n"
-    assert len(moved) == 1 and (tmp_path / "data" / "geonesclick" / "plonkit").is_dir()
-    assert paths.migrate_legacy() == []  # only once
-
-
 def test_captures_move_and_dataset_is_copied_out_of_the_code(tmp_path, monkeypatch):
     """Captures and the test set move out of engine/ (read-only in an AppImage); the git copy stays."""
     from geonesclick import paths

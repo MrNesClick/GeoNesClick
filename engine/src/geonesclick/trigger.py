@@ -33,7 +33,7 @@ def main(argv: list[str] | None = None) -> int:
         Notifier(enabled=True, sound=True).send(
             "Coach non lancé", "Ouvre l'application GeoNesClick avant de capturer.", error=True
         )
-        print("Le coach n'est pas lancé.", file=sys.stderr)
+        print("The coach is not running.", file=sys.stderr)
         return 1
 
 

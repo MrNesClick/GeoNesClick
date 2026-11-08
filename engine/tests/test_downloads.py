@@ -4,7 +4,6 @@ import re
 import tomllib
 from importlib import resources
 from pathlib import Path
-from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 SCANNED = [ROOT / "engine" / "src", ROOT / "app" / "src", ROOT / "app" / "src-tauri" / "src",

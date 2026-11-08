@@ -43,16 +43,16 @@ def main(paths: list[Path]) -> None:
     if not paths:
         captures = sorted((Path(__file__).resolve().parent.parent / "captures").glob("*.png"))
         if not captures:
-            sys.exit("Aucune image : passe un chemin en argument ou fais d'abord une capture.")
+            sys.exit("No image: pass a path as argument or take a capture first.")
         paths = [captures[-1]]
 
     assert torch.cuda.is_available(), "CUDA indisponible"
-    print(f"GPU : {torch.cuda.get_device_name(0)}  |  torch {torch.__version__}")
+    print(f"GPU: {torch.cuda.get_device_name(0)}  |  torch {torch.__version__}")
 
     t0 = time.perf_counter()
     model = CLIPModel.from_pretrained(MODEL_ID, torch_dtype=torch.float16).to("cuda").eval()
     processor = CLIPProcessor.from_pretrained(MODEL_ID)
-    print(f"Chargement : {time.perf_counter() - t0:.1f} s  |  VRAM modèle : {gpu_mib():.0f} Mio")
+    print(f"Loading: {time.perf_counter() - t0:.1f} s  |  model VRAM: {gpu_mib():.0f} MiB")
 
     # The countries' text embeddings are computed only once at startup.
     with torch.inference_mode():
@@ -74,11 +74,11 @@ def main(paths: list[Path]) -> None:
             torch.cuda.synchronize()
             timings.append((time.perf_counter() - t) * 1000)
         top = probs.float().topk(5)
-        print(f"\n{path.name}  |  latence à chaud : {min(timings[1:]):.0f} ms (froid {timings[0]:.0f} ms)")
+        print(f"\n{path.name}  |  warm latency: {min(timings[1:]):.0f} ms (cold {timings[0]:.0f} ms)")
         for p, i in zip(top.values.tolist(), top.indices.tolist(), strict=True):
             print(f"  {COUNTRIES[i]:<22} {p:6.1%}")
 
-    print(f"\nPic VRAM : {gpu_mib():.0f} Mio")
+    print(f"\nPeak VRAM: {gpu_mib():.0f} MiB")
 
 
 if __name__ == "__main__":

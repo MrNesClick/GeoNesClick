@@ -412,16 +412,14 @@ class Places:
 def main() -> int:
     """python -m geonesclick.places: (re)builds the places index (called by scripts/install.sh)."""
     from .config import load_config
-    from .paths import migrate_legacy
 
-    migrate_legacy()  # index already built under the old name: it is reused instead of downloaded again
     cfg = load_config().rules
     try:
         path = build(cfg.places_url, cfg.places_path, regions_url=cfg.regions_url)
     except PlacesError as exc:
-        print(f"Lieux GeoNames : {exc}")
+        print(f"GeoNames places: {exc}")
         return 1
-    print(f"Lieux GeoNames : {Places(path).count} noms indexés dans {path}")
+    print(f"GeoNames places: {Places(path).count} names indexed in {path}")
     return 0
 
 

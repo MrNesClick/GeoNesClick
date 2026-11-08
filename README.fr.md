@@ -2,11 +2,6 @@
 
 # GeoNesClick
 
-> Anciennement « GeoNesClick » (renommé le 2026-11-07 : trop proche de la marque GeoGuessr). Au premier
-> lancement, tes dossiers `~/.config/geonesclick` et `~/.local/share/geonesclick` sont **déplacés** vers
-> `geonesclick` (jamais supprimés ; si les deux existent, rien n'est touché). Relance
-> `scripts/install.sh --setup-shortcut` pour remplacer les anciens raccourcis GNOME.
-
 Coach de géolocalisation assisté par IA, pour s'entraîner à l'OSINT et à GeoGuessr. Il analyse ce que tu vois à
 l'écran et te guide, selon un **niveau d'aide configurable**, vers les indices utiles : où regarder, ce qu'on y voit,
 ce que ça implique.

@@ -87,20 +87,20 @@ async def main(with_vision: bool) -> None:
             summary[name]["top3"] += rank is not None and rank <= 3
             summary[name]["proba"] += proba
             top = ", ".join(f"{s.code} {s.probability:.0%}" for s in scores[:3])
-            line = f"  {name:<8} StreetCLIP rang {rank or '>20'}  ({proba:.0%})  top : {top}"
+            line = f"  {name:<8} StreetCLIP rank {rank or '>20'}  ({proba:.0%})  top: {top}"
             if vision:
                 fiche, secs, err = await tasks[name]
                 if err:
-                    line += f"  | vision : ERREUR {err[:60]}"
+                    line += f"  | vision: ERROR {err[:60]}"
                 else:
                     leaks = leaked_names(fiche)
                     summary[name]["fuites"] += bool(leaks)
-                    line += f"  | vision {secs:4.1f} s, noms de pays recopiés : {', '.join(leaks) or 'aucun'}"
+                    line += f"  | vision {secs:4.1f} s, country names copied: {', '.join(leaks) or 'none'}"
             print(line)
 
     n = len(labels)
-    print(f"\n=== Synthèse sur {n} captures")
-    print(f"  {'variante':<8} {'top-1':>6} {'top-3':>6} {'proba moy.':>11} {'fuites':>7}")
+    print(f"\n=== Summary over {n} captures")
+    print(f"  {'variant':<8} {'top-1':>6} {'top-3':>6} {'mean prob.':>11} {'leaks':>7}")
     for name, s in summary.items():
         fuites = f"{s['fuites']}/{n}" if with_vision else "-"
         print(f"  {name:<8} {s['top1']:>4}/{n} {s['top3']:>4}/{n} {s['proba'] / n:>10.0%} {fuites:>7}")
@@ -108,5 +108,5 @@ async def main(with_vision: bool) -> None:
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--no-vision", action="store_true", help="StreetCLIP seulement (sans appel réseau)")
+    p.add_argument("--no-vision", action="store_true", help="StreetCLIP only (no network call)")
     sys.exit(asyncio.run(main(not p.parse_args().no_vision)))

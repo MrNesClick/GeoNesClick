@@ -46,7 +46,7 @@ def load_key() -> str:
             key = line.split("=", 1)[1].strip().strip("\"'")
             if key:
                 return key
-    raise SystemExit("NVAPI absente ou vide dans .env")
+    raise SystemExit("NVAPI missing or empty in .env")
 
 
 def encode(path: Path, crop: tuple[int, int, int, int] | None) -> str:
@@ -63,7 +63,7 @@ def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("image", type=Path)
     p.add_argument("--model", default=DEFAULT_MODEL)
-    p.add_argument("--crop", help="gauche,haut,droite,bas en pixels")
+    p.add_argument("--crop", help="left,top,right,bottom in pixels")
     args = p.parse_args()
     crop = tuple(int(v) for v in args.crop.split(",")) if args.crop else None
 
@@ -85,12 +85,12 @@ def main() -> None:
     elapsed = time.perf_counter() - t0
     text = resp.choices[0].message.content or ""
     tokens = resp.usage.total_tokens if resp.usage else "?"
-    print(f"Modèle : {args.model}  |  latence : {elapsed:.1f} s  |  jetons : {tokens}\n")
+    print(f"Model: {args.model}  |  latency: {elapsed:.1f} s  |  tokens: {tokens}\n")
     start, end = text.find("{"), text.rfind("}")
     try:
         print(json.dumps(json.loads(text[start:end + 1]), ensure_ascii=False, indent=2))
     except ValueError:
-        print("[réponse non JSON]\n" + text)
+        print("[non-JSON answer]\n" + text)
 
 
 if __name__ == "__main__":

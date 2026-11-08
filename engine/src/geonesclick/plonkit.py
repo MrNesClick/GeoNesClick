@@ -146,17 +146,17 @@ def collect(
             if exc.code == 429:  # the site asks to slow down: we stop there, the rest will wait
                 raise PlonkitError(f"Plonk It demande de ralentir (429), réessai après {exc.headers.get('Retry-After', '?')} s") from exc
             stats["failed"] += 1
-            log(f"  échec {ref.slug} : {exc}")
+            log(f"  failed {ref.slug}: {exc}")
             continue
         except (OSError, ValueError, PlonkitError) as exc:
             stats["failed"] += 1
-            log(f"  échec {ref.slug} : {exc}")
+            log(f"  failed {ref.slug}: {exc}")
             continue
         (raw / f"{ref.slug}.json").write_text(json.dumps(guide, ensure_ascii=False))
         index[ref.slug] = ref.updated_at
         index_file.write_text(json.dumps(index, indent=1))  # after each guide: an interruption loses nothing
         stats["fetched"] += 1
-        log(f"  {ref.code} {ref.title} : {len(tips_of(guide))} astuces")
+        log(f"  {ref.code} {ref.title}: {len(tips_of(guide))} tips")
     # Only after a full pass: after a 429, the next start resumes where we stopped.
     (dest / CHECKED_FILE).write_text(str(time.time()))
     return stats
@@ -165,11 +165,11 @@ def collect(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="cmd", required=True)
-    c = sub.add_parser("collect", help="télécharger les guides modifiés")
-    c.add_argument("--delay", type=float, default=2.0, help="secondes entre deux pages (défaut : 2)")
+    c = sub.add_parser("collect", help="download the modified guides")
+    c.add_argument("--delay", type=float, default=2.0, help="seconds between two pages (default: 2)")
     c.add_argument("--dest", type=Path, default=DATA_DIR)
-    c.add_argument("--all", action="store_true", help="tous les guides, pas seulement les pays configurés")
-    c.add_argument("--force", action="store_true", help="recharger même les guides inchangés")
+    c.add_argument("--all", action="store_true", help="all the guides, not only the configured countries")
+    c.add_argument("--force", action="store_true", help="reload even the unchanged guides")
     args = parser.parse_args()
 
     from .config import load_config

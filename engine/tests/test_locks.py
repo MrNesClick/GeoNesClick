@@ -464,8 +464,8 @@ def test_bench_replays_rounds_and_counts_false_certainties(tmp_path, monkeypatch
     ds.add("20261107-190000-003", frame, "FR", round_data={"marks": [], "scores": []})
     monkeypatch.setattr(bench, "open_places", lambda _cfg: index)
     rounds = {r.id[-1]: r for r in bench.run(cfg)}
-    assert (rounds["1"].verdict, rounds["1"].region, rounds["1"].promise) == ("juste", "juste", "tenue")
-    assert rounds["2"].verdict == "FAUX" and rounds["2"].level == "certain"
+    assert (rounds["1"].verdict, rounds["1"].region, rounds["1"].promise) == ("right", "right", "held")
+    assert rounds["2"].verdict == "WRONG" and rounds["2"].level == "certain"
     s = bench.summary(list(rounds.values()))
-    assert s["FAUSSES CERTITUDES"] >= 1 and s["avec marques"] == 2 and s["manches"] == 3
+    assert s["FALSE CERTAINTIES"] >= 1 and s["with marks"] == 2 and s["rounds"] == 3
     assert _json.loads(_json.dumps(bench.summary(list(rounds.values()))))  # --json output possible

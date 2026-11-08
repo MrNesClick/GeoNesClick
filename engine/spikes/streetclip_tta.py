@@ -22,7 +22,7 @@ from geonesclick.streetclip import StreetClip  # noqa: E402
 
 DATASET = Path(__file__).resolve().parent.parent / "dataset"
 VIEWS = {  # fractions [left, top, right, bottom]
-    "entière": (0.0, 0.0, 1.0, 1.0),
+    "whole": (0.0, 0.0, 1.0, 1.0),
     "gauche": (0.0, 0.0, 0.55, 1.0),
     "centre": (0.225, 0.0, 0.775, 1.0),
     "droite": (0.45, 0.0, 1.0, 1.0),
@@ -55,17 +55,17 @@ def main() -> None:
             for name, (a, b, c, d) in VIEWS.items()
         }
         truth = codes.index(item["country"])
-        for key, p in (("simple", per_view["entière"]), ("moyenne", torch.stack(list(per_view.values())).mean(0))):
+        for key, p in (("single", per_view["whole"]), ("mean", torch.stack(list(per_view.values())).mean(0))):
             r = rank_of(p, truth)
             stats[key][0] += r == 1
             stats[key][1] += r <= 3
             stats[key][2] += float(p[truth])
             top = ", ".join(f"{codes[i]} {float(p[i]):.0%}" for i in p.topk(3).indices.tolist())
-            print(f"{item['country']}  {key:<8} rang {r:>2}  ({float(p[truth]):.0%})  top : {top}")
+            print(f"{item['country']}  {key:<8} rank {r:>2}  ({float(p[truth]):.0%})  top: {top}")
     n = len(labels)
-    print(f"\nSur {n} captures :")
+    print(f"\nOver {n} captures:")
     for key, (t1, t3, pr) in stats.items():
-        print(f"  {key:<8} top-1 {t1}/{n}  top-3 {t3}/{n}  proba moyenne du bon pays {pr / n:.0%}")
+        print(f"  {key:<8} top-1 {t1}/{n}  top-3 {t3}/{n}  mean probability of the right country {pr / n:.0%}")
 
 
 if __name__ == "__main__":

@@ -142,7 +142,7 @@ def main() -> int:
             raise SettingsError("objet JSON attendu")
         save(changes)
     except (ValueError, SettingsError) as exc:
-        print(f"réglages refusés : {exc}", file=sys.stderr)
+        print(f"settings refused: {exc}", file=sys.stderr)
         return 1
     return 0
 

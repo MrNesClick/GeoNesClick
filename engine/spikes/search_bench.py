@@ -229,7 +229,7 @@ async def fiches_for(labels, cfg) -> dict:
             if key in cached:
                 continue
             img = Image.open(ROOT / "dataset" / "images" / lb["file"]).convert("RGB")
-            print(f"  fiche {lang} pour {lb['country']}…", flush=True)
+            print(f"  {lang} sheet for {lb['country']}…", flush=True)
             fiche, _ = await client.describe(img)
             cached[key] = fiche
             cache.write_text(json.dumps(cached, ensure_ascii=False, indent=1))
@@ -279,9 +279,9 @@ def main() -> None:
     ours = set(cfg.streetclip.countries.values())
     tips = [t for t in load_tips() if t.country in ours and t.text]
     if not tips:
-        sys.exit("aucune astuce : lance d'abord python -m geonesclick.plonkit collect")
+        sys.exit("no tips: run python -m geonesclick.plonkit collect first")
     chars = sum(len(t.text) for t in tips)
-    print(f"Corpus : {len(tips)} astuces, {len({t.country for t in tips})} pays, {chars / 1e6:.1f} Mo de texte\n")
+    print(f"Corpus: {len(tips)} tips, {len({t.country for t in tips})} countries, {chars / 1e6:.1f} MB of text\n")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     report: dict = {"corpus": {"tips": len(tips), "countries": len({t.country for t in tips}), "chars": chars}}
 

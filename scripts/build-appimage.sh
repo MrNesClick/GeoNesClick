@@ -26,23 +26,23 @@ step() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
 
 [[ "$(. /etc/os-release && echo "$ID $VERSION_ID")" == "ubuntu 24.04" ]] \
-  || echo "  ! pas sur Ubuntu 24.04 : les paquets compilés pourraient ne pas marcher sur une version plus ancienne"
+  || echo "  ! not on Ubuntu 24.04: the compiled packages might not work on an older version"
 
 rm -rf "$OUT" && mkdir -p "$OUT/wheels"
 TMP="$(mktemp -d)" && trap 'rm -rf "$TMP"' EXIT
 
-step "1. uv ${UV_VERSION} (empreinte vérifiée)"
+step "1. uv ${UV_VERSION} (hash checked)"
 curl -fsSL -o "$TMP/$UV_ARCHIVE" "$UV_URL"
 curl -fsSL -o "$TMP/$UV_ARCHIVE.sha256" "$UV_URL.sha256"
-(cd "$TMP" && sha256sum -c "$UV_ARCHIVE.sha256" >/dev/null) && ok "empreinte conforme"
+(cd "$TMP" && sha256sum -c "$UV_ARCHIVE.sha256" >/dev/null) && ok "hash matches"
 tar -xzf "$TMP/$UV_ARCHIVE" -C "$TMP"
 install -m 0755 "$TMP/uv-x86_64-unknown-linux-gnu/uv" "$OUT/uv"
 
-step "2. Moteur (wheel)"
+step "2. Engine (wheel)"
 (cd "$ROOT/engine" && uv build --wheel --out-dir "$OUT/wheels" >/dev/null)
 ok "$(cd "$OUT/wheels" && ls geonesclick-*.whl)"
 
-step "3. PyGObject et pycairo, compilés ici"
+step "3. PyGObject and pycairo, compiled here"
 # PyPI sources checked against the uv.lock hashes (the same as in development) before compiling.
 python3 - "$ROOT/engine/uv.lock" > "$TMP/sources.txt" <<'PY'
 import sys, tomllib
@@ -52,9 +52,9 @@ for p in tomllib.load(open(sys.argv[1], "rb"))["package"]:
 PY
 uv tool run --python 3.12 --from "pip==25.3" pip wheel --no-deps --no-binary :all: --require-hashes --quiet \
   -r "$TMP/sources.txt" --wheel-dir "$OUT/wheels"
-ok "$(cut -d' ' -f1 "$TMP/sources.txt" | tr '\n' ' ')(empreintes vérifiées)"
+ok "$(cut -d' ' -f1 "$TMP/sources.txt" | tr '\n' ' ')(hashes checked)"
 
-step "4. Dépendances figées et liste détaillée"
+step "4. Pinned dependencies and detailed list"
 "$ROOT/engine/.venv/bin/python" -I "$ROOT/scripts/bundle_meta.py" "$OUT"
 install -m 0755 "$ROOT/scripts/install-engine.sh" "$OUT/install-engine.sh"
 grep -m1 '^version' "$ROOT/engine/pyproject.toml" | cut -d'"' -f2 > "$OUT/VERSION"

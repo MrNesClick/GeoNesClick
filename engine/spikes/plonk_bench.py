@@ -86,7 +86,7 @@ def bare_plonk_package() -> None:
     sys.path[:0] = [str(VENDOR / "plonk"), str(VENDOR / "deps")]
     spec = importlib.util.find_spec("plonk")
     if spec is None or not spec.submodule_search_locations:
-        sys.exit("Code PLONK introuvable : lance d'abord scripts/setup-plonk-spike.sh.")
+        sys.exit("PLONK code not found: run scripts/setup-plonk-spike.sh first.")
     pkg = types.ModuleType("plonk")
     pkg.__path__ = list(spec.submodule_search_locations)
     sys.modules["plonk"] = pkg
@@ -173,12 +173,12 @@ def main(borders_path: Path, n: int) -> None:
     base = torch.cuda.max_memory_allocated() / 2**20
     os.environ.pop("HF_HUB_OFFLINE", None)  # download of the PLONK weights on first run
     plonk = Plonk(clip.device)
-    print(f"VRAM : StreetCLIP {base:.0f} Mio, + PLONK {torch.cuda.max_memory_allocated() / 2**20 - base:.0f} Mio")
+    print(f"VRAM: StreetCLIP {base:.0f} MiB, + PLONK {torch.cuda.max_memory_allocated() / 2**20 - base:.0f} MiB")
 
     codes = list(cfg.streetclip.countries.values())
     borders = load_borders(borders_path)
     labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
-    keys = ["StreetCLIP"] + [f"PLONK {s} pas" for s in STEPS]
+    keys = ["StreetCLIP"] + [f"PLONK {s} steps" for s in STEPS]
     totals = {k: [0, 0] for k in keys}  # top-1, top-3
     drift = {s: [] for s in STEPS}  # distance from the mode to the mode at 250 steps (km)
     cost = {s: [] for s in STEPS}  # time (ms)
@@ -188,14 +188,14 @@ def main(borders_path: Path, n: int) -> None:
         img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
         probs, cls = encode(clip, img)
         if i == 0:
-            print(f"Cosinus [CLS] fp16 GPU / fp32 CPU : {check_cls(clip, img, cls):.5f}")
+            print(f"Cosine [CLS] fp16 GPU / fp32 CPU: {check_cls(clip, img, cls):.5f}")
         sc_order = [codes[j] for j in probs.argsort(descending=True).tolist()]
         truth = item["country"]
         totals["StreetCLIP"][0] += sc_order[:1] == [truth]
         totals["StreetCLIP"][1] += truth in sc_order[:3]
         top_sc = ", ".join(f"{codes[j]} {probs[j]:.0%}" for j in probs.argsort(descending=True)[:3].tolist())
-        print(f"\n{item['file']}  réel {truth} ({item.get('area', '')})")
-        print(f"  StreetCLIP     rang {rank(sc_order, truth):>2} | {top_sc}")
+        print(f"\n{item['file']}  real {truth} ({item.get('area', '')})")
+        print(f"  StreetCLIP     rank {rank(sc_order, truth):>2} | {top_sc}")
 
         ref = None
         for steps in STEPS:
@@ -203,26 +203,26 @@ def main(borders_path: Path, n: int) -> None:
             share, order, mode, spread = cloud(borders, pts)
             ref = ref or mode
             gap = float(haversine(mode[0], mode[1], ref[0], ref[1]))
-            key = f"PLONK {steps} pas"
+            key = f"PLONK {steps} steps"
             totals[key][0] += order[:1] == [truth]
             totals[key][1] += truth in order[:3]
             drift[steps].append(gap)
             cost[steps].append(ms)
             top_pl = ", ".join(f"{c} {k / n:.0%}" for c, k in share.most_common(4))
-            print(f"  PLONK {steps:>3} pas  rang {rank(order, truth):>2} | {top_pl:<34} | mode {mode[0]:.2f},"
-                  f" {mode[1]:.2f} ({gap:.0f} km du mode à {STEPS[0]} pas) | dispersion {spread:.0f} km | {ms:.0f} ms")
+            print(f"  PLONK {steps:>3} steps  rank {rank(order, truth):>2} | {top_pl:<34} | mode {mode[0]:.2f},"
+                  f" {mode[1]:.2f} ({gap:.0f} km from the mode at {STEPS[0]} steps) | spread {spread:.0f} km | {ms:.0f} ms")
         small.append(timed(plonk, cls, 128, 50)[1])
 
-    print(f"\nSur {len(labels)} captures ({n} points) :")
+    print(f"\nOver {len(labels)} captures ({n} points):")
     for key in keys:
         t1, t3 = totals[key]
         extra = ""
         if key != "StreetCLIP":
             s = int(key.split()[1])
-            extra = f" | écart moyen du mode {np.mean(drift[s]):.0f} km | {np.mean(cost[s]):.0f} ms"
+            extra = f" | mean drift of the mode {np.mean(drift[s]):.0f} km | {np.mean(cost[s]):.0f} ms"
         print(f"  {key:<15} top-1 {t1}/{len(labels)}  top-3 {t3}/{len(labels)}{extra}")
-    print(f"128 points à 50 pas : {np.mean(small):.0f} ms (contre {np.mean(cost[50]):.0f} ms pour {n})")
-    print(f"Pic VRAM : {torch.cuda.max_memory_allocated() / 2**20:.0f} Mio")
+    print(f"128 points at 50 steps: {np.mean(small):.0f} ms (against {np.mean(cost[50]):.0f} ms for {n})")
+    print(f"Peak VRAM: {torch.cuda.max_memory_allocated() / 2**20:.0f} MiB")
 
 
 if __name__ == "__main__":

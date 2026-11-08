@@ -14,7 +14,7 @@ set -eu
 B="$(cd "$(dirname "$0")" && pwd)"
 VARIANT="${1:-}"
 CHOICES="${2:-}"
-case "$VARIANT" in cuda|cpu) ;; *) echo "usage : install-engine.sh cuda|cpu [choix.json]" >&2; exit 2 ;; esac
+case "$VARIANT" in cuda|cpu) ;; *) echo "usage: install-engine.sh cuda|cpu [choices.json]" >&2; exit 2 ;; esac
 PYTHON_VERSION="3.12.12"  # the one used by the tests
 
 HOME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/engine"

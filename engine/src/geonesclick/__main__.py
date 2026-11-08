@@ -2,7 +2,7 @@ import os
 
 from .apikey import key_file, migrate_env
 from .config import PROJECT_ROOT, load_config
-from .paths import hf_hub_cache, migrate_legacy, migrate_repo_data
+from .paths import hf_hub_cache, migrate_repo_data
 
 
 def _hf_model_cached(model_id: str, revision: str) -> bool:
@@ -14,13 +14,12 @@ def _hf_model_cached(model_id: str, revision: str) -> bool:
 # Level 1 must work offline and send nothing over the network: once the local models are
 # cached (StreetCLIP, and PLONK if enabled), offline mode is turned on BEFORE importing transformers
 # (it reads the variable at import). As long as a model is missing, it can still be downloaded.
-# Former name (GeoNesClick): folders moved once, never deleted; then captures and the test set move out
-# of the code folder (read-only in an AppImage).
-for _moved in migrate_legacy() + migrate_repo_data(PROJECT_ROOT):
-    print(f"GeoNesClick : {_moved}", flush=True)
+# Captures and the test set move out of the code folder once (read-only in an AppImage).
+for _moved in migrate_repo_data(PROJECT_ROOT):
+    print(f"GeoNesClick: {_moved}", flush=True)
 _cfg = load_config()
 if migrate_env(_cfg.vision.api_key_env, PROJECT_ROOT / ".env"):  # key from the old .env: moved to the protected file
-    print(f"GeoNesClick : clé {_cfg.vision.api_key_env} déplacée du .env vers {key_file(_cfg.vision.api_key_env)}",
+    print(f"GeoNesClick: key {_cfg.vision.api_key_env} moved from the .env to {key_file(_cfg.vision.api_key_env)}",
           flush=True)
 _models = [(_cfg.streetclip.model, _cfg.streetclip.revision)] + (
     [(_cfg.plonk.model, _cfg.plonk.revision)] if _cfg.plonk.enabled else [])

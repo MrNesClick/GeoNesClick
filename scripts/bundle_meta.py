@@ -56,7 +56,7 @@ def cpu_torch_line(version: str) -> str:
     wheel = f"torch-{version}%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl"
     found = re.search(re.escape(wheel) + r"#sha256=([0-9a-f]{64})", page)
     if not found:
-        sys.exit(f"PyTorch CPU {version} introuvable sur {CPU_INDEX}")
+        sys.exit(f"PyTorch CPU {version} not found on {CPU_INDEX}")
     return f"torch=={version}+cpu \\\n    --hash=sha256:{found.group(1)}"
 
 
@@ -107,7 +107,7 @@ def main(out: Path) -> None:
                                                                  ensure_ascii=False, indent=1))
     manifest = tomllib.loads((ENGINE / "src" / "geonesclick" / "downloads.toml").read_text())
     (out / "downloads.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1))
-    print(f"{len(cuda)} paquets (CUDA), {len(cpu)} (CPU) ; liste des téléchargements prête dans {out}")
+    print(f"{len(cuda)} packages (CUDA), {len(cpu)} (CPU); list of downloads ready in {out}")
 
 
 if __name__ == "__main__":
