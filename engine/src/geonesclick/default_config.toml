@@ -197,7 +197,7 @@ Vietnam = "VN"
 # measured, it does not pick the country better than StreetCLIP. Weights downloaded once (144 MB).
 enabled = true
 model = "nicolas-dufour/PLONK_OSV_5M"
-revision = "e23229f4dd91d52560e8827f5bb2c68257fa162f"  # measured weights version (README); change with model
+revision = "e23229f4dd91d52560e8827f5bb2c68257fa162f"  # measured weights version (docs/benchmarks.md); change with model
 steps = 50               # flow steps (10 to 250): 50 are enough, below 25 the cloud degrades
 points = 512             # points sampled (64 to 2048)
 # Zones drawn on the map: rounded outlines around the densest points of the cloud.

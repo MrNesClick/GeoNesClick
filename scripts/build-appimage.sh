@@ -18,7 +18,7 @@ ENGINE_ONLY=0
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT="$ROOT/app/src-tauri/engine-bundle"      # AppImage resources (ignored by git)
-UV_VERSION="0.9.17"                          # the one used by the tests; change with care (README, Maintenance)
+UV_VERSION="0.9.17"                          # the one used by the tests; change with care (docs/maintenance.md)
 UV_ARCHIVE="uv-x86_64-unknown-linux-gnu.tar.gz"
 UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_ARCHIVE}"
 

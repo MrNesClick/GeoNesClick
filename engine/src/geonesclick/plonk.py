@@ -3,7 +3,7 @@
 PLONK (Dufour, Picard, Kalogeiton, Landrieu, "Around the World in 80 Timesteps", CVPR 2025) samples
 points on the sphere through a Riemannian flow conditioned on the image. Model "nicolas-dufour/PLONK_OSV_5M"
 (safetensors), trained on OSV-5M with StreetCLIP as the encoder. It only serves the MAP: measured on the
-test set, it does not rank the countries better than StreetCLIP (same vector); see README, spikes/plonk_bench.py.
+test set, it does not rank the countries better than StreetCLIP (same vector); see docs/benchmarks.md, spikes/plonk_bench.py.
 
 The network and the sampler are taken from https://github.com/nicolas-dufour/plonk (commit 76d4641),
 reduced to what this model needs: GeoAdaLNMLP, sigmoid schedule, unguided flow. geoopt's projection onto the
