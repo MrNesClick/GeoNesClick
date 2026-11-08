@@ -24,20 +24,33 @@ tu le souhaites.
 ## Prérequis
 
 - Ubuntu 24.04 ou plus récent, avec GNOME (Wayland ou Xorg)
-- Une carte NVIDIA avec CUDA (recommandé ; StreetCLIP tourne aussi sur le processeur, plus lentement)
-- [Rust](https://rustup.rs), [Node.js](https://nodejs.org) avec [pnpm](https://pnpm.io), et [uv](https://docs.astral.sh/uv/)
-- Une clé API NVIDIA gratuite sur [build.nvidia.com](https://build.nvidia.com)
+- Environ 11 Go d'espace disque libre pendant l'installation, 8 Go occupés ensuite (environ moitié moins sans carte
+  NVIDIA)
+- Une carte NVIDIA (recommandé ; sans elle, l'IA locale tourne sur le processeur, plus lentement)
+- Une clé API NVIDIA gratuite sur [build.nvidia.com](https://build.nvidia.com) (recommandée : elle lit le texte de
+  la vue et traduit les astuces)
 
-## Installer et lancer
+## Installer
 
-```bash
-scripts/install.sh --with-apt --setup-shortcut   # dépendances, paquets système, raccourcis GNOME
-cd app && pnpm tauri dev                         # lance le coach (et son moteur)
-```
+> La première version arrive : l'AppImage sera disponible sur la page
+> [Releases](https://github.com/MrNesClick/GeoNesClick/releases).
 
-Au premier lancement, choisis la fenêtre du navigateur où tu joues, puis saisis ta clé API dans
-**Réglages › Analyse**. Pendant une manche : **Super+Maj+G** pour capturer, **Super+Maj+Z** pour marquer des
-indices.
+1. Télécharge `GeoNesClick_<version>_amd64.AppImage` depuis la page Releases.
+2. Rends-la exécutable (clic droit › Propriétés › *Exécutable comme un programme*, ou
+   `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
+3. Au premier lancement, un assistant vérifie ton système et liste tout ce qu'il va télécharger, avec la taille et
+   la licence de chaque élément. Une fois ton accord donné, il installe le moteur dans
+   `~/.local/share/geonesclick/` : rien n'est installé dans le système.
+4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt.
+
+Pour mettre à jour, télécharge la nouvelle AppImage et ouvre-la : l'assistant met le moteur à jour.
+
+## Utiliser
+
+1. Ouvre une partie GeoGuessr dans ton navigateur et lance GeoNesClick. La première fois, GNOME demande quelle
+   fenêtre partager : choisis celle du navigateur.
+2. Pendant une manche, appuie sur **Super+Maj+G** : le coach affiche l'aide du niveau choisi.
+3. Pour lire un panneau, appuie sur **Super+Maj+Z** et trace un rectangle autour.
 
 ## Niveaux d'aide
 
@@ -68,9 +81,12 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
 
 ## Confidentialité
 
-- Le moteur n'écoute que sur `127.0.0.1` et refuse toute autre origine.
-- Ta clé API est rangée dans `~/.config/geonesclick/nvapi.key`, lisible par toi seul, jamais dans le dépôt.
-- Réglages › Stockage › **Tout effacer** supprime toutes tes données d'un coup.
+- Le moteur tourne sur ta machine et ne répond qu'à la fenêtre du coach : aucun site web ni autre ordinateur ne
+  peut le joindre.
+- Tes captures ne quittent ta machine que vers le modèle de vision NVIDIA, et seulement si tu as donné une clé API
+  (voir le tableau ci-dessus).
+- Ta clé API est rangée dans un fichier lisible par toi seul.
+- Réglages › Stockage › **Tout effacer** supprime toutes tes données, et le moteur si tu le souhaites.
 
 ## Documentation
 
@@ -80,6 +96,7 @@ La documentation détaillée est en anglais :
 - [Configuration](docs/configuration.md) : `config.toml`, réglages, mode débogage
 - [Measurements and benchmarks](docs/benchmarks.md) : pourquoi chaque choix technique, et les tests
 - [Maintenance](docs/maintenance.md) : mises à jour, emplacement des données, outils et licences
+- [Development](docs/development.md) : compiler depuis les sources, fabriquer l'AppImage, lancer les tests
 
 ## Licence
 

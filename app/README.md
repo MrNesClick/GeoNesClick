@@ -1,3 +1,3 @@
 # GeoNesClick UI (Tauri + Vue)
 
-See the [main README](../README.md) for installation and running.
+See [docs/development.md](../docs/development.md) to build and run it from source.

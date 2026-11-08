@@ -2,21 +2,6 @@
 
 # Maintenance
 
-## Installation details
-
-The script can safely be run again, for example after each `git pull`. Then, on first launch, enter your NVIDIA API
-key (free on [build.nvidia.com](https://build.nvidia.com), "Get API Key") in **Settings › Analysis**
-(*Réglages › Analyse*). It is stored outside the repository, in `~/.config/geonesclick/nvapi.key`, readable by you
-only (0600), and is never shown again (only its last 4 characters). The `NVAPI` environment variable, if set, takes
-priority. A key still in the old `.env` is **moved** there at startup (the line is removed from the `.env`).
-
-To change the shortcuts: `GNC_SHORTCUT="<Super><Shift>h" GNC_MARK_SHORTCUT="<Super><Shift>m"
-scripts/install.sh --setup-shortcut`.
-
-The engine uses a **Python 3.12 managed by uv**, in a virtual environment **isolated** from the system packages. The
-GStreamer bindings (PyGObject) are compiled from PyPI at installation, hence the `libgirepository-2.0-dev` and
-`libcairo2-dev` packages. Only the GStreamer description files (`gir1.2-*`) come from the system.
-
 ## Shared window
 
 The coach window starts the Python engine and stops it when closed. The first time, GNOME asks which window to
@@ -24,11 +9,9 @@ share: choose the browser window where you play. The permission is remembered
 (`~/.config/geonesclick/screencast.token`). To change it (another browser, screen or resolution), open the
 **Settings** tab and click **Change window** (*Changer de fenêtre*, Captures section): the GNOME picker opens again.
 
-To run the engine alone (without the UI): `cd engine && .venv/bin/python -m geonesclick`.
-
 ## Updates and data
 
-**Update**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with `uv.lock` and the
+**Update (from source)**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with `uv.lock` and the
 front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-plonk-spike.sh` again.
 
 **Change a version**:

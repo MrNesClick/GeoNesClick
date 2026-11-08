@@ -23,19 +23,32 @@ The interface is in French for now.
 ## Requirements
 
 - Ubuntu 24.04 or later with GNOME (Wayland or Xorg)
-- An NVIDIA card with CUDA (recommended; StreetCLIP also runs on the CPU, more slowly)
-- [Rust](https://rustup.rs), [Node.js](https://nodejs.org) with [pnpm](https://pnpm.io), and [uv](https://docs.astral.sh/uv/)
-- A free NVIDIA API key from [build.nvidia.com](https://build.nvidia.com)
+- About 11 GB of free disk space during the installation, 8 GB used afterwards (about half without an NVIDIA card)
+- An NVIDIA card (recommended; without one, the local AI runs on the processor, more slowly)
+- A free NVIDIA API key from [build.nvidia.com](https://build.nvidia.com) (recommended: it reads the text in the
+  view and translates the tips)
 
-## Install and run
+## Install
 
-```bash
-scripts/install.sh --with-apt --setup-shortcut   # dependencies, system packages, GNOME shortcuts
-cd app && pnpm tauri dev                         # starts the coach (and its engine)
-```
+> The first release is on its way: the AppImage will be available on the
+> [Releases](https://github.com/MrNesClick/GeoNesClick/releases) page.
 
-On first launch, choose the browser window you play in, then enter your API key in **Settings › Analysis**
-(*Réglages › Analyse*). During a round, press **Super+Shift+G** to capture, **Super+Shift+Z** to mark clues.
+1. Download `GeoNesClick_<version>_amd64.AppImage` from the Releases page.
+2. Make it executable (right click › Properties › *Executable as Program*, or `chmod +x GeoNesClick_*.AppImage`),
+   then open it.
+3. On first launch, an assistant checks your system and lists everything it will download, with the size and the
+   licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/`: nothing is
+   installed in the system.
+4. Choose your options, enter your API key if you have one, and you are ready.
+
+To update, download the new AppImage and open it: the assistant updates the engine.
+
+## Use
+
+1. Open a GeoGuessr game in your browser and start GeoNesClick. The first time, GNOME asks which window to share:
+   choose your browser window.
+2. During a round, press **Super+Shift+G**: the coach shows the help of the chosen level.
+3. To read a sign, press **Super+Shift+Z** and draw a rectangle around it.
 
 ## Help levels
 
@@ -66,9 +79,11 @@ before anything is downloaded. Options can be turned off in the Settings.
 
 ## Privacy
 
-- The engine only listens on `127.0.0.1` and refuses any other origin.
-- Your API key is stored in `~/.config/geonesclick/nvapi.key`, readable by you only, never in the repository.
-- Settings › Storage › **Erase everything** (*Tout effacer*) removes all your data in one go.
+- The engine runs on your machine and only answers the coach window: no website or other computer can reach it.
+- Your captures leave your machine only for the NVIDIA vision model, and only if you gave an API key (see the
+  table above).
+- Your API key is stored in a file readable by you only.
+- Settings › Storage › **Erase everything** (*Tout effacer*) removes all your data, and the engine if you wish.
 
 ## Documentation
 
@@ -76,6 +91,7 @@ before anything is downloaded. Options can be turned off in the Settings.
 - [Configuration](docs/configuration.md): `config.toml`, settings, debug mode
 - [Measurements and benchmarks](docs/benchmarks.md): why each technical choice was made, and tests
 - [Maintenance](docs/maintenance.md): updates, where the data is, tools and licences
+- [Development](docs/development.md): build from source, build the AppImage, run the tests
 
 ## License
 

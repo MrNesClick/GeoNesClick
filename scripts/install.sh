@@ -138,4 +138,4 @@ if ((SETUP_SHORTCUT)); then
   add_shortcut geonesclick-mark "GeoNesClick – marques" mark "${GNC_MARK_SHORTCUT:-<Super><Shift>z}"
 fi
 
-step "Installation done ✔  (see README.md, section \"Install and run\")"
+step "Installation done ✔  (see docs/development.md)"
