@@ -65,6 +65,11 @@ module before modifying it. The outlines come from Natural Earth v5.1.2; for ano
 `engine/src/geonesclick/data/ne_50m_admin_0_countries.geojson` (the `ISO_A2_EH` field must exist) and run the tests
 again.
 
+**Update the AppImage runtime**: the program embedded at the head of the AppImage, run on every launch, is pinned
+by its sha256 in `scripts/build-appimage.sh` (`RUNTIME_SHA256`, the one of v0.1.0), although upstream publishes it as
+"continuous". When upstream publishes a new one, the build stops with "the AppImage runtime changed upstream": build
+with the new hash, test the AppImage on a clean Ubuntu (no libfuse2), then commit the hash.
+
 **Before each commit**: the tests (`cd engine && .venv/bin/python -m pytest -q`, without any network access), then a
 code review and a security review.
 

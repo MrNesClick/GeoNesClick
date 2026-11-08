@@ -40,6 +40,12 @@ APPIMAGE_TOOLS=(  # file in the cache | URL | sha256 (empty: not pinned)
   "linuxdeploy-07333c6-x86_64.AppImage|$TOOLS_BASE/linuxdeploy-07333c6/linuxdeploy-x86_64.AppImage|36a2d7e274d12e1050d0e9ecfe11d339ed54720b2bec464c286d53f8b07f5c62"
   "linuxdeploy-plugin-appimage.AppImage|https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage|"
 )
+# The runtime embedded in the AppImage, run on every launch. Without it, appimagetool (inside the plugin) downloads it
+# itself while bundling, with no retry (most likely what failed a v0.1.1 build: Tauri hides linuxdeploy's output).
+# Pinned to the one shipped in v0.1.0 (build ID ef655b05), validated on a clean Ubuntu 26.04, although upstream
+# publishes it as "continuous" (docs/maintenance.md).
+RUNTIME_URL="https://github.com/AppImage/type2-runtime/releases/download/continuous/runtime-x86_64"
+RUNTIME_SHA256="617aa77314d57c8b8e4fae9c3f0b35af7b30d5529cb69e98f64f92510ed98a46"
 
 [[ "$(. /etc/os-release && echo "$ID $VERSION_ID")" == "ubuntu 24.04" ]] \
   || echo "  ! not on Ubuntu 24.04: the compiled packages might not work on an older version"
@@ -88,6 +94,11 @@ for tool in "${APPIMAGE_TOOLS[@]}"; do
   install -m 0755 "$TMP/$name" "$TAURI_TOOLS/$name"
   ok "$name${sha:+ (hash checked)}"
 done
+fetch "$TMP/runtime-x86_64" "$RUNTIME_URL"
+echo "$RUNTIME_SHA256  $TMP/runtime-x86_64" | sha256sum -c --quiet \
+  || { echo "  ! the AppImage runtime changed upstream: test the new one, then update RUNTIME_SHA256"; exit 1; }
+export LDAI_RUNTIME_FILE="$TMP/runtime-x86_64"  # read by linuxdeploy-plugin-appimage, passed to appimagetool
+ok "AppImage runtime (hash checked)"
 cd "$ROOT/app"
 pnpm tauri build --bundles appimage --config src-tauri/tauri.appimage.conf.json
 ls -lh src-tauri/target/release/bundle/appimage/*.AppImage
