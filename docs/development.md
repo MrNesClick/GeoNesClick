@@ -57,7 +57,7 @@ dependencies with their hashes (CUDA and CPU variants) and the list of downloads
 the first-launch assistant, with `install-engine.sh`, once the user has accepted the list. Each download is tried 6
 times (`UV_HTTP_RETRIES=5`, huggingface_hub's own retries); on failure, `diagnose` in `setup.rs` reads the script's
 last error lines and tells the user which site does not answer (from the URL, else the phase) or that the disk is
-full; the uv and Hugging Face caches are kept, so "Réessayer" resumes.
+full; the uv and Hugging Face caches are kept, so "Retry" resumes.
 
 The app icon's source is `app/src-tauri/icons/icon.svg`; after changing it, regenerate the bundled sizes with
 `pnpm tauri icon src-tauri/icons/icon.svg -o <folder>` (from `app/`) and copy back only the files already in
