@@ -81,6 +81,7 @@ jobs:
         run: |
           df -h /
           scripts/build-appimage.sh
+          df -h /  # after the Rust build and the bundling: the real minimum of free space
 
       - name: Release
         env:

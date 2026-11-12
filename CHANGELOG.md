@@ -7,6 +7,10 @@ its release notes.
 
 ## [Unreleased]
 
+### Changed
+
+- GeoNesClick has its own icon (a pin in a crosshair over contour lines) instead of Tauri's logo.
+
 ## [0.2.0] - 2026-11-12
 
 ### Added

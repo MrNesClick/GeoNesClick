@@ -59,6 +59,10 @@ times (`UV_HTTP_RETRIES=5`, huggingface_hub's own retries); on failure, `diagnos
 last error lines and tells the user which site does not answer (from the URL, else the phase) or that the disk is
 full; the uv and Hugging Face caches are kept, so "Réessayer" resumes.
 
+The app icon's source is `app/src-tauri/icons/icon.svg`; after changing it, regenerate the bundled sizes with
+`pnpm tauri icon src-tauri/icons/icon.svg -o <folder>` (from `app/`) and copy back only the files already in
+`app/src-tauri/icons/` (the command also makes Android and iOS icons, unused here).
+
 ## Publish a release
 
 Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
