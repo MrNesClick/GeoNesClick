@@ -7,9 +7,9 @@ The vision model transcribes; these rules conclude, each with its source:
 3. PLACE NAMES (GeoNames directory, see places.py) point to a country.
 
 A country is "certain" only with at least one place name AND another concurring proof, with no mark
-pointing to another: measured on 2026-11-07, the model invented "Казань" on a blurry crop.
+pointing to another: the model invented "Казань" on a blurry crop.
 
-A LONE PLACE concludes nothing (decided with the user on 2026-11-07): measured the same day, lone places were
+A LONE PLACE concludes nothing: in one day of play, lone places were
 wrong 4 times (Gare → FR/LU, Laas → IT, Orion → PH/US, "Lo Manto" from a street name → Honduras, against
 StreetCLIP at 96 % for Italy), whereas the right conclusions came from grouped places. A confirmation is
 needed: a 2nd place, a letter or a word of the country's language, or StreetCLIP giving that country 10 % or more.

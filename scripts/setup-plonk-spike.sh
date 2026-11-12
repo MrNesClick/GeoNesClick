@@ -17,7 +17,7 @@ VENDOR="$ROOT/engine/spikes/.vendor"
 PY="$ROOT/engine/.venv/bin/python"
 
 PLONK_REPO="https://github.com/nicolas-dufour/plonk"
-PLONK_COMMIT="76d46410910c9dfec9e19ed371450ebc7051cdf3"  # 2025-09-29
+PLONK_COMMIT="76d46410910c9dfec9e19ed371450ebc7051cdf3"
 DEPS=(einops==0.8.2 geoopt==0.5.1 torchdiffeq==0.2.5 scipy==1.18.1)
 NE_URL="https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_50m_admin_0_countries.geojson"
 

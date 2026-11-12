@@ -161,7 +161,7 @@ class LocksMixin:
         if not target:
             return country, None, None, []
         # Sharp position: a point, or "within N km of this place" when N is small (inconsistent distances, but
-        # the shortest always stays true: Glamsbjerg 3 km on the Danish sign of 2026-11-07).
+        # the shortest always stays true: Glamsbjerg 3 km on a Danish sign).
         point = location if location and (location.get("kind") == "point" or (
             location.get("kind") == "rough" and location["radius_km"] <= lc.region_radius_km)) else None
         region = None
@@ -173,7 +173,7 @@ class LocksMixin:
                 region = Lock("region", target, region=code, name=places.region_name(code),
                               why=t("locks.why.position"))
         # Regions of the places read (namesake kept in the country): offered in one click, especially when they diverge
-        # ("Oker" in Lower Saxony, "Retz" → Rötz in Bavaria, 2026-11-07).
+        # ("Oker" in Lower Saxony, "Retz" → Rötz in Bavaria).
         read: dict[str, tuple[int, list[Any]]] = {}
         for n, found in cited:
             for e in found:

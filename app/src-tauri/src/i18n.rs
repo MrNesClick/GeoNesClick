@@ -1,6 +1,6 @@
 //! Texts the player sees, in their language: the same catalogs as the engine (geonesclick/i18n.py) and the UI
 //! (src/i18n.ts), compiled in by build.rs (every locales/<lang>.json). Same rules in the three layers: flat keys,
-//! "{name}" placeholders, English when a key or a language is missing. Decided with the user on 2026-11-12.
+//! "{name}" placeholders, English when a key or a language is missing.
 
 use std::collections::HashMap;
 use std::sync::{LazyLock, PoisonError, RwLock};

@@ -1,6 +1,6 @@
 """Country › region › city locks: what is set for the current capture, and who set it.
 
-Decided with the user on 2026-11-07 (OSINT approach: pin down what is certain, then narrow down):
+OSINT approach: pin down what is certain, then narrow down.
 - the COACH locks on its own the "certain" country and the region of a sharp point; a city, it only SUGGESTS
   (a "Pau 40 km" sign names a place where you are not); its locks follow the proofs (a removed mark
   can undo them);

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// First-launch assistant (AppImage), decided with the user on 2026-11-07:
+// First-launch assistant (AppImage):
 // - in STEPS, the required part first;
 // - 100 % transparent: EVERYTHING that will be downloaded (what, from where, size, licence, when, what leaves your
 //   machine) is shown BEFORE a single byte, package by package if you want; one consent for the required block,
@@ -10,7 +10,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { num } from "../engine";
 import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
 
-// Language: English by default, chosen on the first screen (decided with the user on 2026-11-12), written to
+// Language: English by default, chosen on the first screen, written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
 const LANGUAGE_NAMES = Object.fromEntries(LANGS.map((l) => [l, t("language.name", undefined, l)])) as Record<Lang, string>;
 const chooseLanguage = (lang: string) => setLanguage(uiLanguage(lang));

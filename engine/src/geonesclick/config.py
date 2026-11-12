@@ -261,7 +261,7 @@ class RulesConfig(BaseModel):
 
 
 class LocksConfig(BaseModel):
-    # Country › region › city locks (decided with the user on 2026-11-07): each locked level narrows down
+    # Country › region › city locks: each locked level narrows down
     # the search of the next one. The coach locks on its own only what is "certain"; you can always reject (✕) or
     # lock yourself. They last one capture: a new capture resets everything.
     enabled: bool

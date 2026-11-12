@@ -1,4 +1,4 @@
-"""Prompt bench (2026-11-12): the 0.1 French prompts against the English ones (answers in English, in French).
+"""Prompt bench: the 0.1 French prompts against the English ones (answers in English, in French).
 
     .venv/bin/python spikes/prompt_bench.py [--repeats 3] [--out results.json] [--only 162401-349 ...]
 

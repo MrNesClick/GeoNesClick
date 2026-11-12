@@ -1,7 +1,6 @@
 """API key of the vision model, outside the repository: ~/.config/geonesclick/<name>.key, readable by you only (0600).
 
-Decided with the user on 2026-11-07 ("API key not in the .env"; protected file preferred over the system
-keyring). Reading order: the environment variable (tests, advanced uses), then the file. Entered from
+Not in the .env; a protected file rather than the system keyring. Reading order: the environment variable (tests, advanced uses), then the file. Entered from
 Settings › Analysis; the UI only ever sees its last 4 characters. The repository's old .env is migrated
 once at startup: the key is MOVED to the file, then its line removed from the .env (the rest is kept).
 """

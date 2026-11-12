@@ -221,7 +221,7 @@ def france(tmp_path, monkeypatch):
     return found, tmp_path
 
 
-SIGN = ["HOPITAL D' ORION", "SAUVETERRE DE BEARN", "ORTHEZ"]  # round of 2026-11-07, 17:06
+SIGN = ["HOPITAL D' ORION", "SAUVETERRE DE BEARN", "ORTHEZ"]  # a round in Béarn
 HOTEL = ["HÔTEL", "RESTAURANT", "LAAS"]
 
 
@@ -254,7 +254,7 @@ def test_country_detail_finds_villages_and_the_nearest_homonym(france):
     assert any(p["label"] == "L'Hôpital-d'Orion" for p in where["places"])
 
 
-# --- a lone place does not conclude; street names (Italian round of 2026-11-07) ----------------------
+# --- a lone place does not conclude; street names (Italian round) ----------------------
 def test_a_lone_place_is_only_a_hint(gazetteer):
     v = verdict([(1, gazetteer.match(["Manto"]))])
     assert v.country == "" and v.unconfirmed == [{"n": 1, "value": "Manto", "country": "HN"}]
@@ -293,7 +293,7 @@ def test_country_code_cannot_escape_the_folder():
 
 
 def test_distance_on_its_own_line_belongs_to_the_place_above(gazetteer):
-    """"SARANSK" then "162" (Russian round of 2026-11-07); "Гърмен 3" then "197": a road."""
+    """"SARANSK" then "162" (Russian round); "Гърмен 3" then "197": a road."""
     found = {e.value: e.km for e in gazetteer.match(["Благоевград", "109", "СТАРЫЙ", "София", "219 km"])
              if e.kind == "place"}
     assert found == {"Благоевград": 109.0, "София": 219.0}
@@ -310,5 +310,5 @@ def test_distance_on_its_own_line_belongs_to_the_place_above(gazetteer):
     (["Sofia 219", "1", "Catania"], {"Sofia": 219.0, "Catania": None}),  # "1" under a place that has its distance
 ])
 def test_direction_signs_are_read_as_a_table(gazetteer, sign, expected):
-    """Signs copied column by column (Danish, Russian, Bulgarian, 2026-11-07)."""
+    """Signs copied column by column (Danish, Russian, Bulgarian)."""
     assert {e.value: e.km for e in gazetteer.match(sign) if e.kind == "place"} == expected

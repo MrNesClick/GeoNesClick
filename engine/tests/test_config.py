@@ -55,7 +55,7 @@ def test_read_secret_prefers_environment(monkeypatch, tmp_path):
 
 
 def test_read_secret_uses_the_key_file_never_the_dotenv(monkeypatch, tmp_path):
-    """Decided on 2026-11-07: the key is no longer read from the .env (migrated at startup to the protected file)."""
+    """The key is no longer read from the .env (migrated at startup to the protected file)."""
     from geonesclick import apikey
 
     monkeypatch.setattr(config, "PROJECT_ROOT", tmp_path)

@@ -1,13 +1,12 @@
 """Place names: GeoNames directory (cities1000, CC BY 4.0), to recognise a city read on a mark.
 
 Downloaded once (~11 MB) then indexed locally (SQLite): each name and its variants (other languages, other
-alphabets) → country. Measured on 2026-11-07 on the Bulgarian round: Благоевград, София, Гърмен, Гоце Делчев → BG
+alphabets) → country. Measured on a Bulgarian round: Благоевград, София, Гърмен, Гоце Делчев → BG
 only; Казань (invented by the model) → RU; "Gare" → FR, LU (districts): a common word can pass
 for a place, hence evidence.py's cautious certainty rule.
 
 Small villages (Laas, L'Hôpital-d'Orion, ~150 inhabitants) are not in it: as soon as a country leads, the FULL
-directory of that country (GeoNames <CC>.zip, inhabited places only) is downloaded once and added (decided with the
-user, 2026-11-07). Distant namesakes ("Laas" = Lasa, Italy) are ruled out by proximity (locate.py).
+directory of that country (GeoNames <CC>.zip, inhabited places only) is downloaded once and added. Distant namesakes ("Laas" = Lasa, Italy) are ruled out by proximity (locate.py).
 
 Data: GeoNames, https://www.geonames.org (CC BY 4.0), attribution shown in the app and the README.
 """
@@ -30,7 +29,7 @@ from .evidence import STREET_AFTER, STREET_BEFORE, Evidence
 from .locate import haversine
 
 # v3: comparison without Latin accents or hyphens ("Sauveterre de Bearn"); v4: region of each place
-# (GeoNames admin1 code) and latitude index, for the country › region › city locks (2026-11-07).
+# (GeoNames admin1 code) and latitude index, for the country › region › city locks.
 VERSION = "v4"
 DB_NAME = f"places-{VERSION}.sqlite"
 OLD_DBS = ("places.sqlite", "places-v2.sqlite", "places-v3.sqlite")
@@ -208,9 +207,9 @@ def _distance_after(words: list[str], end: int, line: str) -> float | None:
 
 
 def _read_table(table: list[float | list[Evidence]], ahead: dict[int, float]) -> None:
-    """Distances of a direction sign that the AI copied column by column (decided on 2026-11-07).
+    """Distances of a direction sign that the AI copied column by column .
 
-    Measured that evening: "SARANSK" / "162" / "СТАРЫЙ ГОРОД" / "11" (each distance under its place);
+    Measured: "SARANSK" / "162" / "СТАРЫЙ ГОРОД" / "11" (each distance under its place);
     "10 Aarup" / "5 Ørsted" / "329" (distance BEFORE the name, then the road number); "329 Faaborg" /
     "Glamsbjerg" / "28" / "3" (road first, both distances at the end). Rules, from most to least certain:
     1. a distance written after the name, on its line, is never replaced;

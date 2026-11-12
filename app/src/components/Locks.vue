@@ -1,9 +1,9 @@
 <script setup lang="ts">
-// "Do you know where you are? Tell the coach": the country › region › city locks, at the top of the coach (decided
-// with the user on 2026-11-07; "sentence + list" version chosen the same evening, the word "lock" was not clear).
+// "Do you know where you are? Tell the coach": the country › region › city locks, at the top of the coach (a
+// sentence and a list rather than the word "lock", which was not clear).
 // - Nothing certain: a sentence and the list of countries (StreetCLIP candidates first, from level 3; at levels 1
 //   and 2 it only opens on click, without percentages, so as to reveal nothing).
-// - Chosen: "C'est sûr : 🇨🇿 Tchéquie (toi) ✕", then Region and City to choose the same way (local index).
+// - Chosen: "Certain: 🇨🇿 Czechia (you) ✕", then Region and City to choose the same way (local index).
 // - ✕ = "not that" for the whole capture: the coach will not set it again.
 // - What the coach set on its own is named only at the help level that reveals it (country at 3, the rest at 4);
 //   below that: "the coach is sure of it (hidden at this help level)".
@@ -134,7 +134,7 @@ const disagreements = computed(() => {
 // What your marks conclude WITHOUT taking your choice into account (engine): they confirm or contradict it.
 // STRONG contradiction (another "certain" country, or an alphabet that excludes your country): alert at the top and
 // two one-click ways out, since the mistake may come from your choice OR from a misreading ("PALERMO" read
-// "PILIERNO"); the coach never replaces your choice itself (decided with the user on 2026-11-07). Weak ("very
+// "PILIERNO"); the coach never replaces your choice itself. Weak ("very
 // likely"): one line.
 interface MarksSay { kind: "ok" | "weak" | "strong"; text: string; other: string | null; marks: number[] }
 const marksSay = computed<MarksSay | null>(() => {

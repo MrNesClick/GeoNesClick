@@ -1,4 +1,4 @@
-//! First-launch assistant (AppImage): decided with the user on 2026-11-07.
+//! First-launch assistant (AppImage).
 //!
 //! The AppImage is light: the engine (Python, PyTorch, StreetCLIP) is installed on first launch, in
 //! ~/.local/share/geonesclick/engine/, AFTER the assistant has shown EVERYTHING that will be downloaded
@@ -142,8 +142,8 @@ fn package_manager() -> Option<PackageManager> {
 }
 
 /// The package that ships a checked file, for each package manager: [apt, dnf, pacman, zypper]. Looked up in each
-/// distribution's repositories on 2026-11-12 (Ubuntu 24.04, Fedora 45, Arch, openSUSE Tumbleweed): which package owns
-/// the file. Without a known package manager, Debian's name is shown as a hint.
+/// distribution's repositories (Ubuntu 24.04, Fedora 45, Arch, openSUSE Tumbleweed): which package owns the file.
+/// Without a known package manager, Debian's name is shown as a hint.
 fn package(pm: Option<PackageManager>, names: [&'static str; 4]) -> &'static str {
     match pm {
         Some(PackageManager::Apt) | None => names[0],
@@ -191,9 +191,8 @@ fn system_checks(pm: Option<PackageManager>) -> Vec<Check> {
 const PKEXEC: &str = "/usr/bin/pkexec";
 
 /// Installs the missing system packages (system_checks) with the system's package manager, as root through pkexec:
-/// the system asks for the password in its own window. The list comes from the checks, never from the UI. Decided
-/// with the user on 2026-11-12, after a clean Ubuntu 24.04 lacked libgirepository-2.0-0: apt, dnf, pacman and zypper
-/// (only apt tested for real); the command stays shown.
+/// the system asks for the password in its own window. The list comes from the checks, never from the UI. A clean
+/// Ubuntu 24.04 lacks libgirepository-2.0-0. Only apt is tested for real; the command stays shown.
 #[tauri::command]
 pub async fn setup_system_install() -> Result<(), String> {
     let Some(pm) = package_manager().filter(|_| Path::new(PKEXEC).exists()) else {
@@ -557,7 +556,7 @@ mod tests {
         text.lines().map(str::to_string).collect()
     }
 
-    // Error outputs captured on 2026-11-12 (uv 0.9.17, huggingface_hub 2.4) with unreachable hosts, then given the
+    // Error outputs captured with uv 0.9.17 and huggingface_hub 2.4 with unreachable hosts, then given the
     // real host names; the 504 one is written by hand in reqwest's format (uv's HTTP client).
     const UV_PYTHON: &str = "error: Request failed after 5 retries
   Caused by: Failed to download https://github.com/astral-sh/python-build-standalone/releases/download/20251209/cpython-3.12.12%2B20251209-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz

@@ -6,7 +6,7 @@ import shutil
 import tempfile
 
 # BEFORE any import of the app: its folders (config, data, socket, models) point to a temporary
-# folder. Seen on 2026-11-07: without it, the tests built fake GeoNames villages on top of the
+# folder. Without it, the tests built fake GeoNames villages on top of the
 # real ones (~/.local/share/geonesclick/places), and their folder blocked the migration from the old name.
 _SANDBOX = tempfile.mkdtemp(prefix="geonesclick-tests-")
 atexit.register(shutil.rmtree, _SANDBOX, ignore_errors=True)  # nothing piles up in /tmp (disk almost full)

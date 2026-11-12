@@ -88,7 +88,7 @@ ai_pause_s = 2.0
 translate = true
 translate_timeout_s = 30  # a slower batch stays in English for this round (it will be translated again ahead of time)
 # Translate the whole database ahead of time, in the background (batches of 10, ai_pause_s pause, after the running
-# analyses): measured on 2026-11-07, 31 tips out of 4,060 cached, and 50 s to 2 min of waiting per round without it.
+# analyses): measured, 31 tips out of 4,060 cached, and 50 s to 2 min of waiting per round without it.
 # Once and for all (resumes where it stopped); in the order of a few hours on the free tier.
 pretranslate = true
 
@@ -219,7 +219,7 @@ attribution = "© OpenStreetMap"
 attribution_url = "https://www.openstreetmap.org/copyright"
 # CSS filter applied to the tiles for the coach's dark theme ("" = original map).
 tile_filter = "invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9)"
-# Up close, inversion makes forests, relief and village names unreadable (seen on 2026-11-07 at zoom 13, in
+# Up close, inversion makes forests, relief and village names unreadable (seen at zoom 13, in
 # Béarn): from close_zoom on, original tiles barely dimmed so as not to dazzle ("" = original).
 tile_filter_close = "brightness(0.9) contrast(0.95)"
 close_zoom = 11
@@ -238,9 +238,9 @@ timeout_s = 90
 max_tokens = 2000
 temperature = 0.2
 max_side_px = 1280       # the image is shrunk to this size before sending
-# Measured prompt: making it longer degrades text reading (2026-11-07, "Repkény utca" sign: 8 readings
+# Measured prompt: making it longer degrades text reading ("Repkény utca" sign: 8 readings
 # out of 10 with the French one, 4 out of 12 with extra instructions on the game's UI and unreadable text).
-# This English version (2026-11-12, spikes/prompt_bench.py) reads as well as the French one it replaces; keep it
+# This English version (spikes/prompt_bench.py) reads as well as the French one it replaces; keep it
 # short, and measure again before changing it. {language}: the UI's language, for the free texts.
 prompt = '''
 You are the eye of a GeoGuessr coach. Describe ONLY what is visible in this Street View view.
@@ -277,7 +277,7 @@ Ignore the game's interface (buttons, compass, map, logos).
 # vision model. The marks complete the round's analysis: a capture is needed first.
 enabled = true
 max_marks = 9            # marks per frozen image (1 to 20)
-# Measured (2026-11-07): a 140×130 px Romanian sign read distorted as is, exact once enlarged ×3.
+# Measured: a 140×130 px Romanian sign read distorted as is, exact once enlarged ×3.
 # The longest side of the crop is brought to upscale_to_px, without exceeding max_upscale times its size.
 upscale_to_px = 420
 max_upscale = 4.0

@@ -35,7 +35,7 @@ front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-p
 | `~/.local/share/geonesclick/captures/` | round captures; in debug mode, the `capture-<id>.json` log of each analysis | no consequence |
 | `engine/spikes/.vendor/` | code and dependencies of the PLONK bench | `scripts/setup-plonk-spike.sh` recreates it |
 
-The test set and the captures lived in `engine/` until 2026-11-07 (read-only in an AppImage): on first launch, the
+The test set and the captures lived in `engine/` in early versions (read-only in an AppImage): on first launch, the
 captures are moved and the test set copied (the copy tracked by git stays in the repository).
 
 **Settings › Storage** shows the size of each item and an **Empty** button (in two steps:

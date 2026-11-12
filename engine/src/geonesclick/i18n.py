@@ -1,5 +1,5 @@
 """Texts the player sees, in their language: one catalog per language (locales/<lang>.json), shared with the UI
-(app/src/i18n.ts) and the installer (app/src-tauri/src/i18n.rs), decided with the user on 2026-11-12.
+(app/src/i18n.ts) and the installer (app/src-tauri/src/i18n.rs).
 
     t("trigger.not_running.title")      # in the current language
     t("marks.read", n=3)                # "{n}" replaced by 3

@@ -2,7 +2,7 @@
 # Builds the GeoNesClick AppImage. To run on Ubuntu 24.04 (the oldest target: what is compiled here
 # works on the later versions), after scripts/install.sh.
 #
-# Decided with the user on 2026-11-07: a LIGHT AppImage (~100 MB: the UI + uv) that installs the engine
+# A LIGHT AppImage (~100 MB: the UI + uv) that installs the engine
 # on first launch, with an assistant that first shows EVERYTHING that will be downloaded. It bundles:
 #   - uv (pinned version, hash checked): it installs Python and the dependencies, without touching the system;
 #   - the engine as a wheel, and PyGObject + pycairo compiled here (they only exist as sources: without this, every
@@ -24,7 +24,7 @@ UV_URL="https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/${UV_ARC
 
 step() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 ok()   { printf '  \033[32m✔\033[0m %s\n' "$1"; }
-# GitHub release downloads can answer 504 for many minutes (three failed release builds on 2026-11-08): retried with
+# GitHub release downloads can answer 504 for many minutes (three failed release builds): retried with
 # a doubling delay, for up to 15 minutes per file.
 fetch() { curl -fsSL --retry 10 --retry-max-time 900 --max-time 300 -o "$1" "$2"; }
 

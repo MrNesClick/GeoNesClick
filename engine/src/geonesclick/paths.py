@@ -1,6 +1,6 @@
 """Shared paths, without heavy dependencies (imported by the keyboard shortcut client).
 
-App name: GeoNesClick (decided with the user on 2026-11-07, after their handle MrNesClick).
+App name: GeoNesClick, after the author's handle MrNesClick.
 """
 
 import logging
@@ -48,7 +48,7 @@ def quiet_token_nag() -> None:
 def migrate_repo_data(project_root: Path) -> list[str]:
     """Captures and the test set move out of the code folder (read-only in an AppImage) to DATA_DIR.
 
-    Decided on 2026-11-07: the captures are MOVED (ignored by git); the test set is COPIED, so that
+    The captures are MOVED (ignored by git); the test set is COPIED, so that
     the copy tracked by git in the repository (and the spikes/ benches that read it) stays intact. Only once:
     nothing is done if the destination already exists.
     """

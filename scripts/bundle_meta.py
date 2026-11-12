@@ -7,7 +7,7 @@ Writes to the given folder:
   size, licence);
 - downloads.json: the list of downloads (downloads.toml), for the assistant written in Rust.
 
-Transparency decided with the user on 2026-11-07: everything that is downloaded is shown before a single byte.
+Transparency: everything that is downloaded is shown before a single byte.
 """
 
 from __future__ import annotations

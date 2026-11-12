@@ -1,6 +1,5 @@
 """Coach storage: what it keeps on disk, its size, and how to empty it (Settings › Storage).
 
-Decided with the user on 2026-11-07:
 - each item is shown with its size and can be emptied by hand;
 - the maximum size ([storage] max_cache_mb) only applies to the caches THAT GROW on their own (villages per
   country; later streets per city and Nominatim): the least recently used go first;
@@ -131,7 +130,7 @@ def touch(path: Path) -> None:
         pass
 
 
-# --- "Erase everything" (right to erasure, GDPR; decided with the user on 2026-11-07) -------------------------
+# --- "Erase everything" (right to erasure, GDPR) -------------------------------------------------------------
 # Everything about you goes: API key, settings, your metas, captures and logs, test set, Plonk It guides and
 # translations, places index, GNOME shortcuts (the UI erases its own state). Separately, on request: the
 # downloaded models (nothing personal). Always KNOWN files: in a folder set by hand, only the

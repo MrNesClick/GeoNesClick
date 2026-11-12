@@ -1,5 +1,5 @@
 """One-time conversion of the files written by GeoNesClick 0.1 (French ids) to the current ids (English), at the
-engine's start and before the first-launch assistant writes the settings. Decided with the user on 2026-11-12: the
+engine's start and before the first-launch assistant writes the settings. The
 files are converted once, the code then knows a single set of names; the test set is never rewritten (it is read
 through the old names, see vision.py). Each step does nothing once done, and keeps a backup of what it rewrites.
 

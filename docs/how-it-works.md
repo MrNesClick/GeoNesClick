@@ -6,7 +6,7 @@
 
 At level 4, the Answer card honestly says what the coach knows:
 - **an AI reading** (text naming a place, domain, plate…) goes first as **"very likely: read by the AI, to be
-  confirmed"**, with what it read; the other countries stay visible. Measured on 2026-11-07 on a "Repkény utca"
+  confirmed"**, with what it read; the other countries stay visible. Measured on a "Repkény utca"
   sign (Budapest): out of 8 calls, the model wrongly concluded twice with "strong certainty" (Czechia without having
   read the sign, Slovakia reading "ulica"). A conclusion only becomes **"certain"** (country first, others ruled
   out, `[coach] trust_proof`) once confirmed by a local rule (word specific to a language, domain, dialling code):
@@ -51,11 +51,11 @@ the answer cites the marks that prove it:
 | **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street", *Rue*) |
 | **Country outside the candidates** | Manto → 🇭🇳 | shown, does not count |
 
-Measured on 2026-11-07: in one day, **lone** places were wrong four times (Gare → 🇫🇷🇱🇺, Laas → 🇮🇹, Orion →
+Measured: in one day, **lone** places were wrong four times (Gare → 🇫🇷🇱🇺, Laas → 🇮🇹, Orion →
 🇵🇭🇺🇸, and "Lo Manto", taken from the street name "Via Paolo Lo Manto", → 🇭🇳, which overturned StreetCLIP's Italy
 at 96 %), whereas the right conclusions came from **grouped** places.
 
-Why so cautious? Measured on 2026-11-07 on a Bulgarian round: mark ① ("Гърмен 3, Гоце Делчев 10, Благоевград 109,
+Why so cautious? Measured on a Bulgarian round: mark ① ("Гърмен 3, Гоце Делчев 10, Благоевград 109,
 София 219") was read perfectly, but ②, blurry, was **made up** in plausible Russian ("Домой, Город, Казань"), and
 the analysis of the whole view had made up French ("Gare, Centre-ville, Mairie"). With both marks, the coach answers
 "Bulgaria, very likely" and flags ②; once ② is removed, "Bulgaria, certain". A common word can also name a place
@@ -71,7 +71,7 @@ do not agree, **no point**. The coach points out the distance to check and keeps
 less than *d* km from the closest place).
 
 **Signs copied column by column.** The AI often copies a direction sign line by line, with the digits apart. The
-coach re-reads it as a table (measured on 2026-11-07 on three signs): a distance after the name, on its line, is
+coach re-reads it as a table (measured on three signs): a distance after the name, on its line, is
 never replaced; lone numbers following a block of places go to them in order if there are as many of them ("329
 Faaborg", "Glamsbjerg", "28", "3": Faaborg 28, Glamsbjerg 3, the 329 was a road); otherwise a lone number right
 under a place goes to it ("SARANSK", "162"); finally, a number before the name counts ("10 Aarup"). An extra number
@@ -81,7 +81,7 @@ Faaborg" with no other digit; the consistency of the distances flags it.
 Limit: a wrong but geometrically plausible digit ("8" for "3" between two neighbouring villages) passes this check,
 with a few km of error.
 
-**Namesakes and small villages.** Measured on 2026-11-07 on a round in Béarn: "LAAS" (a village of 108 inhabitants,
+**Namesakes and small villages.** Measured on a round in Béarn: "LAAS" (a village of 108 inhabitants,
 missing from the general directory) landed on Lasa, in Italy ("Laas" in German), and wrongly contradicted France;
 "ORION" (from L'Hôpital-d'Orion) landed in the Philippines. Hence:
 - **proximity**: the places of a round are neighbours. The coach keeps the largest group of places (less than
@@ -107,8 +107,7 @@ region is shown by its code): it is used by the locks.
 At the top of the coach, "**Do you know where you are? Tell the coach**": the
 list of countries (the most likely first, from level 3); one click, and the line becomes "It's certain: 🇨🇿 Czechia
 (you) ✕", then Region and City are chosen the same way. What is certain (the "lock") narrows down the next search:
-places and namesakes of the country, villages of the region, map zones and Plonk It tips of the country. Decided on
-2026-11-07:
+places and namesakes of the country, villages of the region, map zones and Plonk It tips of the country. The rules:
 
 - **the coach** locks the country on its own when your marks make it **certain** (never on "very likely"), and the
   region when the estimated position is a sharp point (sign with consistent distances) and all the places within
@@ -194,7 +193,7 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
   view, not necessarily a precise element (see the search-engine measurements below).
 - Each tip is filed in a metas category by its Plonk It tags (30 %), then by keywords (`[plonkit] keywords`, 45 %),
   then by the AI for the rest (`ai_classify`, can be turned off): in batches of 25, only once per text (cache), and
-  only the 12 known categories are accepted. Measured on 2026-11-07: 1,009 tips classified in 2 min 40; 92 % of the
+  only the 12 known categories are accepted. Measured: 1,009 tips classified in 2 min 40; 92 % of the
   tips have a category; about 8 out of 10 are right on a sample, the errors mostly involving the Google camera.
 
 - **Translation**: the guides are in English. The displayed tips are translated on demand into the coach's
@@ -202,7 +201,7 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
   glossary for the target language (bollard → borne, road line → marquage au sol in French…). The English shows
   first; the translations arrive in batches of 3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
   translated immediately. "See the original" lets you compare. Can be turned off (`[plonkit] translate`); model
-  configurable (`[plonkit] ai_model`). In practice, on demand is not enough: on 2026-11-07, 31 tips out of 4,060
+  configurable (`[plonkit] ai_model`). In practice, on demand is not enough: 31 tips out of 4,060
   were cached, and a round waited more than 2 min for a batch that never came back. Hence:
   - **ahead-of-time translation** of the whole database, in the background, in batches of 10, always after the
     running rounds; it resumes where the cache stops (`[plonkit] pretranslate`, progress in Settings › Clues);

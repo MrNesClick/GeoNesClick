@@ -1,6 +1,6 @@
 // Texts the player sees, in their language: one catalog per language, shared with the engine (geonesclick/i18n.py)
 // and the installer (src-tauri/src/i18n.rs). Same rules in the three layers: flat keys, "{name}" placeholders,
-// English when a key or a language is missing. Decided with the user on 2026-11-12.
+// English when a key or a language is missing.
 import { reactive } from "vue";
 import en from "../../engine/src/geonesclick/locales/en.json";
 
@@ -53,14 +53,14 @@ export function t(key: Key, params?: Params, lang: Lang = i18n.lang): string {
   return fill(texts[key] ?? (en as Record<string, string>)[key] ?? key, params); // unknown key: shown as is
 }
 
-/** A value from the model's answer ("forte", "élevée"…: fixed French words of the prompt) in the UI's language:
+/** A value from the model's answer ("strong", "high"…: fixed English words of the prompt) in the UI's language:
  * the key `${prefix}.${value}` if the catalog has it, the value as is otherwise. */
 export function valueLabel(prefix: string, value: string): string {
   const key = `${prefix}.${value.trim().toLowerCase()}`;
   return hasKey(key) ? t(key) : value;
 }
 
-/** An empty field of the model's answer ("" since 0.2's prompts; "unknown" for the driving side). */
+/** An empty field of the model's answer ("" in the prompts' answer format; "unknown" for the driving side). */
 export const isEmptyValue = (v: string) => ["", "unknown", "-"].includes(v.trim().toLowerCase().replace(/\.$/, ""));
 /** The word "unreadable" in every catalog: the model writes it in the UI's language. */
 export const unreadableWords = () => Object.values(CATALOGS).map((c) => (c["sum.unreadable"] ?? "").toLowerCase()).filter(Boolean);

@@ -413,7 +413,7 @@ def test_map_gets_the_region_extent_and_the_places_outside_your_choice(bearn):
 
 
 def test_a_place_without_known_region_does_not_block_the_region(setup, tmp_path, monkeypatch):
-    """Russian round of 2026-11-07: a village without a GeoNames region near Temnikov blocked Mordovia."""
+    """Russian round: a village without a GeoNames region near Temnikov blocked Mordovia."""
     rows = ROWS + [("50", "Inconnu", "Inconnu", "", "FR", "", "50", "43.39", "-0.86")]  # without a region, near Laàs
 
     def archive_rows():

@@ -68,7 +68,7 @@ def test_cors_preflight_allowed_for_app_only(client):
 
 
 def test_restarting_the_sharing_reopens_the_gnome_picker(client):
-    """A remembered window that no longer exists must not block the restart: the picker opens (decided 2026-11-12)."""
+    """A remembered window that no longer exists must not block the restart: the picker opens."""
     calls = []
     engine = client.app.state.engine
     engine.capture.restart = lambda forget_window=False: calls.append(forget_window)

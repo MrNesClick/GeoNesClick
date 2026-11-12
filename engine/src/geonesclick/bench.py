@@ -1,5 +1,5 @@
 """Replay bench: replays each round of the test set under the coach's CURRENT rules, and counts what is
-right and above all the FALSE CERTAINTIES (decided with the user on 2026-11-07: a rule or a threshold is only
+right and above all the FALSE CERTAINTIES (a rule or a threshold is only
 changed if this bench improves overall, without breaking a round that worked; target: zero false
 certainty, even if it means saying "I don't know" more often).
 

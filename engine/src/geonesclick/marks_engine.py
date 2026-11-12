@@ -1,6 +1,6 @@
 """Marks and local rules of the engine: frozen view, mark reading, conclusion, place names.
 
-Split out of server.py (2026-11-07, code review: the file was over 1,100 lines). Engine inherits from MarksMixin;
+Split out of server.py (the file was over 1,100 lines). Engine inherits from MarksMixin;
 the attributes used here (cfg, recent, places, vision, background…) are created by Engine.__init__.
 Flow: freeze (frozen view) → add_marks (enlarged crop) → _read_mark (transcription by the AI) → evidence_of
 (local rules) → _verdict (conclusion, position, villages of the leading country via ensure_detail).
@@ -46,8 +46,8 @@ def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[st
     """Conclusion of the marks read (number, proofs), offline: used by the engine AND by the bench (bench.py),
     so that the bench measures exactly what the coach does.
 
-    The conclusion (country, certainty) does NOT take your choices or your rejections into account (decided with the
-    user on 2026-11-07): it confirms or contradicts what you said, instead of echoing it. Your choices (scope)
+    The conclusion (country, certainty) does NOT take your choices or your rejections into account: it
+    confirms or contradicts what you said, instead of echoing it. Your choices (scope)
     only narrow down what follows: namesakes kept for the position, region, suggested city.
     """
     spread = rules.place_max_spread_km
@@ -181,7 +181,7 @@ class MarksMixin:
         if rc.places and self.places is not None:
             found += self.places.match(lines, rc.place_min_len)
         # Only the candidate countries count (Moldova does not prevent "ș" from pointing to Romania). A proof that
-        # only points to countries outside the list stays visible, but does not count ("Manto" → Honduras, 2026-11-07).
+        # only points to countries outside the list stays visible, but does not count ("Manto" → Honduras).
         known = set(self.cfg.streetclip.countries.values())
         for e in found:
             kept = [c for c in e.countries if c in known]

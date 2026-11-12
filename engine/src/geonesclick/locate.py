@@ -5,7 +5,7 @@ distance is shorter (detour coefficient, ~1.2 to 1.5 depending on the terrain). 
 straight-line distances best match the distances read divided by that coefficient, in RELATIVE error: the
 nearby places (3 and 10 km) pin the point, the distant ones (109, 219 km, mountain roads) confirm it.
 
-Measured on 2026-11-07 on this sign: 41.58° N, 23.82–23.85° E (2 to 3 km from Гърмен) depending on the coefficient
+Measured on this sign: 41.58° N, 23.82–23.85° E (2 to 3 km from Гърмен) depending on the coefficient
 (1.0 to 1.4); hence the announced radius, which covers this spread.
 """
 
@@ -22,7 +22,7 @@ EARTH_KM = 6371.0
 DETOUR = 1.3  # road / straight line, central value (the radius covers 1.15 to 1.45)
 DETOUR_RANGE = (1.15, 1.45)
 MAX_COMBOS = 243  # namesakes to decide between: 3 candidates for 5 places at most
-# Consistency (decided with the user on 2026-11-07): the AI sometimes misreads a digit ("6" then "8" on the same
+# Consistency: the AI sometimes misreads a digit ("6" then "8" on the same
 # mark). At the point found, each straight-line distance must stay below the road distance (+1 km for the sign's
 # rounding) and above road / MAX_DETOUR (−1 km). Otherwise: no point, only what always stays true.
 MAX_DETOUR = 1.8
@@ -54,7 +54,7 @@ def keep_nearby(marks: list[tuple[int, list[Evidence]]], max_km: float
                 ) -> tuple[list[tuple[int, list[Evidence]]], list[dict[str, Any]]]:
     """The places read during a round are neighbours: the largest group is kept, the rest ruled out.
 
-    Measured on 2026-11-07: "LAAS" (a French village missing from the directory) landed on Lasa, in Italy, ~950 km
+    Measured: "LAAS" (a French village missing from the directory) landed on Lasa, in Italy, ~950 km
     from Orthez read in the same round, and wrongly contradicted France. We look for the namesake that has the most
     places read within max_km; the places without any namesake within this radius are ignored (returned separately,
     for display). Without a group of at least two places, nothing is ruled out: the contradiction stays visible.

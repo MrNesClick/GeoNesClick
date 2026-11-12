@@ -1,6 +1,6 @@
 # Everything GeoNesClick downloads or sends over the network: the single list, shown by the first-launch
-# flow BEFORE a single byte, and repeated in the README (decided with the user on 2026-11-07: "100 %
-# transparent, state CLEARLY everything we download"). A test (tests/test_downloads.py) checks that every
+# flow BEFORE a single byte, and repeated in the README: everything that is
+# downloaded is stated clearly. A test (tests/test_downloads.py) checks that every
 # address written in the code is listed here, whether contacted or only displayed.
 #
 # when: installation (once, on first launch) · option (once, if you accept it) · on_demand (during use, when
@@ -8,7 +8,7 @@
 # required: without it, the app does not work ("required" block of the flow, a single consent)
 # The texts shown (what, why, what is sent) are in the catalogs, locales/<lang>.json: download.<id>.what, .why,
 # .sends (and .license when it is a sentence).
-# Sizes measured on 2026-11-07 (Python packages: computed from uv.lock when building the AppImage).
+# Measured sizes (Python packages: computed from uv.lock when building the AppImage).
 
 [[download]]
 id = "python"

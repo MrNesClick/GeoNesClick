@@ -25,7 +25,7 @@ class StreetClip:
         self.cfg = cfg
         self.device = ("cuda" if torch.cuda.is_available() else "cpu") if cfg.device == "auto" else cfg.device
         dtype = torch.float16 if self.device == "cuda" else torch.float32
-        # Pinned version, weights in safetensors only (2026-11-07): the repository's main version only has
+        # Pinned version, weights in safetensors only: the repository's main version only has
         # pytorch_model.bin (pickle, which can run code); the library downloaded it THEN went to fetch
         # the converted safetensors: 3.2 GB instead of 1.7 GB.
         self.model = CLIPModel.from_pretrained(cfg.model, revision=cfg.revision, use_safetensors=True,

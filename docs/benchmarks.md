@@ -7,7 +7,7 @@ and the decisions they led to.
 
 ## Status
 
-**End-to-end skeleton** ✅ (2026-11-07): shortcut → capture → level 1 locally → level 2 remotely, shown in the
+**End-to-end skeleton** ✅: shortcut → capture → level 1 locally → level 2 remotely, shown in the
 coach window.
 
 | Step | Measured |
@@ -32,7 +32,7 @@ captures (`spikes/streetclip_tta.py`): no. Top-1 unchanged (3/5), mean probabili
 (49 % → 41 %); the partial crops give more weight to the browser bar. Not kept.
 
 **Can PLONK place the view on a map?** [PLONK](https://github.com/nicolas-dufour/plonk) (CVPR 2025, MIT) samples a
-cloud of GPS points from StreetCLIP's vector. Measured on 2026-11-07 on the 5 captures (`spikes/plonk_bench.py`,
+cloud of GPS points from StreetCLIP's vector. Measured on the 5 captures (`spikes/plonk_bench.py`,
 512 points); the distance is estimated from the zone noted in the test set:
 
 | Real | StreetCLIP 1st | PLONK 1st (country where most points fall) | Cloud centre | Estimated distance |
@@ -70,7 +70,7 @@ StreetCLIP (50 steps, 512 points by default), filtered by the proof, can be turn
 version of the PLONK code (see [How it works › Map](how-it-works.md#map)), checked identical to the bench: same points, same cloud centre, at 50
 as at 250 steps.
 
-Are cropping and masking the game's UI worth it? Measured on 2026-11-07 on 5 classic-game captures
+Are cropping and masking the game's UI worth it? Measured on 5 classic-game captures
 (`spikes/compare_views.py`):
 
 | Variant | Right country 1st | In the top 3 | Mean probability | Country names copied by the AI |
@@ -87,7 +87,7 @@ Lessons from phase 0 (feasibility tests):
 - Making the vision model's prompt longer degrades its text reading: on the "Repkény utca" sign, 8 exact readings
   out of 10 with the current prompt, 4 out of 12 with extra instructions (ignore the game's UI, write
   "unreadable"). The UI text will therefore be filtered by the coach, not by the prompt.
-- English prompts (2026-11-12, `spikes/prompt_bench.py`, Nemotron 3.5 Super VL): the French prompts of 0.1 against
+- English prompts (`spikes/prompt_bench.py`, Nemotron 3.5 Super VL): the French prompts of 0.1 against
   their English rewrite, answers in English and in French. On 12 mark crops read by eye (3 runs each), the first
   English draft dropped the accents (BÉARN → BEARN, HÔTEL → HOTEL); with one sentence asking to keep every accent and
   special letter, 111 words exact out of 115 against 113 for the French prompt (5 runs on the hard cases). On whole
@@ -95,11 +95,11 @@ Lessons from phase 0 (feasibility tests):
   three prompts invent a proof now and then (3 false conclusions out of 5 with the French prompt, 4 with English
   answers, 0 with French answers): an AI reading alone stays "to be confirmed", never "certain". No prompt admits an
   unreadable crop: they all make text up on it.
-- On the NVIDIA free tier, availability varies: on 2026-11-07, `z-ai/glm-5.3-flash` and
+- On the NVIDIA free tier, availability varies: at one point, `z-ai/glm-5.3-flash` and
   `meta/llama-3.2-90b-vision-instruct` did not answer; Nemotron Nano Omni answered in 5 s but made up details.
   Hence Nemotron 3.5 Super VL as the default.
 - Screen sharing can be stopped from the GNOME indicator: the coach reports it and offers "Restart sharing", which
-  reopens the GNOME picker (since 2026-11-12: resuming the remembered window failed with "target not found" once
+  reopens the GNOME picker (resuming the remembered window failed with "target not found" once
   the sharing had been stopped). Only the app's start resumes the remembered window without asking.
 - A third-party `gsettings` (Linuxbrew) may not write to the GNOME settings: the script explicitly calls
   `/usr/bin/gsettings`.
@@ -121,7 +121,7 @@ versioned in the repository (`engine/dataset/`); the coach saves the new rounds 
 | `prompt_bench.py` | vision and marks prompts compared: words read, false conclusions, driving side | `.venv/bin/python spikes/prompt_bench.py [--repeats 3] [--only …]` |
 | `geonesclick.bench` | marks rules replayed on your rounds: false certainties, region, km | `.venv/bin/python -m geonesclick.bench [--json]` |
 
-**Marks replay bench** (`python -m geonesclick.bench`, from `engine/`). Decided on 2026-11-07: the local rules are
+**Marks replay bench** (`python -m geonesclick.bench`, from `engine/`). The local rules are
 no longer tuned case by case on the last round (the rule written for a Russian sign broke a Danish sign twenty
 minutes later), but on the whole set. On each "Where was it?", the coach keeps in
 `~/.local/share/geonesclick/dataset/rounds/<id>.json` the text of your marks and what it had concluded; if you paste
