@@ -663,6 +663,8 @@
   "setup.system.title": "Composants système",
   "setup.system.intro": "La capture d'écran utilise des composants de GNOME, normalement déjà présents.",
   "setup.system.missing": "Composants manquants. Les installer ici (le système demande votre mot de passe) ou avec la commande suivante, puis revérifier :",
+  "setup.system.missing_command": "Composants manquants. Les installer avec la commande suivante, puis revérifier :",
+  "setup.system.missing_unknown": "Composants manquants. Les installer avec le gestionnaire de paquets de votre système (les noms affichés sont ceux de Debian), puis revérifier.",
   "setup.system.install": "Installer",
   "setup.system.installing": "Installation…",
   "setup.system.install_cancelled": "Installation annulée : le mot de passe n'a pas été donné ou pas accepté.",

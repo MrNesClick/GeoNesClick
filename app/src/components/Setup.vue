@@ -25,6 +25,8 @@ interface Check { label: Key; ok: boolean; package: string }
 interface Status {
   bundled: boolean; needed: boolean; version: string | null; installed: string | null; engine_ready: boolean; gpu: boolean;
   checks: Check[]; downloads: { download: Download[] }; packages_cuda: Package[]; packages_cpu: Package[];
+  /** setup.rs, package_manager: the command to show; the Install button needs apt. */
+  package_manager: "apt" | "dnf" | "pacman" | null;
 }
 
 const emit = defineEmits<{ done: [] }>();
@@ -84,7 +86,14 @@ const sent = (d: Download) => {
 const optional = computed(() => all.value.filter((x) => x.when === "option" || x.when === "on_demand"));
 const continuous = computed(() => all.value.filter((x) => x.when === "continuous"));
 const missing = computed(() => (status.value?.checks ?? []).filter((c) => !c.ok));
-const aptCommand = computed(() => `sudo apt install ${missing.value.map((c) => c.package).join(" ")}`);
+const INSTALL = { apt: "sudo apt install", dnf: "sudo dnf install", pacman: "sudo pacman -S --needed" } as const;
+const packageManager = computed(() => status.value?.package_manager ?? null);
+// No command for an unknown package manager: the packages' names (Debian's) are only a hint there.
+const installCommand = computed(() =>
+  packageManager.value ? `${INSTALL[packageManager.value]} ${missing.value.map((c) => c.package).join(" ")}` : "");
+const missingText = computed(() =>
+  packageManager.value === "apt" ? t("setup.system.missing")
+    : packageManager.value ? t("setup.system.missing_command") : t("setup.system.missing_unknown"));
 // The missing packages installed from here (setup.rs, setup_system_install: pkexec + apt-get), then checked again.
 const systemInstalling = ref(false);
 const systemError = ref("");
@@ -290,8 +299,8 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
           </li>
         </ul>
         <div v-if="missing.length" class="space-y-2">
-          <p class="text-papier">{{ t("setup.system.missing") }}</p>
-          <code class="block rounded bg-relief px-3 py-2 text-papier select-all">{{ aptCommand }}</code>
+          <p class="text-papier">{{ missingText }}</p>
+          <code v-if="installCommand" class="block rounded bg-relief px-3 py-2 text-papier select-all">{{ installCommand }}</code>
           <p v-if="systemError" class="text-alerte" role="alert">{{ systemError }}</p>
         </div>
       </section>
@@ -454,7 +463,8 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling"
                 @click="step = 'components'">{{ t("setup.skip") }}</button>
         <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling" @click="load">{{ t("setup.recheck") }}</button>
-        <button v-if="missing.length" type="button" :class="primary" :disabled="systemInstalling" @click="installSystem">
+        <button v-if="missing.length && packageManager === 'apt'" type="button" :class="primary" :disabled="systemInstalling"
+                @click="installSystem">
           {{ systemInstalling ? t("setup.system.installing") : t("setup.system.install") }}
         </button>
         <button v-else type="button" :class="primary" @click="step = 'components'">{{ t("setup.next") }}</button>

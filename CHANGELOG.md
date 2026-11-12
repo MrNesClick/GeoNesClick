@@ -13,6 +13,11 @@ its release notes.
   Ubuntu only, with the systems tested so far ([docs/compatibility.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md))
   and a form to tell how it runs on yours.
 
+### Changed
+
+- A missing system component is shown with the command of your system: `apt` (Debian, Ubuntu), `dnf` (Fedora) or
+  `pacman` (Arch), with their package names; the one-click install stays on apt systems.
+
 ## [0.2.2] - 2026-11-12
 
 ### Added

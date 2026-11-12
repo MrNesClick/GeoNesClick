@@ -663,6 +663,8 @@
   "setup.system.title": "System components",
   "setup.system.intro": "Screen capture uses GNOME components, normally already present.",
   "setup.system.missing": "Missing components. Install them here (your system asks for your password) or with the following command, then check again:",
+  "setup.system.missing_command": "Missing components. Install them with the following command, then check again:",
+  "setup.system.missing_unknown": "Missing components. Install them with your system's package manager (the names shown are Debian's), then check again.",
   "setup.system.install": "Install",
   "setup.system.installing": "Installing…",
   "setup.system.install_cancelled": "Installation cancelled: the password was not given or not accepted.",

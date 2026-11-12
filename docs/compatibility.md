@@ -7,8 +7,9 @@
 - **GNOME** (Wayland or Xorg): the screen is captured through GNOME's sharing portal and the shortcuts are GNOME
   settings. Other desktops (KDE, Xfce, Cinnamon…) are not supported for now.
 - **System components that come with GNOME** (GStreamer, its PipeWire source, GObject Introspection, Cairo): the
-  installer checks them. On Debian, Ubuntu and their derivatives (apt), it installs a missing one with one click;
-  elsewhere it shows the Debian package name, to look up in your package manager.
+  installer checks them. On Debian, Ubuntu and their derivatives (apt), it installs a missing one with one click; on
+  Fedora (dnf) and Arch (pacman), it shows the command with their package names; elsewhere, Debian's names as a
+  hint.
 
 ## Reported systems
 

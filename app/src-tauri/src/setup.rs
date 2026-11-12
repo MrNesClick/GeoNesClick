@@ -103,25 +103,60 @@ fn in_lib_dirs(rel: &str) -> bool {
     LIB_DIRS.iter().any(|d| Path::new(d).join(rel).exists())
 }
 
-/// What screen capture needs from the system (present by default on Ubuntu GNOME); Ubuntu package to install otherwise.
-fn system_checks() -> Vec<Check> {
+/// The system's package manager, for the command shown when a component is missing (and the Install button: apt).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageManager {
+    Apt,
+    Dnf,
+    Pacman,
+}
+
+fn package_manager() -> Option<PackageManager> {
+    [("/usr/bin/apt-get", PackageManager::Apt), ("/usr/bin/dnf", PackageManager::Dnf), ("/usr/bin/pacman", PackageManager::Pacman)]
+        .into_iter()
+        .find_map(|(bin, pm)| Path::new(bin).exists().then_some(pm))
+}
+
+/// The package that ships a checked file, for each package manager: [apt, dnf, pacman]. Looked up in each
+/// distribution's repositories on 2026-11-12 (Ubuntu 24.04, Fedora 45, Arch): which package owns the file. Without a
+/// known package manager, Debian's name is shown as a hint.
+fn package(pm: Option<PackageManager>, names: [&'static str; 3]) -> &'static str {
+    match pm {
+        Some(PackageManager::Dnf) => names[1],
+        Some(PackageManager::Pacman) => names[2],
+        Some(PackageManager::Apt) | None => names[0],
+    }
+}
+
+/// What screen capture needs from the system (present by default with GNOME); the package to install otherwise.
+fn system_checks(pm: Option<PackageManager>) -> Vec<Check> {
     let portal = ["/usr/libexec", "/usr/lib", "/usr/lib/xdg-desktop-portal"]
         .iter()
         .any(|d| Path::new(d).join("xdg-desktop-portal").exists());
     let portal_gnome = ["/usr/libexec", "/usr/lib"].iter().any(|d| Path::new(d).join("xdg-desktop-portal-gnome").exists());
+    let check = |label, ok, names| Check { label, ok, package: package(pm, names) };
     vec![
-        Check { label: "setup.check.portal", ok: portal, package: "xdg-desktop-portal" },
-        Check { label: "setup.check.portal_gnome", ok: portal_gnome, package: "xdg-desktop-portal-gnome" },
-        Check { label: "setup.check.gst_typelib", ok: in_lib_dirs("girepository-1.0/Gst-1.0.typelib"), package: "gir1.2-gstreamer-1.0" },
-        Check {
-            label: "setup.check.gst_convert",
-            ok: in_lib_dirs("gstreamer-1.0/libgstapp.so")
+        check("setup.check.portal", portal, ["xdg-desktop-portal"; 3]),
+        check("setup.check.portal_gnome", portal_gnome, ["xdg-desktop-portal-gnome"; 3]),
+        check(
+            "setup.check.gst_typelib",
+            in_lib_dirs("girepository-1.0/Gst-1.0.typelib"),
+            ["gir1.2-gstreamer-1.0", "gstreamer1", "gstreamer"],
+        ),
+        check(
+            "setup.check.gst_convert",
+            in_lib_dirs("gstreamer-1.0/libgstapp.so")
                 && (in_lib_dirs("gstreamer-1.0/libgstvideoconvertscale.so") || in_lib_dirs("gstreamer-1.0/libgstvideoconvert.so")),
-            package: "gstreamer1.0-plugins-base",
-        },
-        Check { label: "setup.check.gst_pipewire", ok: in_lib_dirs("gstreamer-1.0/libgstpipewire.so"), package: "gstreamer1.0-pipewire" },
-        Check { label: "setup.check.gobject", ok: in_lib_dirs("libgirepository-2.0.so.0"), package: "libgirepository-2.0-0" },
-        Check { label: "setup.check.cairo", ok: in_lib_dirs("libcairo.so.2"), package: "libcairo2" },
+            ["gstreamer1.0-plugins-base", "gstreamer1-plugins-base", "gst-plugins-base-libs"],
+        ),
+        check(
+            "setup.check.gst_pipewire",
+            in_lib_dirs("gstreamer-1.0/libgstpipewire.so"),
+            ["gstreamer1.0-pipewire", "pipewire-gstreamer", "gst-plugin-pipewire"],
+        ),
+        check("setup.check.gobject", in_lib_dirs("libgirepository-2.0.so.0"), ["libgirepository-2.0-0", "glib2", "glib2"]),
+        check("setup.check.cairo", in_lib_dirs("libcairo.so.2"), ["libcairo2", "cairo", "cairo"]),
     ]
 }
 
@@ -134,7 +169,8 @@ const APT_GET: &str = "/usr/bin/apt-get";
 /// lacked libgirepository-2.0-0 (the "sudo apt" command stays shown).
 #[tauri::command]
 pub async fn setup_system_install() -> Result<(), String> {
-    let packages: Vec<&'static str> = system_checks().into_iter().filter(|c| !c.ok).map(|c| c.package).collect();
+    let packages: Vec<&'static str> =
+        system_checks(Some(PackageManager::Apt)).into_iter().filter(|c| !c.ok).map(|c| c.package).collect();
     if packages.is_empty() {
         return Ok(());
     }
@@ -188,6 +224,7 @@ pub struct Status {
     engine_ready: bool,
     gpu: bool,
     checks: Vec<Check>,
+    package_manager: Option<PackageManager>,
     downloads: Value,
     packages_cuda: Value,
     packages_cpu: Value,
@@ -207,7 +244,8 @@ pub fn setup_status(app: AppHandle) -> Status {
                 read_version(&engine_home().join("INSTALLED")).as_deref() == Some(v.as_str())
             }),
         gpu: has_nvidia(),
-        checks: system_checks(),
+        checks: system_checks(package_manager()),
+        package_manager: package_manager(),
         downloads: file("downloads.json"),
         packages_cuda: file("packages-cuda.json"),
         packages_cpu: file("packages-cpu.json"),
@@ -459,6 +497,18 @@ mod tests {
     fn appimage_entries_are_dropped_from_path_lists() {
         let value = OsString::from("/tmp/.mount_GeoNes/usr/bin:/usr/local/bin:/usr/bin:/tmp/.mount_GeoNes/bin");
         assert_eq!(without_appdir(&value, Path::new("/tmp/.mount_GeoNes")), OsString::from("/usr/local/bin:/usr/bin"));
+    }
+
+    #[test]
+    fn missing_components_are_named_for_the_system_package_manager() {
+        let names = |pm| system_checks(pm).into_iter().map(|c| c.package).collect::<Vec<_>>();
+        let common = ["xdg-desktop-portal", "xdg-desktop-portal-gnome"];
+        assert_eq!(names(Some(PackageManager::Dnf))[2..], ["gstreamer1", "gstreamer1-plugins-base", "pipewire-gstreamer", "glib2", "cairo"]);
+        assert_eq!(names(Some(PackageManager::Pacman))[2..], ["gstreamer", "gst-plugins-base-libs", "gst-plugin-pipewire", "glib2", "cairo"]);
+        assert_eq!(names(None), names(Some(PackageManager::Apt)));
+        for pm in [None, Some(PackageManager::Dnf), Some(PackageManager::Pacman)] {
+            assert_eq!(names(pm)[..2], common);
+        }
     }
 
     #[test]
