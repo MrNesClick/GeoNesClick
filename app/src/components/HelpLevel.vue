@@ -21,7 +21,7 @@ const LEVELS = computed(() => ([1, 2, 3, 4] as const).map((value) => (
       >
         <input
           type="radio"
-          name="niveau-aide"
+          name="help-level"
           class="sr-only"
           :value="lvl.value"
           :checked="engine.helpLevel === lvl.value"

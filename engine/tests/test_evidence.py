@@ -248,7 +248,7 @@ def test_country_detail_finds_villages_and_the_nearest_homonym(france):
     kept, ignored = keep_nearby([(1, found.match(SIGN)), (2, found.match(HOTEL))], 400)
     v = verdict(kept)
     assert ignored == [] and v.country == "FR" and {c["n"] for c in v.cites} == {1, 2}
-    where = locate([(n, e) for n, f in kept for e in f if e.kind == "lieu"], "FR")
+    where = locate([(n, e) for n, f in kept for e in f if e.kind == "place"], "FR")
     laas = next(p for p in where["places"] if p["name"] == "LAAS")
     assert laas["label"] == "Laàs" and laas["lon"] < 0  # the one in Béarn, not the one in Gers
     assert any(p["label"] == "L'Hôpital-d'Orion" for p in where["places"])
@@ -269,9 +269,9 @@ def test_a_lone_place_is_confirmed_by_streetclip_or_a_shared_word(gazetteer):
 
 def test_street_names_are_not_places(gazetteer):
     found = gazetteer.match(["VIA", "PAOLO LO MANTO"])  # "VIA" alone on its line, as the AI read it
-    assert [e.kind for e in found] == ["rue"] and found[0].value == "VIA PAOLO LO MANTO"
-    assert not [e for e in gazetteer.match(["Via Roma"]) if e.kind == "lieu"]
-    assert [e.value for e in gazetteer.match(["Roma 25"]) if e.kind == "lieu"] == ["Roma"]  # sign: a place
+    assert [e.kind for e in found] == ["street"] and found[0].value == "VIA PAOLO LO MANTO"
+    assert not [e for e in gazetteer.match(["Via Roma"]) if e.kind == "place"]
+    assert [e.value for e in gazetteer.match(["Roma 25"]) if e.kind == "place"] == ["Roma"]  # sign: a place
 
 
 def test_two_nearby_places_pick_the_right_homonym(gazetteer):
@@ -295,11 +295,11 @@ def test_country_code_cannot_escape_the_folder():
 def test_distance_on_its_own_line_belongs_to_the_place_above(gazetteer):
     """"SARANSK" then "162" (Russian round of 2026-11-07); "Гърмен 3" then "197": a road."""
     found = {e.value: e.km for e in gazetteer.match(["Благоевград", "109", "СТАРЫЙ", "София", "219 km"])
-             if e.kind == "lieu"}
+             if e.kind == "place"}
     assert found == {"Благоевград": 109.0, "София": 219.0}
-    found = {e.value: e.km for e in gazetteer.match(MARK_1) if e.kind == "lieu"}
+    found = {e.value: e.km for e in gazetteer.match(MARK_1) if e.kind == "place"}
     assert found["Гърмен"] == 3.0 and found["Гоце Делчев"] == 10.0  # "197" is not a distance
-    assert {e.value: e.km for e in gazetteer.match(["Sofia", "", "Catania"]) if e.kind == "lieu"} == {
+    assert {e.value: e.km for e in gazetteer.match(["Sofia", "", "Catania"]) if e.kind == "place"} == {
         "Sofia": None, "Catania": None}
 
 
@@ -311,4 +311,4 @@ def test_distance_on_its_own_line_belongs_to_the_place_above(gazetteer):
 ])
 def test_direction_signs_are_read_as_a_table(gazetteer, sign, expected):
     """Signs copied column by column (Danish, Russian, Bulgarian, 2026-11-07)."""
-    assert {e.value: e.km for e in gazetteer.match(sign) if e.kind == "lieu"} == expected
+    assert {e.value: e.km for e in gazetteer.match(sign) if e.kind == "place"} == expected

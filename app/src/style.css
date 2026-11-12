@@ -48,10 +48,10 @@
 }
 
 /* The only animated moment: a new capture arriving. */
-.arrivee-enter-active {
+.arrival-enter-active {
   transition: opacity 260ms ease-out, transform 260ms ease-out;
 }
-.arrivee-enter-from {
+.arrival-enter-from {
   opacity: 0;
   transform: translateY(6px);
 }
@@ -60,7 +60,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .arrivee-enter-active,
+  .arrival-enter-active,
   .jauge {
     transition: none;
   }
@@ -83,7 +83,7 @@
 }
 
 /* Labels of the likely zones on the map. */
-.leaflet-tooltip.ggc-zone {
+.leaflet-tooltip.map-zone {
   background: var(--color-encre);
   border: 1px solid var(--color-lac);
   border-radius: 4px;
@@ -93,17 +93,17 @@
   font-weight: 700;
   padding: 1px 6px;
 }
-.leaflet-tooltip.ggc-zone::before {
+.leaflet-tooltip.map-zone::before {
   display: none;
 }
 /* Places read on your marks: name outlined in the mark colour; hidden from afar, where names overlap. */
-.leaflet-tooltip.ggc-place {
+.leaflet-tooltip.map-place {
   border-color: var(--color-marque);
 }
-.leaflet-tooltip.ggc-outside {
+.leaflet-tooltip.map-outside {
   border-color: var(--color-courbe);
   color: var(--color-courbe);
 }
-.ggc-far .leaflet-tooltip.ggc-place {
+.map-far .leaflet-tooltip.map-place {
   display: none;
 }

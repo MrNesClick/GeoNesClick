@@ -96,7 +96,7 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
 
 /** A proof drawn from a mark by a local rule. */
 export interface Evidence {
-  kind: "alphabet" | "lettres" | "mot" | "lieu" | "rue";
+  kind: "alphabet" | "letters" | "word" | "place" | "street";
   value: string;
   label: string;
   countries: string[];

@@ -353,7 +353,7 @@ class Places:
         """Places named in a mark's text: groups of consecutive words, longest first.
 
         The words of a street name are ruled out ("Via Paolo Lo Manto": "Manto" is not a place where you are) and
-        returned as a "rue" proof, which does not count but is shown.
+        returned as a "street" proof, which does not count but is shown.
         """
         out: list[Evidence] = []
         seen: set[str] = set()
@@ -376,7 +376,7 @@ class Places:
                     blocked |= set(range(i + 1))
             if blocked and len(blocked) > 1:
                 street = f"{street_next} {line}".strip() if street_next else line.strip()
-                out.append(Evidence("rue", street, t("places.street"), [], ""))
+                out.append(Evidence("street", street, t("places.street"), [], ""))
             street_next = line.strip() if len(norm) == 1 and norm[0] in STREET_BEFORE else ""
             used = [i in blocked for i in range(len(words))]
             for size in range(min(MAX_WORDS, len(words)), 0, -1):
@@ -393,10 +393,10 @@ class Places:
                     seen.add(key)
                     used[start:start + size] = [True] * size
                     countries = sorted({r[0] for r in rows})
-                    out.append(Evidence("lieu", candidate, rows[0][2], countries, SOURCE,
+                    out.append(Evidence("place", candidate, rows[0][2], countries, SOURCE,
                                         km=_distance_after(words, start + size, line),
                                         points=[[lat, lon, c, n, r] for c, _, n, lat, lon, r in rows]))
-            placed = [e for e in out[before:] if e.kind == "lieu"]
+            placed = [e for e in out[before:] if e.kind == "place"]
             lead = LEADING_NUMBER.match(line)
             if lead and placed and line.find(placed[0].value) == lead.end() and placed[0].km is None:
                 ahead[id(placed[0])] = float(lead.group(1).replace(",", "."))

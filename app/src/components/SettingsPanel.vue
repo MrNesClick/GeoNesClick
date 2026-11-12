@@ -79,18 +79,18 @@ function summary(g: Group): string {
   const v = s.value;
   if (!v) return "";
   switch (g.id) {
-    case "aide":
+    case "general":
       return [t("settings.sum.level", { n: Number(v.coach.help_level) }), t(v.coach.trust_proof ? "settings.sum.proof_settles" : "settings.sum.percent_only"),
               language(v.coach.language)].join(" · ");
-    case "analyse": {
+    case "analysis": {
       const all = Object.keys((v.streetclip.countries ?? {}) as object).length;
       const active = all - ((v.streetclip.exclude_countries ?? []) as string[]).length;
       const vision = v.vision.enabled ? String(v.vision.model).split("/").pop() : t("settings.sum.deep_off");
       return `${vision} · ${t("settings.sum.candidates", { n: active })}`;
     }
-    case "indices":
+    case "clues":
       return `${t(v.metas.enabled ? (v.metas.include_seed ? "settings.sum.metas_seed" : "settings.sum.your_metas") : "settings.sum.metas_off")} · ${t(v.plonkit.enabled ? "settings.sum.plonkit_on" : "settings.sum.plonkit_off")}`;
-    case "carte":
+    case "map":
       return v.map.enabled ? `${t(v.plonk.enabled ? "settings.sum.zones" : "settings.sum.countries_only")} · ${t("settings.sum.zoom", { n: Number(v.map.max_zoom) })}` : t("settings.sum.map_off");
     case "capture": {
       const notify = t(v.capture.notify ? (v.capture.sound ? "settings.sum.notify_sound" : "settings.sum.notify") : "settings.sum.silent");
@@ -98,17 +98,17 @@ function summary(g: Group): string {
       const copies = v.capture.save_to_disk ? (keep ? t("settings.sum.kept", { n: keep }) : t("settings.sum.all_kept")) : t("settings.sum.no_copy");
       return `${notify} · ${copies}`;
     }
-    case "verrous": {
+    case "locks": {
       if (!v.locks.enabled) return t("settings.sum.locks_off");
       const auto = [v.locks.auto_country ? t("settings.sum.country") : "", v.locks.auto_region ? t("settings.sum.region") : ""]
         .filter(Boolean).join(t("settings.sum.and"));
       return `${auto ? t("settings.sum.coach_sets", { what: auto }) : t("settings.sum.only_you")}${v.locks.propose_city ? t("settings.sum.city_suggested") : ""}`;
     }
-    case "stockage":
+    case "storage":
       return t("settings.sum.caches", { size: t("unit.mb", { n: num(Number(v.storage.max_cache_mb)) }) });
-    case "jeu-de-test":
+    case "dataset":
       return t(v.dataset.enabled ? (v.dataset.ask_guessed ? "settings.sum.asked" : "settings.sum.found_yes_no") : "settings.sum.dataset_off");
-    case "moteur": {
+    case "engine": {
       const server = fileOnly.value?.server;
       const where = server ? `${server.host.value}:${server.port.value}` : "";
       return [where, v.debug?.enabled ? t("settings.sum.debug_on") : ""].filter(Boolean).join(" · ");
@@ -128,18 +128,18 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
 </script>
 
 <template>
-  <section aria-labelledby="reglages-titre" class="pt-4">
-    <h2 id="reglages-titre" class="atlas text-[1.6rem] text-papier">{{ t("settings.title") }}</h2>
+  <section aria-labelledby="settings-title" class="pt-4">
+    <h2 id="settings-title" class="atlas text-[1.6rem] text-papier">{{ t("settings.title") }}</h2>
     <p class="mt-1 text-[0.85rem] text-courbe">{{ t("settings.applies_now") }}</p>
 
     <p v-if="!s" class="mt-4 text-courbe">{{ t("settings.loading") }}</p>
 
     <div v-else class="mt-3">
-      <datalist id="modeles-nvidia">
+      <datalist id="nvidia-models">
         <option v-for="m in models" :key="m" :value="m" />
       </datalist>
 
-      <Section v-for="g in GROUPS" :id="`reglage-${g.id}`" :key="g.id" :title="groupTitle(g)" :summary="summary(g)" :open="false" tone="papier">
+      <Section v-for="g in GROUPS" :id="`setting-${g.id}`" :key="g.id" :title="groupTitle(g)" :summary="summary(g)" :open="false" tone="papier">
         <div class="space-y-5 py-1">
           <div v-if="g.id === 'capture'" class="flex flex-wrap items-center gap-3">
             <button type="button" :class="[button, 'border-courbe hover:bg-papier/10']"
@@ -155,7 +155,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
 
             <!-- Extras specific to some settings -->
             <div v-if="f.section === 'vision' && f.key === 'enabled'" class="-mt-2 space-y-1.5">
-              <label for="cle-api" class="block text-papier">{{ t("settings.api_key") }}</label>
+              <label for="api-key" class="block text-papier">{{ t("settings.api_key") }}</label>
               <p class="text-[0.85rem] text-courbe">
                 <template v-if="engine.vision.key">
                   {{ t("settings.key_stored", { end: engine.vision.key.end, source: t(engine.vision.key.source === "env" ? "settings.key_source.env" : "settings.key_source.file") }) }}
@@ -165,7 +165,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
                 <code class="text-papier">~/.config/geonesclick/nvapi.key</code>{{ t("settings.key_where_after") }}
               </p>
               <form class="flex flex-wrap gap-2" @submit.prevent="storeKey(keyInput)">
-                <input id="cle-api" v-model="keyInput" type="password" autocomplete="off" spellcheck="false"
+                <input id="api-key" v-model="keyInput" type="password" autocomplete="off" spellcheck="false"
                        class="min-w-0 flex-1 rounded-md border border-courbe-fonce bg-relief px-3 py-1.5 text-papier"
                        :placeholder="engine.vision.key ? t('settings.new_key') : 'nvapi-…'" />
                 <button type="submit" :class="[button, 'border-lac/50 hover:bg-lac/10']" :disabled="!keyInput.trim() || engine.busy">
@@ -207,7 +207,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
             </p>
           </template>
 
-          <StoragePanel v-if="g.id === 'stockage'" :max-mb="Number(s.storage.max_cache_mb)" />
+          <StoragePanel v-if="g.id === 'storage'" :max-mb="Number(s.storage.max_cache_mb)" />
 
           <details v-if="advanced(g).length" class="rounded-md border border-courbe-fonce/70 px-3 py-2">
             <summary class="cursor-pointer text-[0.9rem] text-courbe hover:text-papier">{{ t("settings.advanced") }} ({{ advanced(g).length }})</summary>

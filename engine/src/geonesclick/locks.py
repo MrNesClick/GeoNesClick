@@ -183,7 +183,7 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
     """
     country, region, no_countries, no_regions = scope
     for e in found:
-        if e.kind == "lieu" and e.points:
+        if e.kind == "place" and e.points:
             def keep(p: list[Any]) -> bool:
                 where = p[4] if len(p) > 4 else ""
                 return not (where and where in no_regions) and not (
@@ -201,6 +201,6 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
             e.note = t("locks.note.outside_country" if country else "locks.note.rejected_country",
                        list=", ".join(e.countries[:4]))
         e.countries = inside
-        if e.kind == "lieu":  # namesakes of the remaining countries only (keep_nearby re-derives the countries)
+        if e.kind == "place":  # namesakes of the remaining countries only (keep_nearby re-derives the countries)
             e.points = [p for p in e.points if p[2] in inside]
     return found

@@ -129,7 +129,7 @@ function drawZone(zone: Zone, rank: number) {
     fillOpacity: 0.1 + 0.25 * zone.part,
     interactive: false,
   })
-    .bindTooltip(`${rank + 1} · ${pct(zone.part)}`, { permanent: true, direction: "center", className: "ggc-zone" })
+    .bindTooltip(`${rank + 1} · ${pct(zone.part)}`, { permanent: true, direction: "center", className: "map-zone" })
     .addTo(zoneLayer!);
 }
 
@@ -145,14 +145,14 @@ function drawChoices() {
   for (const o of outside.value) {
     L.circleMarker([o.lat, o.lon], { radius: 4, color: COLORS.courbe, weight: 1.5, fillColor: COLORS.courbeFonce, fillOpacity: 1 })
       .bindTooltip(textNode(t("map.outside_choice", { place: `${circled(o.n)} ${o.label}` })),
-                   { permanent: true, direction: "right", className: "ggc-zone ggc-place ggc-outside" })
+                   { permanent: true, direction: "right", className: "map-zone map-place map-outside" })
       .addTo(placeLayer);
   }
   const city = lockCity.value;
   if (city?.lat != null && city.lon != null) {
     L.circleMarker([city.lat, city.lon], { radius: 8, color: COLORS.marque, weight: 3, fillColor: COLORS.encre, fillOpacity: 1 })
       .bindTooltip(textNode(`${city.name} (${t(city.by === "user" ? "locks.by_you" : "locks.by_coach")})`),
-                   { permanent: true, direction: "top", className: "ggc-zone" })
+                   { permanent: true, direction: "top", className: "map-zone" })
       .addTo(placeLayer);
   }
 }
@@ -164,7 +164,7 @@ function drawLocation() {
     L.circle([loc.lat, loc.lon], {
       radius: loc.radius_km * 1000, color: COLORS.marque, weight: 2, fillColor: COLORS.marque, fillOpacity: 0.18,
       interactive: false,
-    }).bindTooltip(textNode(t("map.here_within", { km: num(loc.radius_km) })), { permanent: true, direction: "top", className: "ggc-zone" })
+    }).bindTooltip(textNode(t("map.here_within", { km: num(loc.radius_km) })), { permanent: true, direction: "top", className: "map-zone" })
       .addTo(placeLayer);
   } else if (loc.kind === "rough") {
     L.circle([loc.lat, loc.lon], {
@@ -180,7 +180,7 @@ function drawLocation() {
     L.circleMarker([p.lat, p.lon], { radius: 4, color: COLORS.encre, weight: 1.5, fillColor: COLORS.marque, fillOpacity: 1 })
       // Text read by the AI: as a text node, never as HTML (Leaflet inserts a string as HTML).
       .bindTooltip(textNode(`${circled(p.n)} ${p.name}${p.km ? ` · ${num(p.km)} km` : ""}`),
-                   { permanent: true, direction: "right", className: "ggc-zone ggc-place" })
+                   { permanent: true, direction: "right", className: "map-zone map-place" })
       .addTo(placeLayer);
   }
 }
@@ -218,7 +218,7 @@ onMounted(async () => {
   const applyFilter = () => {
     tiles.style.filter = (map?.getZoom() ?? 0) >= engine.map.close_zoom ? engine.map.tile_filter_close : engine.map.tile_filter;
   };
-  const applyLabels = () => el.value?.classList.toggle("ggc-far", (map?.getZoom() ?? 0) < LABELS_ZOOM);
+  const applyLabels = () => el.value?.classList.toggle("map-far", (map?.getZoom() ?? 0) < LABELS_ZOOM);
   applyFilter();
   applyLabels();
   map.on("zoomend", () => {
@@ -275,8 +275,8 @@ onBeforeUnmount(() => {
     </p>
 
     <!-- Your marks locate the view: places read (GeoNames) and distances on a direction sign. -->
-    <section v-if="location" class="mt-3" aria-labelledby="position-titre">
-      <h2 id="position-titre" class="font-bold text-papier">
+    <section v-if="location" class="mt-3" aria-labelledby="position-title">
+      <h2 id="position-title" class="font-bold text-papier">
         <span class="mr-1.5 inline-block size-2.5 rounded-full bg-marque align-middle" aria-hidden="true" />
         {{ t(location.kind === "places" ? "map.places_read" : "map.position_estimated") }}
       </h2>
@@ -302,8 +302,8 @@ onBeforeUnmount(() => {
       </p>
     </section>
 
-    <section class="mt-3" aria-labelledby="zones-titre">
-      <h2 id="zones-titre" class="font-bold text-papier">
+    <section class="mt-3" aria-labelledby="zones-title">
+      <h2 id="zones-title" class="font-bold text-papier">
         {{ head && analysis.cloud.status === "done" && analysis.cloud.data.zones_by_country[head.code]
           ? t("map.zones_in", { country: countryName(head.code),
                                 why: head.certain ? "" : t(head.source === "marks" ? "map.zones_why_marks" : "map.zones_why_ai") })

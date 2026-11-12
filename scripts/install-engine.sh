@@ -27,7 +27,7 @@ rm -rf "$NEW"
 echo "PHASE python"
 "$B/uv" venv --quiet --python "$PYTHON_VERSION" --managed-python "$NEW"
 
-echo "PHASE paquets"
+echo "PHASE packages"
 if [ "$VARIANT" = cpu ]; then
   # PyTorch CPU comes from the PyTorch index; its hash is pinned in requirements-cpu.txt.
   "$B/uv" pip install --python "$NEW/bin/python" --require-hashes -r "$B/requirements-cpu.txt" \
@@ -36,20 +36,20 @@ else
   "$B/uv" pip install --python "$NEW/bin/python" --require-hashes -r "$B/requirements-cuda.txt"
 fi
 
-echo "PHASE moteur"
+echo "PHASE engine"
 "$B/uv" pip install --python "$NEW/bin/python" --no-deps "$B"/wheels/*.whl
 
 # Your choices (options accepted or declined) are written BEFORE any start of the engine: it will never download
 # an option you declined.
 if [ -n "$CHOICES" ]; then
-  echo "PHASE choix"
+  echo "PHASE choices"
   "$NEW/bin/python" -m geonesclick.settings < "$CHOICES"
 fi
 
-echo "PHASE modele"
+echo "PHASE model"
 "$NEW/bin/python" -m geonesclick.fetch streetclip
 
-echo "PHASE finition"
+echo "PHASE finish"
 rm -rf "$HOME_DIR/venv"
 mv "$NEW" "$HOME_DIR/venv"
 cp "$B/VERSION" "$HOME_DIR/INSTALLED"  # complete installation
@@ -57,4 +57,4 @@ cp "$B/VERSION" "$HOME_DIR/INSTALLED"  # complete installation
 # options the user declined): here if they were given, otherwise the assistant writes VERSION after applying them.
 if [ -n "$CHOICES" ]; then cp "$B/VERSION" "$HOME_DIR/VERSION"; fi
 "$B/uv" cache clean --quiet || true  # the packages are installed: their cached copy is no longer needed
-echo "PHASE fini"
+echo "PHASE done"

@@ -301,7 +301,7 @@ def test_countries_outside_the_candidates_do_not_count(setup, monkeypatch, tmp_p
     monkeypatch.setattr(places, "_fetch", lambda _url: te.archive())
     engine.cfg.rules.places_dir = str(tmp_path / "places")
     engine.places = places.Places(places.build(engine.cfg.rules.places_url, engine.cfg.rules.places_path))
-    [manto] = [e for e in engine.evidence_of(["Manto 5"]) if e.kind == "lieu"]
+    [manto] = [e for e in engine.evidence_of(["Manto 5"]) if e.kind == "place"]
     assert manto.countries == [] and "HN" in manto.note  # Honduras is not a candidate country
 
 

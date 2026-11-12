@@ -177,7 +177,7 @@ class LocksMixin:
         read: dict[str, tuple[int, list[Any]]] = {}
         for n, found in cited:
             for e in found:
-                p = next((q for q in e.points if q[2] == target), None) if e.kind == "lieu" else None
+                p = next((q for q in e.points if q[2] == target), None) if e.kind == "place" else None
                 if p is not None:
                     read.setdefault(p[3], (n, p))
         by_region: dict[str, list[tuple[int, str, float, float]]] = {}
@@ -201,7 +201,7 @@ class LocksMixin:
             # A place read WITHOUT a distance (entry sign, shop sign): we are probably there; with a distance, no.
             bare = {(p[3], p[4] if len(p) > 4 else "", p[0], p[1])
                     for _, found in cited for e in found
-                    if e.kind == "lieu" and e.km is None
+                    if e.kind == "place" and e.km is None
                     for p in e.points[:1] if p[2] == target and len(p) > 3}
             if len(bare) == 1:
                 name, code, lat, lon = bare.pop()

@@ -59,7 +59,7 @@ export const fileOnlyLabel = (id: string) => text(`file.${id}`) || id;
 
 export const GROUPS: Group[] = [
   {
-    id: "aide",
+    id: "general",
     fileSections: [],
     fields: [
       { section: "coach", key: "help_level", kind: "radio", options: [1,2,3,4] },
@@ -70,7 +70,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "analyse",
+    id: "analysis",
     fileSections: ["streetclip","vision"],
     fields: [
       { section: "streetclip", key: "enabled", kind: "bool" },
@@ -89,7 +89,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "indices",
+    id: "clues",
     fileSections: ["metas","plonkit"],
     fields: [
       { section: "metas", key: "enabled", kind: "bool" },
@@ -118,7 +118,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "carte",
+    id: "map",
     fileSections: ["map","plonk"],
     fields: [
       { section: "map", key: "enabled", kind: "bool" },
@@ -149,7 +149,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "marques",
+    id: "marks",
     fileSections: ["rules"],
     fields: [
       { section: "marks", key: "enabled", kind: "bool" },
@@ -170,7 +170,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "verrous",
+    id: "locks",
     fileSections: [],
     fields: [
       { section: "locks", key: "enabled", kind: "bool" },
@@ -182,7 +182,7 @@ export const GROUPS: Group[] = [
     ],
   },
   {
-    id: "jeu-de-test",
+    id: "dataset",
     fileSections: ["dataset"],
     fields: [
       { section: "dataset", key: "enabled", kind: "bool" },
@@ -195,14 +195,14 @@ export const GROUPS: Group[] = [
 /** Storage: sizes, limit of the caches that grow, "Empty" buttons (StoragePanel). */
 GROUPS.push(
   {
-    id: "stockage",
+    id: "storage",
     fileSections: [],
     fields: [
       { section: "storage", key: "max_cache_mb", kind: "int", min: 50, max: 100000 },
     ],
   },
   {
-    id: "moteur",
+    id: "engine",
     fileSections: ["server"],
     fields: [
       { section: "debug", key: "enabled", kind: "bool" },

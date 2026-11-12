@@ -62,14 +62,14 @@ def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[st
     if scope != NO_SCOPE:
         near, _ = keep_nearby([(n, restrict(from_dict(ev), scope)) for n, ev in done], spread)
     cited = {n for n, _ in near} if scope[0] else {c["n"] for c in v.cites}
-    places = [(n, e) for n, found in near if n in cited for e in found if e.kind == "lieu" and target in e.countries]
+    places = [(n, e) for n, found in near if n in cited for e in found if e.kind == "place" and target in e.countries]
     result["location"] = locate(places, target) if places else None
     # Places read that your choices rule out ("③ Rötz" outside your Lower Saxony): greyed out on the map, never erased.
-    kept = {(n, e.value) for n, found in near for e in found if e.kind == "lieu" and e.points}
+    kept = {(n, e.value) for n, found in near for e in found if e.kind == "place" and e.points}
     result["outside"] = [{"n": n, "name": e.value, "label": e.points[0][3], "lat": e.points[0][0],
                           "lon": e.points[0][1]}
                          for n, found in read for e in found
-                         if scope != NO_SCOPE and e.kind == "lieu" and e.points and len(e.points[0]) > 3
+                         if scope != NO_SCOPE and e.kind == "place" and e.points and len(e.points[0]) > 3
                          and (n, e.value) not in kept]
     return Conclusion(v, result, target, [(n, f) for n, f in near if n in cited])
 
@@ -177,7 +177,7 @@ class MarksMixin:
         """
         rc = self.cfg.rules
         found = [e for e in text_evidence(lines)
-                 if (e.kind == "alphabet" and rc.scripts) or (e.kind in ("lettres", "mot") and rc.letters)]
+                 if (e.kind == "alphabet" and rc.scripts) or (e.kind in ("letters", "word") and rc.letters)]
         if rc.places and self.places is not None:
             found += self.places.match(lines, rc.place_min_len)
         # Only the candidate countries count (Moldova does not prevent "ș" from pointing to Romania). A proof that

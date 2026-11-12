@@ -13,9 +13,9 @@ const describe = (e: Evidence) =>
   e.kind === "alphabet" ? t("marks.colon", { label: e.label, value: flags(e.countries) }) : `${e.value} → ${e.label} ${flags(e.countries)}`;
 /** What removes a proof from the computation, in plain words (empty: it counts). */
 function status(n: number, e: Evidence): string {
-  if (e.kind === "rue") return t("marks.street_name");
+  if (e.kind === "street") return t("marks.street_name");
   if (e.note) return e.note;
-  if (e.kind !== "lieu") return "";
+  if (e.kind !== "place") return "";
   if (props.verdict?.ignored?.some((i) => i.n === n && i.value === e.value)) return t("marks.far_namesake");
   if (props.verdict?.unconfirmed?.some((u) => u.n === n && u.value === e.value)) {
     return t("marks.lone_place");
@@ -26,13 +26,13 @@ function status(n: number, e: Evidence): string {
 const placeLabel = (n: number, e: Evidence) =>
   props.verdict?.location?.places.find((p) => p.n === n && p.name === e.value)?.label ?? e.label;
 function text(n: number, e: Evidence): string {
-  if (e.kind === "rue") return e.value;
-  if (e.kind === "lieu") return `${e.value} → ${placeLabel(n, e)} ${flags(e.countries)}`.trim();
+  if (e.kind === "street") return e.value;
+  if (e.kind === "place") return `${e.value} → ${placeLabel(n, e)} ${flags(e.countries)}`.trim();
   return describe(e);
 }
 /** City to lock from a place read: the namesake kept (the one on the map), otherwise the most populous. */
 function cityOf(n: number, e: Evidence) {
-  if (!engine.locks.enabled || e.kind !== "lieu" || status(n, e) || e.countries.length !== 1 || !e.points?.length) return null;
+  if (!engine.locks.enabled || e.kind !== "place" || status(n, e) || e.countries.length !== 1 || !e.points?.length) return null;
   const where = props.verdict?.location?.places.find((p) => p.n === n && p.name === e.value);
   const p = e.points.find((q) => q[2] === e.countries[0] && (!where || (Math.abs(q[0] - where.lat) < 1e-4 && Math.abs(q[1] - where.lon) < 1e-4)))
     ?? e.points.find((q) => q[2] === e.countries[0]);

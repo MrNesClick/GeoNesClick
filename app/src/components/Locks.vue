@@ -176,8 +176,8 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
     <template v-if="!country">
       <p class="text-papier">{{ t("locks.ask") }}</p>
       <div class="mt-1.5 flex items-center gap-2">
-        <label for="sur-country" class="w-16 shrink-0 text-courbe">{{ noun("country") }}</label>
-        <input id="sur-country" :ref="(el) => (fields.country = el as HTMLInputElement | null)"
+        <label for="lock-country" class="w-16 shrink-0 text-courbe">{{ noun("country") }}</label>
+        <input id="lock-country" :ref="(el) => (fields.country = el as HTMLInputElement | null)"
                :value="active === 'country' ? query : ''" type="search" autocomplete="off" :class="input"
                :placeholder="t('locks.country_placeholder')"
                @focus="open('country')" @input="typed('country', ($event.target as HTMLInputElement).value)"
@@ -263,8 +263,8 @@ const option = "flex w-full items-center justify-between gap-3 rounded px-2 py-1
           </button>
         </div>
         <div class="flex items-center gap-2">
-          <label :for="`sur-${lv}`" class="w-16 shrink-0 text-courbe">{{ lv === "region" && readRegions.length ? t("locks.or") : t("locks.level_arrow", { level: noun(lv) }) }}</label>
-          <input :id="`sur-${lv}`" :ref="(el) => (fields[lv] = el as HTMLInputElement | null)"
+          <label :for="`lock-${lv}`" class="w-16 shrink-0 text-courbe">{{ lv === "region" && readRegions.length ? t("locks.or") : t("locks.level_arrow", { level: noun(lv) }) }}</label>
+          <input :id="`lock-${lv}`" :ref="(el) => (fields[lv] = el as HTMLInputElement | null)"
                  :value="active === lv ? query : ''" type="search" autocomplete="off" :class="input"
                  :placeholder="t(lv === 'region' ? 'locks.region_placeholder' : 'locks.city_placeholder')"
                  @focus="open(lv)" @input="typed(lv, ($event.target as HTMLInputElement).value)"

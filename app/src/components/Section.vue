@@ -8,7 +8,7 @@ const props = withDefaults(
   { summary: "", open: true, tone: "foret" },
 );
 
-const KEY = "ggc.sections";
+const KEY = "geonesclick.sections";
 function saved(): Record<string, boolean> {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "{}");
@@ -42,14 +42,14 @@ const BORDER = { foret: "border-foret/50", lac: "border-lac/50", papier: "border
 </script>
 
 <template>
-  <section :aria-labelledby="`${id}-titre`" class="border-b border-courbe-fonce/70 pb-2">
-    <h2 :id="`${id}-titre`">
+  <section :aria-labelledby="`${id}-title`" class="border-b border-courbe-fonce/70 pb-2">
+    <h2 :id="`${id}-title`">
       <button
         type="button"
         class="flex w-full items-baseline gap-2.5 rounded px-1 py-2 text-left transition-colors duration-700 hover:text-papier focus-visible:outline-2 focus-visible:outline-lac motion-reduce:transition-none"
         :class="flash ? 'bg-lac/15' : ''"
         :aria-expanded="isOpen"
-        :aria-controls="`${id}-contenu`"
+        :aria-controls="`${id}-content`"
         @click="toggle"
       >
         <span
@@ -63,7 +63,7 @@ const BORDER = { foret: "border-foret/50", lac: "border-lac/50", papier: "border
         </span>
       </button>
     </h2>
-    <div v-show="isOpen" :id="`${id}-contenu`" class="mb-2 ml-1.5 border-l-2 pl-4" :class="BORDER[tone]">
+    <div v-show="isOpen" :id="`${id}-content`" class="mb-2 ml-1.5 border-l-2 pl-4" :class="BORDER[tone]">
       <slot />
     </div>
   </section>

@@ -240,9 +240,9 @@ fn diagnose(lang: &str, phase: &str, variant: &str, errors: &[String]) -> Option
     let named = network.iter().rev().filter_map(|l| url_host(l)).find_map(service);
     let site = named.or(match (phase, variant) {
         ("python", _) => Some("setup.site.github"),
-        ("paquets", "cpu") => Some("setup.site.pypi_or_pytorch"),
-        ("paquets", _) => Some("setup.site.pypi"),
-        ("modele", _) => Some("setup.site.huggingface"),
+        ("packages", "cpu") => Some("setup.site.pypi_or_pytorch"),
+        ("packages", _) => Some("setup.site.pypi"),
+        ("model", _) => Some("setup.site.huggingface"),
         _ => None,
     });
     Some(match site {
@@ -450,11 +450,11 @@ error: geolocal/StreetCLIP/config.json not downloaded from https://huggingface.c
     fn an_unreachable_site_is_named_from_the_url_in_the_error() {
         let named = |phase, variant, text: &str| site(diagnose("en", phase, variant, &lines(text)));
         assert!(named("python", "cpu", UV_PYTHON).starts_with("The site GitHub (Python) does not answer."));
-        assert!(named("paquets", "cuda", UV_PYPI).starts_with("The site PyPI (Python libraries) does not answer."));
-        assert!(named("paquets", "cpu", UV_PYTORCH_504).starts_with("The site download.pytorch.org (PyTorch)"));
-        assert!(named("modele", "cpu", HF).starts_with("The site Hugging Face (StreetCLIP model)"));
+        assert!(named("packages", "cuda", UV_PYPI).starts_with("The site PyPI (Python libraries) does not answer."));
+        assert!(named("packages", "cpu", UV_PYTORCH_504).starts_with("The site download.pytorch.org (PyTorch)"));
+        assert!(named("model", "cpu", HF).starts_with("The site Hugging Face (StreetCLIP model)"));
         // Several sites in the errors: the last one named is the one that made the step fail.
-        assert!(named("paquets", "cpu", &format!("{UV_PYPI}\n{UV_PYTORCH_504}")).starts_with("The site download.pytorch.org"));
+        assert!(named("packages", "cpu", &format!("{UV_PYPI}\n{UV_PYTORCH_504}")).starts_with("The site download.pytorch.org"));
     }
 
     #[test]
@@ -469,21 +469,21 @@ error: geolocal/StreetCLIP/config.json not downloaded from https://huggingface.c
         // A host that is none of the installation's sites (a mirror, say): download.geonames.org stands for it,
         // because test_downloads.py forbids undeclared addresses in the code.
         let other = lines("error: Failed to fetch: `https://download.geonames.org/simple/idna/`\n  Caused by: dns error");
-        assert!(site(diagnose("en", "paquets", "cpu", &other)).starts_with("The site PyPI or download.pytorch.org"));
-        assert!(site(diagnose("en", "paquets", "cuda", &other)).starts_with("The site PyPI (Python libraries)"));
+        assert!(site(diagnose("en", "packages", "cpu", &other)).starts_with("The site PyPI or download.pytorch.org"));
+        assert!(site(diagnose("en", "packages", "cuda", &other)).starts_with("The site PyPI (Python libraries)"));
         assert!(site(diagnose("en", "python", "cuda", &lines("Caused by: dns error"))).starts_with("The site GitHub (Python)"));
-        assert!(site(diagnose("en", "moteur", "cuda", &other)).starts_with("A download site does not answer."));
+        assert!(site(diagnose("en", "engine", "cuda", &other)).starts_with("A download site does not answer."));
     }
 
     #[test]
     fn a_full_disk_is_told_before_anything_else() {
         let full = lines(&format!("{UV_PYPI}\nerror: failed to write to file `/x`: No space left on device (os error 28)"));
-        assert!(site(diagnose("en", "paquets", "cpu", &full)).starts_with("Not enough disk space"));
+        assert!(site(diagnose("en", "packages", "cpu", &full)).starts_with("Not enough disk space"));
     }
 
     #[test]
     fn other_failures_are_left_to_the_log() {
-        assert_eq!(diagnose("en", "choix", "cpu", &lines("ValueError: unknown setting")), None);
+        assert_eq!(diagnose("en", "choices", "cpu", &lines("ValueError: unknown setting")), None);
         assert_eq!(diagnose("en", "python", "cpu", &[]), None);
     }
 

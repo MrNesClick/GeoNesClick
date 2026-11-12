@@ -156,7 +156,7 @@ _WORDS = [(re.compile(rf"(?<!\w)(?:\w{{3,}})?{re.escape(word)}(?!\w)" if word in
 
 @dataclass
 class Evidence:
-    kind: str  # "alphabet" (rules out), "lettres" or "mot" (language), "lieu" (place name), "rue" (does not count)
+    kind: str  # "alphabet" (rules out), "letters" or "word" (language), "place" (place name), "street" (does not count)
     value: str  # what was read: "ъ before a consonant", "Благоевград"
     label: str  # what it means: "Bulgarian", "town in Bulgaria"
     countries: list[str]
@@ -189,11 +189,11 @@ def text_evidence(lines: list[str]) -> list[Evidence]:
     for pattern, shown, language, countries, source in _LETTERS:
         if pattern.search(lower):
             letters = t(f"evidence.letters.{shown}") if shown.isascii() else shown
-            out.append(Evidence("lettres", letters, t(f"lang.{language}"), sorted(countries), source))
+            out.append(Evidence("letters", letters, t(f"lang.{language}"), sorted(countries), source))
     for pattern, word, language, countries in _WORDS:
         found = pattern.search(lower)
         if found and not (word == "tie" and found.group() == "tie"):
-            out.append(Evidence("mot", word, t(f"lang.{language}"), sorted(countries), WIKI + "Street_name"))
+            out.append(Evidence("word", word, t(f"lang.{language}"), sorted(countries), WIKI + "Street_name"))
     return out
 
 
@@ -241,10 +241,10 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
         exclusive = {c: items for c, items in exclusive.items() if c in allowed}
     # Letters and words shared by several countries ("via": Italy, Switzerland): they confirm a place in one of them.
     shared = {c for _, evidence in marks for e in evidence
-              if e.kind in ("lettres", "mot") and len(e.countries) > 1 for c in e.countries}
+              if e.kind in ("letters", "word") and len(e.countries) > 1 for c in e.countries}
 
     def confirmed(country: str, support: list[tuple[int, Evidence]]) -> bool:
-        places = sum(1 for _, e in support if e.kind == "lieu")
+        places = sum(1 for _, e in support if e.kind == "place")
         return (places < len(support) or places >= 2 or country in shared
                 or (prior or {}).get(country, 0.0) >= prior_min)
 
@@ -253,7 +253,7 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
         v.unconfirmed = [{"n": n, "value": e.value, "country": c}
                          for c, items in exclusive.items() for n, e in items]
         return v
-    country = max(concluded, key=lambda c: (len(concluded[c]), any(e.kind == "lieu" for _, e in concluded[c])))
+    country = max(concluded, key=lambda c: (len(concluded[c]), any(e.kind == "place" for _, e in concluded[c])))
     support = concluded[country]
     v.country = country
     for n in sorted({n for n, _ in support}):
@@ -262,7 +262,7 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
         if other != country:
             for n in sorted({n for n, _ in items}):
                 v.against.append({"n": n, "country": other, "items": [e.value for m, e in items if m == n]})
-    has_place = any(e.kind == "lieu" for _, e in support)
+    has_place = any(e.kind == "place" for _, e in support)
     v.level = "certain" if has_place and len(support) >= 2 and not v.against else "probable"
     return v
 

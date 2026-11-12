@@ -59,7 +59,7 @@ def keep_nearby(marks: list[tuple[int, list[Evidence]]], max_km: float
     places read within max_km; the places without any namesake within this radius are ignored (returned separately,
     for display). Without a group of at least two places, nothing is ruled out: the contradiction stays visible.
     """
-    places = [e for _, found in marks for e in found if e.kind == "lieu" and e.points]
+    places = [e for _, found in marks for e in found if e.kind == "place" and e.points]
     best, support = None, 1
     for e in places:
         for p in e.points:
@@ -72,7 +72,7 @@ def keep_nearby(marks: list[tuple[int, list[Evidence]]], max_km: float
     for n, found in marks:
         mine = []
         for e in found:
-            if e.kind == "lieu" and e.points:
+            if e.kind == "place" and e.points:
                 # Namesakes of the group, closest first: Laàs (64) at 13 km from Orthez before Laas (32) at 87 km.
                 close = sorted((q for q in e.points if haversine(best[:2], q[:2]) <= max_km),
                                key=lambda q: haversine(best[:2], q[:2]))
@@ -92,7 +92,7 @@ def _coherent(p: tuple[float, float], anchors: list[tuple[tuple[float, float], f
 
 
 def locate(places: list[tuple[int, Evidence]], country: str) -> dict[str, Any] | None:
-    """Position estimated from the places cited (mark number, "lieu" proof) in the country kept.
+    """Position estimated from the places cited (mark number, "place" proof) in the country kept.
 
     - several consistent distances: a point and a radius ("point");
     - several inconsistent distances (misread digit): the view is at most d km from the closest place

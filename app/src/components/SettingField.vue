@@ -22,7 +22,7 @@ const f = computed(() => props.field);
 const value = computed(() => props.settings[f.value.section]?.[f.value.key]);
 const disabled = computed(() => !!f.value.needs && !props.settings[f.value.needs[0]]?.[f.value.needs[1]]);
 const save = (v: unknown, section = f.value.section, key = f.value.key) => emit("save", section, key, v);
-const inputId = computed(() => `reglage-${f.value.section}-${f.value.key}`);
+const inputId = computed(() => `setting-${f.value.section}-${f.value.key}`);
 const label = computed(() => fieldLabel(f.value));
 const hint = computed(() => fieldHint(f.value));
 
@@ -172,7 +172,7 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
                 :value="String(value ?? '')" :disabled="disabled" spellcheck="false"
                 @change="save(($event.target as HTMLTextAreaElement).value)" />
       <input v-else :id="inputId" :class="input" :value="String(value ?? '')" :disabled="disabled" spellcheck="false"
-             :list="f.section === 'vision' && f.key === 'model' ? 'modeles-nvidia' : undefined"
+             :list="f.section === 'vision' && f.key === 'model' ? 'nvidia-models' : undefined"
              @change="save(($event.target as HTMLInputElement).value.trim())" />
     </label>
 

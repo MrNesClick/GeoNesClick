@@ -111,15 +111,15 @@ const tabs = computed(() => [
     <main v-else-if="engine.current" class="flex-1">
       <!-- Locks: at the top, outside the collapsible sections (they narrow down everything that follows). -->
       <Locks v-if="engine.locks.enabled" :analysis="engine.current" />
-      <Transition name="arrivee" appear mode="out-in">
+      <Transition name="arrival" appear mode="out-in">
         <div :key="engine.current.id" class="pt-2">
           <!-- Sections in order of usefulness; each one's summary stays readable when it is collapsed. -->
-          <Section v-if="level >= 4" id="reponse" :title="t('app.section.answer')" tone="papier" :summary="sum.answer(engine.current)">
+          <Section v-if="level >= 4" id="answer" :title="t('app.section.answer')" tone="papier" :summary="sum.answer(engine.current)">
             <Summary :analysis="engine.current" />
           </Section>
 
           <!-- The marks are your proof: right after the answer, at every level (they name no country). -->
-          <Section v-if="engine.current.marks.length" id="marques" :title="t('app.section.marks')" tone="papier" :summary="sum.marks(engine.current)">
+          <Section v-if="engine.current.marks.length" id="marks" :title="t('app.section.marks')" tone="papier" :summary="sum.marks(engine.current)">
             <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
           </Section>
 
@@ -127,15 +127,15 @@ const tabs = computed(() => [
             <img :src="engine.current.thumbnail" :alt="t('app.capture_alt')" class="w-full rounded-md border border-courbe-fonce" />
           </Section>
 
-          <Section v-if="level < 3" id="regarder" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">
+          <Section v-if="level < 3" id="look-here" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">
             <LookHere :lookfor="engine.current.lookfor" />
           </Section>
 
           <template v-else>
-            <Section id="pays" :title="t('app.section.countries')" :summary="sum.countries(engine.current)">
+            <Section id="countries" :title="t('app.section.countries')" :summary="sum.countries(engine.current)">
               <Countries :analysis="engine.current" />
             </Section>
-            <Section id="departage" :title="t('app.section.tiebreak')"
+            <Section id="tiebreak" :title="t('app.section.tiebreak')"
                      :summary="lockedCountry(engine.current) ? t('app.country_locked') : sum.metas(engine.current)">
               <p v-if="lockedCountry(engine.current)" class="text-[0.9rem] text-courbe">
                 {{ t("app.country_locked.detail", { country: `${flag(lockedCountry(engine.current)!)} ${countryName(lockedCountry(engine.current)!)}` }) }}
@@ -144,7 +144,7 @@ const tabs = computed(() => [
             </Section>
             <Section
               v-if="tipsByCountry(engine.current).length"
-              id="astuces"
+              id="tips"
               :title="t('app.section.tips')"
               :open="false"
               :summary="sum.tips(engine.current)"
@@ -153,11 +153,11 @@ const tabs = computed(() => [
             </Section>
           </template>
 
-          <Section v-if="level >= 2" id="ia" :title="t('app.section.vision')" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
+          <Section v-if="level >= 2" id="vision" :title="t('app.section.vision')" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
             <Observations :vision="engine.current.vision" />
           </Section>
 
-          <Section v-if="engine.dataset.enabled" id="manche" :title="t('app.section.round')" :open="false" :summary="sum.round(engine.current)">
+          <Section v-if="engine.dataset.enabled" id="round" :title="t('app.section.round')" :open="false" :summary="sum.round(engine.current)">
             <LabelForm :analysis="engine.current" :countries="engine.countries" :progress="engine.progress" />
           </Section>
         </div>

@@ -93,7 +93,7 @@ const installDone = ref<boolean | null>(null); // null: running; true / false: f
 const failure = ref(""); // likely cause of a failure (site down, disk full), from setup.rs; empty: see the log
 const installing = ref(false);
 // Phases announced by install-engine.sh ("PHASE <name>"), in order.
-const PHASES = ["python", "paquets", "moteur", "modele", "finition"] as const;
+const PHASES = ["python", "packages", "engine", "model", "finish"] as const;
 // The log follows its last line, like a terminal.
 const logBox = ref<HTMLElement | null>(null);
 watch(lines, () => nextTick(() => logBox.value && (logBox.value.scrollTop = logBox.value.scrollHeight)));
@@ -264,8 +264,8 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       <p v-if="!status" class="text-courbe">{{ t("setup.checking") }}</p>
 
       <!-- 1. System -->
-      <section v-else-if="step === 'system'" class="space-y-4" aria-labelledby="etape-systeme">
-        <h2 id="etape-systeme" class="text-[1.15rem] font-bold text-papier">{{ t("setup.system.title") }}</h2>
+      <section v-else-if="step === 'system'" class="space-y-4" aria-labelledby="step-system">
+        <h2 id="step-system" class="text-[1.15rem] font-bold text-papier">{{ t("setup.system.title") }}</h2>
         <p class="text-[1.05rem] text-courbe">{{ t("setup.system.intro") }}</p>
         <ul :class="box" class="space-y-1">
           <li v-for="c in status.checks" :key="c.label" class="flex gap-2">
@@ -281,10 +281,10 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       </section>
 
       <!-- 2. Components: a summary, the full list under the details -->
-      <section v-else-if="step === 'components'" class="space-y-6" aria-labelledby="etape-composants">
+      <section v-else-if="step === 'components'" class="space-y-6" aria-labelledby="step-components">
         <div>
           <div class="flex items-baseline justify-between">
-            <h2 id="etape-composants" class="text-[1.15rem] font-bold text-papier">{{ t("setup.required.title") }}</h2>
+            <h2 id="step-components" class="text-[1.15rem] font-bold text-papier">{{ t("setup.required.title") }}</h2>
             <span class="tabular-nums font-bold text-papier">{{ mb(requiredMb) }}</span>
           </div>
           <ul class="mt-2 text-[1.05rem]">
@@ -344,14 +344,14 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       </section>
 
       <!-- 3. Options, chosen while the required components download -->
-      <section v-else-if="step === 'options'" class="space-y-6" aria-labelledby="etape-options">
-        <h2 id="etape-options" class="text-[1.15rem] font-bold text-papier">{{ t("setup.options.title") }}</h2>
+      <section v-else-if="step === 'options'" class="space-y-6" aria-labelledby="step-options">
+        <h2 id="step-options" class="text-[1.15rem] font-bold text-papier">{{ t("setup.options.title") }}</h2>
         <p class="-mt-3 text-[1rem] text-courbe">{{ t("setup.options.intro") }}</p>
 
         <div class="space-y-1">
-          <label for="cle" class="block text-[1.15rem] font-bold text-papier">{{ t("setup.key.label") }} <span class="text-[1rem] text-courbe">{{ t("setup.key.recommended") }}</span></label>
-          <input id="cle" v-model="key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…"
-                 :aria-invalid="!!keyError" aria-describedby="cle-aide"
+          <label for="api-key" class="block text-[1.15rem] font-bold text-papier">{{ t("setup.key.label") }} <span class="text-[1rem] text-courbe">{{ t("setup.key.recommended") }}</span></label>
+          <input id="api-key" v-model="key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…"
+                 :aria-invalid="!!keyError" aria-describedby="api-key-help"
                  class="w-full rounded-md border bg-relief px-3 py-2.5 text-papier"
                  :class="keyError ? 'border-alerte' : 'border-courbe-fonce'" />
           <p v-if="keyError" class="text-[1rem] text-alerte" role="alert">{{ keyError }}</p>
@@ -361,7 +361,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
               <span class="block text-[1rem] text-courbe">{{ t("setup.no_key.detail") }}</span>
             </span>
           </label>
-          <p id="cle-aide" class="text-[1rem] text-courbe">
+          <p id="api-key-help" class="text-[1rem] text-courbe">
             {{ t("setup.key.help") }}
           </p>
         </div>
@@ -388,7 +388,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <fieldset class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
           <legend class="mb-2 text-[1.15rem] font-bold text-papier">{{ t("setup.default_level") }}</legend>
           <label v-for="l in LEVELS" :key="l" class="flex items-start gap-3 text-[1.05rem]">
-            <input v-model="helpLevel" type="radio" :class="check" name="niveau" :value="l" />
+            <input v-model="helpLevel" type="radio" :class="check" name="help-level" :value="l" />
             <span>
               <span class="text-papier">{{ l }}. {{ t(`level.${l}`) }}</span>
               <span class="block text-[1rem] text-courbe">{{ t(`level.${l}.hint`) }}</span>
@@ -398,8 +398,8 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       </section>
 
       <!-- 4. Installation: progress, then the first start -->
-      <section v-else class="space-y-4" aria-labelledby="etape-installation">
-        <h2 id="etape-installation" class="text-[1.15rem] font-bold text-papier">{{ t("setup.install.title") }}</h2>
+      <section v-else class="space-y-4" aria-labelledby="step-install">
+        <h2 id="step-install" class="text-[1.15rem] font-bold text-papier">{{ t("setup.install.title") }}</h2>
         <ol role="status" aria-live="polite" class="space-y-2">
           <li v-for="(p, i) in PHASES" :key="p" class="flex items-center gap-3">
             <span class="grid h-6 w-6 place-items-center rounded-full text-[0.85rem] font-bold"
