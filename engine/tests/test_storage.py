@@ -167,3 +167,36 @@ def test_the_engine_box_is_offered_only_for_the_engine_installed_by_the_appimage
     monkeypatch.setattr(storage.sys, "prefix", str(tmp_path / "elsewhere" / ".venv"))
     assert storage.installed_engine() is None
     assert "engine" not in {g["id"] for g in storage.erase_plan({}, [], storage.installed_engine())}
+
+
+def _hf_cache(tmp_path):
+    """A huggingface_hub 2.x cache: each model's blobs are links to the shared store hub/blobs/<shard>/<hash>."""
+    hub = tmp_path / "hub"
+    (hub / "blobs" / "aa").mkdir(parents=True)
+    weights = hub / "blobs" / "aa" / "aaweights"
+    weights.write_bytes(b"w" * 5000)  # ours only
+    shared = hub / "blobs" / "aa" / "aashared"
+    shared.write_bytes(b"s" * 700)  # also linked by another model (deduplicated)
+    outside = tmp_path / "victim.txt"
+    outside.write_text("not in the store")
+    ours, theirs = hub / "models--geolocal--StreetCLIP", hub / "models--other--model"
+    for model, links in ((ours, {"w": weights, "s": shared, "evil": outside}), (theirs, {"s": shared})):
+        (model / "blobs").mkdir(parents=True)
+        (model / "blobs" / "config").write_bytes(b"c" * 10)
+        for name, target in links.items():
+            (model / "blobs" / name).symlink_to(target)
+    return hub, ours, theirs, weights, shared, outside
+
+
+def test_the_models_size_counts_their_shared_weights(tmp_path):
+    hub, ours, *_ = _hf_cache(tmp_path)
+    assert storage.model_size(ours) == 10 + 5000 + 700  # not 10: the weights live in the shared store
+
+
+def test_erasing_the_models_frees_their_shared_weights_but_never_others(tmp_path):
+    hub, ours, theirs, weights, shared, outside = _hf_cache(tmp_path)
+    freed = storage.erase({}, [ours], True, [])
+    assert not ours.exists() and not weights.exists()  # our weights are really gone
+    assert shared.exists() and theirs.exists()  # still used by the other model
+    assert outside.exists()  # a link out of the store is never followed
+    assert freed == 10 + 5000

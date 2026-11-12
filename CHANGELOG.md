@@ -7,6 +7,14 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- "Erase everything" with the models box left their weights on the disk (1.7 GB for StreetCLIP) and showed their
+  size as a few MB: the recent Hugging Face library keeps them in a shared store, which is now counted and emptied
+  (never a file another program still uses).
+- After uninstalling from "Erase everything", the storage list no longer shows the sizes measured before.
+- The help of the cache size no longer announces features that do not exist.
+
 ## [0.2.4] - 2026-11-12
 
 ### Added

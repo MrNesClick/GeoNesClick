@@ -82,8 +82,9 @@ async function clear(item: Item) {
     <p class="text-[0.85rem] text-courbe">
       {{ t("storage.summary", { total: size(total), growing: size(growing), max: t("unit.mb", { n: num(props.maxMb) }) }) }}
     </p>
-    <p v-if="!items" class="text-courbe">{{ t("storage.measuring") }}</p>
-    <ul v-else class="space-y-3">
+    <p v-if="!items && !engine.uninstalled" class="text-courbe">{{ t("storage.measuring") }}</p>
+    <!-- Once uninstalled, the sizes measured before are wrong: only the uninstall message stays. -->
+    <ul v-else-if="!engine.uninstalled" class="space-y-3">
       <li v-for="item in items" :key="item.id" class="rounded-md border border-courbe-fonce/70 px-3 py-2">
         <div class="flex items-baseline gap-3">
           <p class="min-w-0 flex-1 text-papier">{{ item.label }}</p>

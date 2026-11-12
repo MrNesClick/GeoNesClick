@@ -535,7 +535,7 @@
   "setting.dataset.max_confusions": "Confusions affichées (0 = aucune)",
   "group.storage": "Stockage",
   "setting.storage.max_cache_mb": "Taille maximale des caches qui grossissent (Mo)",
-  "setting.storage.max_cache_mb.hint": "Villages des pays rencontrés (plus tard : rues et recherches de rues). Le socle ne part jamais tout seul.",
+  "setting.storage.max_cache_mb.hint": "Villages des pays rencontrés. Le socle ne part jamais tout seul.",
   "group.engine": "Moteur",
   "setting.debug.enabled": "Mode débogage",
   "setting.debug.enabled.hint": "Garde un journal de chaque analyse (pays, zones, ce que l'IA a lu) à côté de sa capture, pour relire une manche après coup.",

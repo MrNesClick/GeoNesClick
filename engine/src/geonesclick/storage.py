@@ -166,6 +166,26 @@ def model_dirs(hub_cache: Path, model_ids: Iterable[str]) -> list[Path]:
     return out
 
 
+def _shared_blobs(model_dir: Path) -> set[Path]:
+    """The files of the shared store (hub/blobs, huggingface_hub 2.x) that the model's blobs are links to: the
+    weights themselves (StreetCLIP: 1.7 GB), while the model's folder only holds links and small files. Only files
+    inside that store are followed."""
+    store = (model_dir.parent / "blobs").resolve()
+    blobs = model_dir / "blobs"
+    out = set()
+    for link in (blobs.iterdir() if blobs.is_dir() else ()):
+        if link.is_symlink():
+            target = link.resolve()
+            if target.is_file() and target.is_relative_to(store):
+                out.add(target)
+    return out
+
+
+def model_size(model_dir: Path) -> int:
+    """What the model takes on the disk, its shared weights included."""
+    return dir_size(model_dir) + size_of(_shared_blobs(model_dir))
+
+
 def dir_size(path: Path) -> int:
     return size_of(p for p in path.rglob("*") if p.is_file() and not p.is_symlink())
 
@@ -187,7 +207,7 @@ def erase_plan(groups: dict[str, list[Path]], models: list[Path], engine: Path |
             "precious": key == "dataset",
             "optional": False} for key, files in groups.items()]
     out.append({"id": "models", "label": t("storage.group.models"), "files": len(models),
-                "size": sum(dir_size(m) for m in models), "precious": False, "optional": True})
+                "size": sum(model_size(m) for m in models), "precious": False, "optional": True})
     if engine is not None:
         out.append({"id": "engine", "label": t("storage.group.engine"), "files": 1, "size": dir_size(engine),
                     "precious": False, "optional": True})
@@ -218,9 +238,20 @@ def erase(groups: dict[str, list[Path]], models: list[Path], with_models: bool, 
     """Deletes the listed files (and, if asked, our model folders); then the app's emptied folders."""
     freed = sum(remove(files) for files in groups.values())
     if with_models:
+        shared = set().union(*(_shared_blobs(m) for m in models))
         for path in models:
             freed += dir_size(path)
             shutil.rmtree(path, ignore_errors=True)
+        # The shared weights go too, unless another model of the cache (other software's) still links to them.
+        hubs = {m.parent for m in models}
+        still_used = {link.resolve() for hub in hubs for link in hub.glob("*--*/blobs/*") if link.is_symlink()}
+        for blob in shared - still_used:
+            freed += blob.stat().st_size
+            blob.unlink(missing_ok=True)
+            try:
+                blob.parent.rmdir()  # its shard folder, if now empty
+            except OSError:
+                pass
     for folder in sorted(empty_dirs, key=lambda p: -len(p.parts)):  # deepest first
         try:
             folder.rmdir()  # only if it is empty: an unknown file keeps it

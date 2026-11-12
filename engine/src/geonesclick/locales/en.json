@@ -535,7 +535,7 @@
   "setting.dataset.max_confusions": "Confusions shown (0 = none)",
   "group.storage": "Storage",
   "setting.storage.max_cache_mb": "Maximum size of the growing caches (MB)",
-  "setting.storage.max_cache_mb.hint": "Villages of the countries met (later: streets and street searches). The base never goes on its own.",
+  "setting.storage.max_cache_mb.hint": "Villages of the countries met. The base never goes on its own.",
   "group.engine": "Engine",
   "setting.debug.enabled": "Debug mode",
   "setting.debug.enabled.hint": "Keeps a log of each analysis (countries, zones, what the AI read) next to its capture, to review a round afterwards.",
