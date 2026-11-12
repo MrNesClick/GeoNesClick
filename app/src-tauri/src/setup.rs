@@ -103,29 +103,53 @@ fn in_lib_dirs(rel: &str) -> bool {
     LIB_DIRS.iter().any(|d| Path::new(d).join(rel).exists())
 }
 
-/// The system's package manager, for the command shown when a component is missing (and the Install button: apt).
+/// The system's package manager: the command shown when a component is missing, and the Install button.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum PackageManager {
     Apt,
     Dnf,
     Pacman,
+    Zypper,
+}
+
+impl PackageManager {
+    const ALL: [PackageManager; 4] = [Self::Apt, Self::Dnf, Self::Pacman, Self::Zypper];
+
+    fn binary(self) -> &'static str {
+        match self {
+            Self::Apt => "/usr/bin/apt-get",
+            Self::Dnf => "/usr/bin/dnf",
+            Self::Pacman => "/usr/bin/pacman",
+            Self::Zypper => "/usr/bin/zypper",
+        }
+    }
+
+    /// Arguments of an install without questions; the packages follow.
+    fn install_args(self) -> &'static [&'static str] {
+        match self {
+            // A fresh Ubuntu often runs its automatic updates: wait for apt's lock instead of failing at once.
+            Self::Apt => &["-o", "DPkg::Lock::Timeout=300", "install", "-y"],
+            Self::Dnf => &["install", "-y"],
+            Self::Pacman => &["-S", "--needed", "--noconfirm"],
+            Self::Zypper => &["--non-interactive", "install"],
+        }
+    }
 }
 
 fn package_manager() -> Option<PackageManager> {
-    [("/usr/bin/apt-get", PackageManager::Apt), ("/usr/bin/dnf", PackageManager::Dnf), ("/usr/bin/pacman", PackageManager::Pacman)]
-        .into_iter()
-        .find_map(|(bin, pm)| Path::new(bin).exists().then_some(pm))
+    PackageManager::ALL.into_iter().find(|pm| Path::new(pm.binary()).exists())
 }
 
-/// The package that ships a checked file, for each package manager: [apt, dnf, pacman]. Looked up in each
-/// distribution's repositories on 2026-11-12 (Ubuntu 24.04, Fedora 45, Arch): which package owns the file. Without a
-/// known package manager, Debian's name is shown as a hint.
-fn package(pm: Option<PackageManager>, names: [&'static str; 3]) -> &'static str {
+/// The package that ships a checked file, for each package manager: [apt, dnf, pacman, zypper]. Looked up in each
+/// distribution's repositories on 2026-11-12 (Ubuntu 24.04, Fedora 45, Arch, openSUSE Tumbleweed): which package owns
+/// the file. Without a known package manager, Debian's name is shown as a hint.
+fn package(pm: Option<PackageManager>, names: [&'static str; 4]) -> &'static str {
     match pm {
+        Some(PackageManager::Apt) | None => names[0],
         Some(PackageManager::Dnf) => names[1],
         Some(PackageManager::Pacman) => names[2],
-        Some(PackageManager::Apt) | None => names[0],
+        Some(PackageManager::Zypper) => names[3],
     }
 }
 
@@ -137,52 +161,53 @@ fn system_checks(pm: Option<PackageManager>) -> Vec<Check> {
     let portal_gnome = ["/usr/libexec", "/usr/lib"].iter().any(|d| Path::new(d).join("xdg-desktop-portal-gnome").exists());
     let check = |label, ok, names| Check { label, ok, package: package(pm, names) };
     vec![
-        check("setup.check.portal", portal, ["xdg-desktop-portal"; 3]),
-        check("setup.check.portal_gnome", portal_gnome, ["xdg-desktop-portal-gnome"; 3]),
+        check("setup.check.portal", portal, ["xdg-desktop-portal"; 4]),
+        check("setup.check.portal_gnome", portal_gnome, ["xdg-desktop-portal-gnome"; 4]),
         check(
             "setup.check.gst_typelib",
             in_lib_dirs("girepository-1.0/Gst-1.0.typelib"),
-            ["gir1.2-gstreamer-1.0", "gstreamer1", "gstreamer"],
+            ["gir1.2-gstreamer-1.0", "gstreamer1", "gstreamer", "typelib-1_0-Gst-1_0"],
         ),
         check(
             "setup.check.gst_convert",
             in_lib_dirs("gstreamer-1.0/libgstapp.so")
                 && (in_lib_dirs("gstreamer-1.0/libgstvideoconvertscale.so") || in_lib_dirs("gstreamer-1.0/libgstvideoconvert.so")),
-            ["gstreamer1.0-plugins-base", "gstreamer1-plugins-base", "gst-plugins-base-libs"],
+            ["gstreamer1.0-plugins-base", "gstreamer1-plugins-base", "gst-plugins-base-libs", "gstreamer-plugins-base"],
         ),
         check(
             "setup.check.gst_pipewire",
             in_lib_dirs("gstreamer-1.0/libgstpipewire.so"),
-            ["gstreamer1.0-pipewire", "pipewire-gstreamer", "gst-plugin-pipewire"],
+            ["gstreamer1.0-pipewire", "pipewire-gstreamer", "gst-plugin-pipewire", "gstreamer-plugin-pipewire"],
         ),
-        check("setup.check.gobject", in_lib_dirs("libgirepository-2.0.so.0"), ["libgirepository-2.0-0", "glib2", "glib2"]),
-        check("setup.check.cairo", in_lib_dirs("libcairo.so.2"), ["libcairo2", "cairo", "cairo"]),
+        check(
+            "setup.check.gobject",
+            in_lib_dirs("libgirepository-2.0.so.0"),
+            ["libgirepository-2.0-0", "glib2", "glib2", "libgirepository-2_0-0"],
+        ),
+        check("setup.check.cairo", in_lib_dirs("libcairo.so.2"), ["libcairo2", "cairo", "cairo", "libcairo2"]),
     ]
 }
 
 const PKEXEC: &str = "/usr/bin/pkexec";
-const APT_GET: &str = "/usr/bin/apt-get";
 
-/// Installs the missing system packages (system_checks) with apt-get, as root through pkexec: the system asks for the
-/// password in its own window. The list comes from the checks, never from the UI. Debian-family systems only (apt);
-/// elsewhere the UI keeps the command, to adapt. Decided with the user on 2026-11-12, after a clean Ubuntu 24.04
-/// lacked libgirepository-2.0-0 (the "sudo apt" command stays shown).
+/// Installs the missing system packages (system_checks) with the system's package manager, as root through pkexec:
+/// the system asks for the password in its own window. The list comes from the checks, never from the UI. Decided
+/// with the user on 2026-11-12, after a clean Ubuntu 24.04 lacked libgirepository-2.0-0: apt, dnf, pacman and zypper
+/// (only apt tested for real); the command stays shown.
 #[tauri::command]
 pub async fn setup_system_install() -> Result<(), String> {
-    let packages: Vec<&'static str> =
-        system_checks(Some(PackageManager::Apt)).into_iter().filter(|c| !c.ok).map(|c| c.package).collect();
+    let Some(pm) = package_manager().filter(|_| Path::new(PKEXEC).exists()) else {
+        return Err(i18n::tr("setup.system.cannot_install", &[]));
+    };
+    let packages: Vec<&'static str> = system_checks(Some(pm)).into_iter().filter(|c| !c.ok).map(|c| c.package).collect();
     if packages.is_empty() {
         return Ok(());
     }
-    if !Path::new(PKEXEC).exists() || !Path::new(APT_GET).exists() {
-        return Err(i18n::tr("setup.system.cannot_install", &[]));
-    }
-    // Waits for the password and for apt: off the UI thread.
+    // Waits for the password and for the package manager: off the UI thread.
     let out = tauri::async_runtime::spawn_blocking(move || {
         host_command(PKEXEC)
-            .arg(APT_GET)
-            // A fresh Ubuntu often runs its automatic updates: wait for apt's lock instead of failing at once.
-            .args(["-o", "DPkg::Lock::Timeout=300", "install", "-y"])
+            .arg(pm.binary())
+            .args(pm.install_args())
             .args(&packages)
             .stdin(Stdio::null())
             .output()
@@ -190,12 +215,12 @@ pub async fn setup_system_install() -> Result<(), String> {
     .await
     .map_err(|e| e.to_string())?
     .map_err(|e| i18n::tr("setup.system.install_failed", &[("error", &e.to_string())]))?;
-    apt_outcome(&i18n::current(), out.status.code(), &String::from_utf8_lossy(&out.stderr))
+    install_outcome(&i18n::current(), out.status.code(), &String::from_utf8_lossy(&out.stderr))
 }
 
-/// What pkexec + apt-get ended with: 126 / 127 are pkexec's (password dialog dismissed, not authorised), any other
-/// failure is apt's, explained by its last error line (in `lang`).
-fn apt_outcome(lang: &str, code: Option<i32>, stderr: &str) -> Result<(), String> {
+/// What pkexec + the package manager ended with: 126 / 127 are pkexec's (password dialog dismissed, not authorised),
+/// any other failure is the package manager's, explained by its last error line (in `lang`).
+fn install_outcome(lang: &str, code: Option<i32>, stderr: &str) -> Result<(), String> {
     match code {
         Some(0) => Ok(()),
         Some(126 | 127) => Err(i18n::t(lang, "setup.system.install_cancelled", &[])),
@@ -505,23 +530,27 @@ mod tests {
         let common = ["xdg-desktop-portal", "xdg-desktop-portal-gnome"];
         assert_eq!(names(Some(PackageManager::Dnf))[2..], ["gstreamer1", "gstreamer1-plugins-base", "pipewire-gstreamer", "glib2", "cairo"]);
         assert_eq!(names(Some(PackageManager::Pacman))[2..], ["gstreamer", "gst-plugins-base-libs", "gst-plugin-pipewire", "glib2", "cairo"]);
+        assert_eq!(
+            names(Some(PackageManager::Zypper))[2..],
+            ["typelib-1_0-Gst-1_0", "gstreamer-plugins-base", "gstreamer-plugin-pipewire", "libgirepository-2_0-0", "libcairo2"]
+        );
         assert_eq!(names(None), names(Some(PackageManager::Apt)));
-        for pm in [None, Some(PackageManager::Dnf), Some(PackageManager::Pacman)] {
+        for pm in [None, Some(PackageManager::Dnf), Some(PackageManager::Pacman), Some(PackageManager::Zypper)] {
             assert_eq!(names(pm)[..2], common);
         }
     }
 
     #[test]
     fn the_system_install_tells_a_refused_password_from_an_apt_failure() {
-        assert_eq!(apt_outcome("en", Some(0), ""), Ok(()));
+        assert_eq!(install_outcome("en", Some(0), ""), Ok(()));
         let cancelled = i18n::t("en", "setup.system.install_cancelled", &[]);
-        assert_eq!(apt_outcome("en", Some(126), ""), Err(cancelled.clone()));
-        assert_eq!(apt_outcome("en", Some(127), "Error executing command as another user"), Err(cancelled));
-        let failed = apt_outcome("fr", Some(100), "Reading package lists...\nE: Unable to locate package libgirepository-2.0-0\n\n")
+        assert_eq!(install_outcome("en", Some(126), ""), Err(cancelled.clone()));
+        assert_eq!(install_outcome("en", Some(127), "Error executing command as another user"), Err(cancelled));
+        let failed = install_outcome("fr", Some(100), "Reading package lists...\nE: Unable to locate package libgirepository-2.0-0\n\n")
             .unwrap_err();
         assert!(failed.ends_with("E: Unable to locate package libgirepository-2.0-0"), "{failed}");
         assert!(failed.starts_with("L'installation des composants a échoué"), "{failed}");
-        assert!(apt_outcome("en", None, "").unwrap_err().ends_with('?'));
+        assert!(install_outcome("en", None, "").unwrap_err().ends_with('?'));
     }
 
     fn lines(text: &str) -> Vec<String> {

@@ -25,8 +25,8 @@ interface Check { label: Key; ok: boolean; package: string }
 interface Status {
   bundled: boolean; needed: boolean; version: string | null; installed: string | null; engine_ready: boolean; gpu: boolean;
   checks: Check[]; downloads: { download: Download[] }; packages_cuda: Package[]; packages_cpu: Package[];
-  /** setup.rs, package_manager: the command to show; the Install button needs apt. */
-  package_manager: "apt" | "dnf" | "pacman" | null;
+  /** setup.rs, package_manager: the command to show and the Install button; none when unknown. */
+  package_manager: "apt" | "dnf" | "pacman" | "zypper" | null;
 }
 
 const emit = defineEmits<{ done: [] }>();
@@ -86,14 +86,14 @@ const sent = (d: Download) => {
 const optional = computed(() => all.value.filter((x) => x.when === "option" || x.when === "on_demand"));
 const continuous = computed(() => all.value.filter((x) => x.when === "continuous"));
 const missing = computed(() => (status.value?.checks ?? []).filter((c) => !c.ok));
-const INSTALL = { apt: "sudo apt install", dnf: "sudo dnf install", pacman: "sudo pacman -S --needed" } as const;
+const INSTALL = {
+  apt: "sudo apt install", dnf: "sudo dnf install", pacman: "sudo pacman -S --needed", zypper: "sudo zypper install",
+} as const;
 const packageManager = computed(() => status.value?.package_manager ?? null);
 // No command for an unknown package manager: the packages' names (Debian's) are only a hint there.
 const installCommand = computed(() =>
   packageManager.value ? `${INSTALL[packageManager.value]} ${missing.value.map((c) => c.package).join(" ")}` : "");
-const missingText = computed(() =>
-  packageManager.value === "apt" ? t("setup.system.missing")
-    : packageManager.value ? t("setup.system.missing_command") : t("setup.system.missing_unknown"));
+const missingText = computed(() => t(packageManager.value ? "setup.system.missing" : "setup.system.missing_unknown"));
 // The missing packages installed from here (setup.rs, setup_system_install: pkexec + apt-get), then checked again.
 const systemInstalling = ref(false);
 const systemError = ref("");
@@ -463,7 +463,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling"
                 @click="step = 'components'">{{ t("setup.skip") }}</button>
         <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling" @click="load">{{ t("setup.recheck") }}</button>
-        <button v-if="missing.length && packageManager === 'apt'" type="button" :class="primary" :disabled="systemInstalling"
+        <button v-if="missing.length && packageManager" type="button" :class="primary" :disabled="systemInstalling"
                 @click="installSystem">
           {{ systemInstalling ? t("setup.system.installing") : t("setup.system.install") }}
         </button>
