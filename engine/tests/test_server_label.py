@@ -70,8 +70,8 @@ def test_confusions_come_with_the_metas_that_separate_them(setup):
     res = client.post("/label", json={"id": CAPTURE_ID, "country": "RS", "guessed": "HR"}, headers=ORIGIN)
     [confusion] = res.json()["progress"]["confusions"]
     assert (confusion["country"], confusion["guessed"], confusion["count"]) == ("RS", "HR", 1)
-    langue = next(lf for lf in confusion["lookfor"] if lf["category"] == "langue")
-    assert any("cyrillique" in h["hint"] for h in langue["hints"])
+    language = next(lf for lf in confusion["lookfor"] if lf["category"] == "language")
+    assert any("Cyrillic" in h["hint"] for h in language["hints"])
 
 
 def test_confusions_can_be_hidden(setup):

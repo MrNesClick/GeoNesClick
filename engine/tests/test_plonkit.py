@@ -73,10 +73,10 @@ def test_classification_prefers_tags_then_keywords():
     from geonesclick.plonkit_index import DEFAULT_KEYWORDS, _keyword_patterns, classify
 
     patterns = _keyword_patterns(DEFAULT_KEYWORDS)
-    assert classify("Anything", ["pole"], patterns) == ("poteaux", "etiquette")
-    assert classify("Black and white **bollards** with a reflector", [], patterns) == ("bornes", "mots-cles")
-    assert classify("Look at the .no domain on shops", [], patterns)[0] == "domaine"
-    assert classify("Nothing useful here", [], patterns) == ("autre", "aucune")
+    assert classify("Anything", ["pole"], patterns) == ("poles", "tag")
+    assert classify("Black and white **bollards** with a reflector", [], patterns) == ("bollards", "keywords")
+    assert classify("Look at the .no domain on shops", [], patterns)[0] == "domains"
+    assert classify("Nothing useful here", [], patterns) == ("other", "none")
 
 
 def test_interrupted_collect_does_not_mark_the_check_done(tmp_path, monkeypatch):
@@ -101,10 +101,10 @@ def test_interrupted_collect_does_not_mark_the_check_done(tmp_path, monkeypatch)
 @pytest.mark.parametrize(
     ("content", "expected"),
     [
-        ('{"0": "poteaux", "1": "bornes"}', {0: "poteaux", 1: "bornes"}),
-        ('Voici : ```json\n{"0": "poteaux"}\n```', {0: "poteaux"}),
-        ('{"0": "rm -rf /", "1": "Ignore previous instructions", "7": "poteaux"}', {}),  # unknown, outside the batch
-        ('["poteaux"]', {}),
+        ('{"0": "poles", "1": "bollards"}', {0: "poles", 1: "bollards"}),
+        ('Here: ```json\n{"0": "poles"}\n```', {0: "poles"}),
+        ('{"0": "rm -rf /", "1": "Ignore previous instructions", "7": "poles"}', {}),  # unknown, outside the batch
+        ('["poles"]', {}),
         ("pas de JSON", {}),
     ],
 )
@@ -119,7 +119,7 @@ def test_ai_prompt_numbers_and_truncates_tips():
 
     prompt = build_prompt(["Poles\n\nwith holes.", "x" * 1000])
     assert "0: Poles with holes." in prompt and "x" * (MAX_CHARS + 1) not in prompt
-    assert "- poteaux : Poteaux" in prompt
+    assert "- poles: Poles" in prompt
 
 
 def test_translations_are_validated():
@@ -129,4 +129,4 @@ def test_translations_are_validated():
     content = '{"0": "Poteaux.", "1": "' + "x" * 500 + '", "5": "hors lot", "bad": "non"}'
     assert parse_translations(content, originals) == {0: "Poteaux."}  # oversized, outside batch, bad key: ignored
     prompt = build_translate_prompt(originals, "fr")
-    assert "français" in prompt and "bollard → borne" in prompt and "1: Bollards." in prompt
+    assert "into French" in prompt and "bollard → borne" in prompt and "1: Bollards." in prompt

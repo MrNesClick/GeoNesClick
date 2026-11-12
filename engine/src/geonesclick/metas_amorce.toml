@@ -1,280 +1,333 @@
-# Metas seed: only well-established facts (alphabets, driving side, colour of the
-# centre lines, domains). Written by the assistant, NOT checked against a source: verified = false.
-# It will be completed or replaced by a real metas source, and your own metas
-# (~/.config/geonesclick/mes-metas.toml) always come first.
+# Metas seed: only well-established facts (alphabets, driving side, colour of the centre lines, domains). Written by
+# the assistant, NOT checked against a source: verified = false. It will be completed or replaced by a real metas
+# source, and your own metas (~/.config/geonesclick/my-metas.toml) always come first.
 #
-# Format: [[meta]] category = <category>, countries = [2-letter ISO codes], hint = "<clue>"
-#          look = "<what to observe, without naming a country>" (optional: otherwise, the category's instruction)
-# Categories: langue, conduite, marquage, poteaux, bornes, plaques, panneaux, domaine, voiture,
-#              vegetation, architecture, autre
+# Format: [[meta]] id = <stable id, used by your verdicts>, category = <category>, countries = [2-letter ISO codes],
+#          hint = "<clue>", look = "<what to observe, without naming a country>" (optional: otherwise, the category's
+#          instruction). The texts are the English reference; their translations are in the catalogs
+#          (locales/<lang>.json: seed.<id>.hint and seed.<id>.look); a text without a translation (a domain name) is the
+#          same in every language.
+# Categories: language, driving, road_lines, poles, bollards, plates, signs, domains, car, vegetation, architecture,
+#             other
 
-# --- Language and alphabet -----------------------------------------------------------------------
+# --- Language and alphabet ------------------------------------------------------------------------
 
 [[meta]]
-category = "langue"
+id = "language_se"
+category = "language"
 countries = ["SE"]
-hint = "Suédois : å, ä, ö ; « väg », « gatan »"
+hint = "Swedish: å, ä, ö; “väg”, “gatan”"
 
 [[meta]]
-category = "langue"
+id = "language_no"
+category = "language"
 countries = ["NO"]
-hint = "Norvégien : æ, ø, å ; « vei » ou « veg », « gate »"
+hint = "Norwegian: æ, ø, å; “vei” or “veg”, “gate”"
 
 [[meta]]
-category = "langue"
+id = "language_dk"
+category = "language"
 countries = ["DK"]
-hint = "Danois : æ, ø, å ; « vej », « gade »"
+hint = "Danish: æ, ø, å; “vej”, “gade”"
 
 [[meta]]
-category = "langue"
+id = "language_fi"
+category = "language"
 countries = ["FI"]
-hint = "Finnois : ä, ö, lettres doublées (« katu », « tie ») ; parfois bilingue avec le suédois"
+hint = "Finnish: ä, ö, doubled letters (“katu”, “tie”); sometimes bilingual with Swedish"
 
 [[meta]]
-category = "langue"
+id = "language_ee"
+category = "language"
 countries = ["EE"]
-hint = "Estonien : õ (propre à l'estonien dans la région), ä, ö, ü ; « tee », « tänav »"
+hint = "Estonian: õ (specific to Estonian in the region), ä, ö, ü; “tee”, “tänav”"
 
 [[meta]]
-category = "langue"
+id = "language_lv"
+category = "language"
 countries = ["LV"]
-hint = "Letton : voyelles longues à macron (ā, ē, ī, ū), ļ, ņ, ķ, ģ ; « iela »"
+hint = "Latvian: long vowels with a macron (ā, ē, ī, ū), ļ, ņ, ķ, ģ; “iela”"
 
 [[meta]]
-category = "langue"
+id = "language_lt"
+category = "language"
 countries = ["LT"]
-hint = "Lituanien : ą, ę, ė, į, ų, ū ; « gatvė »"
+hint = "Lithuanian: ą, ę, ė, į, ų, ū; “gatvė”"
 
 [[meta]]
-category = "langue"
+id = "language_pl"
+category = "language"
 countries = ["PL"]
-hint = "Polonais : ł, ą, ę, ś, ź, ż, ń ; « ulica » (ul.)"
+hint = "Polish: ł, ą, ę, ś, ź, ż, ń; “ulica” (ul.)"
 
 [[meta]]
-category = "langue"
+id = "language_cz"
+category = "language"
 countries = ["CZ"]
-hint = "Tchèque : ř, ů, ě ; « ulice »"
+hint = "Czech: ř, ů, ě; “ulice”"
 
 [[meta]]
-category = "langue"
+id = "language_sk"
+category = "language"
 countries = ["SK"]
-hint = "Slovaque : ä, ľ, ĺ, ŕ, ô ; « ulica »"
+hint = "Slovak: ä, ľ, ĺ, ŕ, ô; “ulica”"
 
 [[meta]]
-category = "langue"
+id = "language_hu"
+category = "language"
 countries = ["HU"]
-hint = "Hongrois : ő, ű (doubles accents aigus) ; « utca »"
+hint = "Hungarian: ő, ű (double acute accents); “utca”"
 
 [[meta]]
-category = "langue"
+id = "language_si"
+category = "language"
 countries = ["SI"]
-hint = "Slovène : č, š, ž mais ni ć ni đ ; « cesta », « ulica »"
+hint = "Slovenian: č, š, ž but neither ć nor đ; “cesta”, “ulica”"
 
 [[meta]]
-category = "langue"
+id = "language_hr"
+category = "language"
 countries = ["HR"]
-hint = "Croate : alphabet latin seul, avec č, ć, đ, š, ž"
+hint = "Croatian: Latin alphabet only, with č, ć, đ, š, ž"
 
 [[meta]]
-category = "langue"
+id = "language_rs"
+category = "language"
 countries = ["RS"]
-hint = "Serbe : cyrillique, souvent accompagné du latin (đ, ć, č)"
+hint = "Serbian: Cyrillic, often with Latin (đ, ć, č)"
 
 [[meta]]
-category = "langue"
+id = "language_me_mk"
+category = "language"
 countries = ["ME", "MK"]
-hint = "Cyrillique et latin possibles (comme en Serbie)"
+hint = "Cyrillic and Latin possible (as in Serbia)"
 
 [[meta]]
-category = "langue"
+id = "language_bg"
+category = "language"
 countries = ["BG"]
-hint = "Bulgare : cyrillique, avec un ъ très fréquent"
+hint = "Bulgarian: Cyrillic, with a very frequent ъ"
 
 [[meta]]
-category = "langue"
+id = "language_ua"
+category = "language"
 countries = ["UA"]
-hint = "Ukrainien : cyrillique avec і, ї, є"
+hint = "Ukrainian: Cyrillic with і, ї, є"
 
 [[meta]]
-category = "langue"
+id = "language_ru"
+category = "language"
 countries = ["RU"]
-hint = "Russe : cyrillique avec ы, э"
+hint = "Russian: Cyrillic with ы, э"
 
 [[meta]]
-category = "langue"
+id = "language_ro"
+category = "language"
 countries = ["RO"]
-hint = "Roumain : ă, â, î, ș, ț ; « strada »"
+hint = "Romanian: ă, â, î, ș, ț; “strada”"
 
 [[meta]]
-category = "langue"
+id = "language_de_at"
+category = "language"
 countries = ["DE", "AT"]
-hint = "Allemand avec ß ; « Straße »"
+hint = "German with ß; “Straße”"
 
 [[meta]]
-category = "langue"
+id = "language_ch"
+category = "language"
 countries = ["CH"]
-hint = "Allemand sans ß, français ou italien selon la région"
+hint = "German without ß, French or Italian depending on the region"
 
 [[meta]]
-category = "langue"
+id = "language_nl"
+category = "language"
 countries = ["NL"]
-hint = "Néerlandais : « ij », « straat », « weg »"
+hint = "Dutch: “ij”, “straat”, “weg”"
 
 [[meta]]
-category = "langue"
+id = "language_fr"
+category = "language"
 countries = ["FR"]
-hint = "Français : « rue », « avenue », é, è, à"
+hint = "French: “rue”, “avenue”, é, è, à"
 
 [[meta]]
-category = "langue"
+id = "language_be"
+category = "language"
 countries = ["BE"]
-hint = "Français ou néerlandais selon la région"
+hint = "French or Dutch depending on the region"
 
 [[meta]]
-category = "langue"
+id = "language_es"
+category = "language"
 countries = ["ES"]
-hint = "Espagnol : ñ ; « calle » (parfois catalan, basque ou galicien)"
+hint = "Spanish: ñ; “calle” (sometimes Catalan, Basque or Galician)"
 
 [[meta]]
-category = "langue"
+id = "language_pt"
+category = "language"
 countries = ["PT"]
-hint = "Portugais : ã, õ, ç ; « rua »"
+hint = "Portuguese: ã, õ, ç; “rua”"
 
 [[meta]]
-category = "langue"
+id = "language_it"
+category = "language"
 countries = ["IT"]
-hint = "Italien : « via », « strada »"
+hint = "Italian: “via”, “strada”"
 
 [[meta]]
-category = "langue"
+id = "language_gr"
+category = "language"
 countries = ["GR"]
-hint = "Alphabet grec"
+hint = "Greek alphabet"
 
 [[meta]]
-category = "langue"
+id = "language_tr"
+category = "language"
 countries = ["TR"]
-hint = "Turc : ı (i sans point), ğ, ş, ç ; « cadde », « sokak »"
+hint = "Turkish: ı (dotless i), ğ, ş, ç; “cadde”, “sokak”"
 
-# --- Driving side --------------------------------------------------------------------------------
+# --- Driving side ---------------------------------------------------------------------------------
 
 [[meta]]
-category = "conduite"
+id = "driving_left"
+category = "driving"
 countries = ["GB", "IE", "MT", "JP", "AU", "NZ", "ZA", "IN", "TH", "ID", "MY", "SG", "KE", "UG",
              "BD", "LK", "BT", "BW", "LS", "SZ"]
-hint = "Circulation à gauche"
+hint = "Driving on the left"
 
 [[meta]]
-category = "conduite"
+id = "driving_right"
+category = "driving"
 countries = ["AL", "AD", "AR", "AT", "BE", "BO", "BR", "BG", "KH", "CA", "CL", "CO", "HR", "CZ",
              "DK", "DO", "EC", "EE", "FI", "FR", "DE", "GH", "GR", "GT", "HU", "IS", "IL", "IT",
              "JO", "KG", "LV", "LT", "LU", "MX", "MN", "ME", "NL", "NG", "MK", "NO", "PA", "PE",
              "PH", "PL", "PT", "RO", "RU", "RW", "SN", "RS", "SK", "SI", "KR", "ES", "SE", "CH",
              "TW", "TN", "TR", "UA", "AE", "US", "UY", "VN"]
-hint = "Circulation à droite"
+hint = "Driving on the right"
 
-# --- Road markings -------------------------------------------------------------------------------
+# --- Road markings --------------------------------------------------------------------------------
 
 [[meta]]
-category = "marquage"
+id = "road_lines_yellow"
+category = "road_lines"
 countries = ["NO", "FI", "US", "CA"]
-hint = "Ligne centrale jaune"
-look = "la couleur de la ligne centrale"
+hint = "Yellow centre line"
+look = "the colour of the centre line"
 
 [[meta]]
-category = "marquage"
+id = "road_lines_white"
+category = "road_lines"
 countries = ["SE", "DK", "DE", "AT", "CH", "FR", "BE", "NL", "LU", "GB", "IE", "ES", "PT", "IT",
              "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "RO", "BG", "EE", "LV", "LT", "UA", "RU"]
-hint = "Ligne centrale blanche"
-look = "la couleur de la ligne centrale"
+hint = "White centre line"
+look = "the colour of the centre line"
 
 # --- Domain names (shop signs, vehicles, billboards) ----------------------------------------------
 
 [[meta]]
-category = "domaine"
+id = "domains_se"
+category = "domains"
 countries = ["SE"]
 hint = ".se"
 
 [[meta]]
-category = "domaine"
+id = "domains_no"
+category = "domains"
 countries = ["NO"]
 hint = ".no"
 
 [[meta]]
-category = "domaine"
+id = "domains_fi"
+category = "domains"
 countries = ["FI"]
 hint = ".fi"
 
 [[meta]]
-category = "domaine"
+id = "domains_ee"
+category = "domains"
 countries = ["EE"]
 hint = ".ee"
 
 [[meta]]
-category = "domaine"
+id = "domains_lv"
+category = "domains"
 countries = ["LV"]
 hint = ".lv"
 
 [[meta]]
-category = "domaine"
+id = "domains_lt"
+category = "domains"
 countries = ["LT"]
 hint = ".lt"
 
 [[meta]]
-category = "domaine"
+id = "domains_pl"
+category = "domains"
 countries = ["PL"]
 hint = ".pl"
 
 [[meta]]
-category = "domaine"
+id = "domains_cz"
+category = "domains"
 countries = ["CZ"]
 hint = ".cz"
 
 [[meta]]
-category = "domaine"
+id = "domains_sk"
+category = "domains"
 countries = ["SK"]
 hint = ".sk"
 
 [[meta]]
-category = "domaine"
+id = "domains_hu"
+category = "domains"
 countries = ["HU"]
 hint = ".hu"
 
 [[meta]]
-category = "domaine"
+id = "domains_si"
+category = "domains"
 countries = ["SI"]
 hint = ".si"
 
 [[meta]]
-category = "domaine"
+id = "domains_hr"
+category = "domains"
 countries = ["HR"]
 hint = ".hr"
 
 [[meta]]
-category = "domaine"
+id = "domains_rs"
+category = "domains"
 countries = ["RS"]
 hint = ".rs"
 
 [[meta]]
-category = "domaine"
+id = "domains_de"
+category = "domains"
 countries = ["DE"]
 hint = ".de"
 
 [[meta]]
-category = "domaine"
+id = "domains_at"
+category = "domains"
 countries = ["AT"]
 hint = ".at"
 
 [[meta]]
-category = "domaine"
+id = "domains_dk"
+category = "domains"
 countries = ["DK"]
 hint = ".dk"
 
 [[meta]]
-category = "domaine"
+id = "domains_ro"
+category = "domains"
 countries = ["RO"]
 hint = ".ro"
 
 [[meta]]
-category = "domaine"
+id = "domains_bg"
+category = "domains"
 countries = ["BG"]
 hint = ".bg"

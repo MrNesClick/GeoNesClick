@@ -147,17 +147,16 @@ likely countries**, weighted by their probabilities: a category that tells the t
 one that tells two outsiders apart.
 
 Sources, from highest to lowest priority:
-1. **Your metas**: `~/.config/geonesclick/mes-metas.toml`, shown as "(your meta)";
-2. **The seed** (*amorce*): about fifty well-established facts (alphabets, driving side, colour of the centre line,
+1. **Your metas**: `~/.config/geonesclick/my-metas.toml`, shown as "(your meta)";
+2. **The seed** (`metas_amorce.toml`): about fifty well-established facts (alphabets, driving side, colour of the centre line,
    domains), written without a verified source, shown as "(seed, to be checked)".
 
-Format (categories, whose keys are in French: `langue` (language), `conduite` (driving side), `marquage` (road
-markings), `poteaux` (poles), `bornes` (bollards), `plaques` (plates), `panneaux` (signs), `domaine` (domain),
-`voiture` (car), `vegetation`, `architecture`, `autre` (other)):
+Format (categories: `language`, `driving`, `road_lines`, `poles`, `bollards`, `plates`, `signs`, `domains`, `car`,
+`vegetation`, `architecture`, `other`):
 
 ```toml
 [[meta]]
-category = "poteaux"
+category = "poles"
 countries = ["HU"]
 hint = "Concrete poles with holes"
 look = "the holes in the poles"   # optional: the spoiler-free instruction
@@ -170,10 +169,14 @@ specific to the category.
 
 An error in this file is reported in the Settings screen, without blocking the coach.
 
-**Check the seed while playing.** Each seed clue shown carries two buttons: **Right** adds a verified copy of it to
-`mes-metas.toml` (it becomes "your meta, verified"), **Wrong** dismisses it (`[[rejected]]` block, with the category
-and the clue's text). The verdicts are appended at the end of the file, without touching the rest: your comments are
-kept. To undo, delete the block.
+**Check the seed while playing.** Each seed clue has a stable id (`id` in `metas_amorce.toml`) and its text in each
+language (catalogs: `seed.<id>.hint`, `seed.<id>.look`). Each seed clue shown carries two buttons: **Right** adds a
+verified copy of it to `my-metas.toml` (`seed = "<id>"`: it becomes "your meta, verified", shown in your language),
+**Wrong** dismisses it (`[[rejected]]` block with `seed = "<id>"`). The verdicts are appended at the end of the file,
+without touching the rest: your comments are kept. To undo, delete the block.
+
+Files written by version 0.1 (`mes-metas.toml`, French category names in `config.toml`, the Plonk It cache) are
+converted once at the first start of the next version (`migrate.py`), each with a `.before-0.2` backup.
 
 ## Plonk It guides
 
@@ -199,7 +202,7 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
 
 - **Translation**: the guides are in English. The displayed tips are translated on demand into the coach's
   language (`[coach] language`, `en` by default = no translation), by the NVIDIA model, with a GeoGuessr
-  glossary (bollard → borne, road line → marquage…). The English shows first; the translations arrive in batches of
+  glossary for the target language (bollard → borne, road line → marquage au sol in French…). The English shows first; the translations arrive in batches of
   3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
   translated immediately. "See the original" lets you compare. Can be turned off (`[plonkit] translate`); model
   configurable (`[plonkit] ai_model`). In practice, on demand is not enough: on 2026-11-07, 31 tips out of 4,060

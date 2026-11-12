@@ -78,3 +78,12 @@ def no_real_shortcuts(monkeypatch):
         raise AssertionError(f"gsettings interdit pendant les tests : {args}")
 
     monkeypatch.setattr(storage, "_gsettings", blocked)
+
+
+@pytest.fixture(autouse=True)
+def english_after_each_test():
+    """A test that starts an engine in French must not leave the next ones in French (the language is global)."""
+    yield
+    from geonesclick import i18n
+
+    i18n.set_language("en")

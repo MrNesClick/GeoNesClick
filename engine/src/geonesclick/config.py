@@ -116,7 +116,7 @@ class MetasConfig(BaseModel):
 
     @property
     def user_path(self) -> Path:
-        return Path(self.user_file).expanduser() if self.user_file else CONFIG_DIR / "mes-metas.toml"
+        return Path(self.user_file).expanduser() if self.user_file else CONFIG_DIR / "my-metas.toml"
 
 
 class PlonkitConfig(BaseModel):

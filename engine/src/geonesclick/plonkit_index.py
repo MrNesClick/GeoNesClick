@@ -7,7 +7,7 @@ a few tenths of a second; the vectors are cached by text hash, so that only thos
 modified tips are recomputed.
 
 Each tip is filed in a metas category: first by its Plonk It tags, then by
-keywords (configurable); "autre" if nothing settles it (category_source = "aucune").
+keywords (configurable); "other" if nothing settles it (category_source = "none").
 """
 
 from __future__ import annotations
@@ -28,25 +28,25 @@ from .plonkit import Tip
 
 # Plonk It tags → metas categories (the other tags, "important", "moving info", do not classify).
 TAG_CATEGORY = {
-    "pole": "poteaux", "bollard": "bornes", "guardrail": "bornes", "chevron/sign": "panneaux",
-    "roadline": "marquage", "license plates": "plaques", "language": "langue", "coverage": "voiture",
+    "pole": "poles", "bollard": "bollards", "guardrail": "bollards", "chevron/sign": "signs",
+    "roadline": "road_lines", "license plates": "plates", "language": "language", "coverage": "car",
     "architecture": "architecture", "vegetation": "vegetation", "landscape": "vegetation",
 }
 
 # Keywords (English, like the guides), per category; replaceable by [plonkit.keywords] in config.toml.
 DEFAULT_KEYWORDS: dict[str, list[str]] = {
-    "langue": ["language", "languages", "alphabet", "alphabets", "script", "scripts", "cyrillic", "latin", "letter",
-               "letters", "diacritic", "diacritics", "spelling", "word", "words", "spoken", "dialect", "dialects"],
-    "conduite": ["drive on the left", "drive on the right", "driving side", "left-hand traffic", "right-hand traffic"],
-    "marquage": ["road line", "road lines", "roadline", "roadlines", "centre line", "center line", "middle line",
-                 "edge line", "dashed", "markings"],
-    "poteaux": ["pole", "poles", "utility pole", "electricity pole", "pylon", "pylons"],
-    "bornes": ["bollard", "bollards", "delineator", "delineators", "guardrail", "guardrails", "reflector"],
-    "plaques": ["license plate", "licence plate", "number plate", "plates"],
-    "panneaux": ["sign", "signs", "signage", "chevron", "chevrons", "speed limit", "stop sign"],
-    "domaine": ["domain", "website"],
-    "voiture": ["google car", "camera", "generation", "gen 2", "gen 3", "gen 4", "antenna", "snorkel", "roof rack",
-                "coverage", "follow car", "blur"],
+    "language": ["language", "languages", "alphabet", "alphabets", "script", "scripts", "cyrillic", "latin", "letter",
+                 "letters", "diacritic", "diacritics", "spelling", "word", "words", "spoken", "dialect", "dialects"],
+    "driving": ["drive on the left", "drive on the right", "driving side", "left-hand traffic", "right-hand traffic"],
+    "road_lines": ["road line", "road lines", "roadline", "roadlines", "centre line", "center line", "middle line",
+                   "edge line", "dashed", "markings"],
+    "poles": ["pole", "poles", "utility pole", "electricity pole", "pylon", "pylons"],
+    "bollards": ["bollard", "bollards", "delineator", "delineators", "guardrail", "guardrails", "reflector"],
+    "plates": ["license plate", "licence plate", "number plate", "plates"],
+    "signs": ["sign", "signs", "signage", "chevron", "chevrons", "speed limit", "stop sign"],
+    "domains": ["domain", "website"],
+    "car": ["google car", "camera", "generation", "gen 2", "gen 3", "gen 4", "antenna", "snorkel", "roof rack",
+            "coverage", "follow car", "blur"],
     "vegetation": ["tree", "trees", "vegetation", "forest", "soil", "dirt", "grass", "palm", "birch", "pine", "crops",
                    "landscape", "mountains", "hills"],
     "architecture": ["house", "houses", "building", "buildings", "roof", "roofs", "architecture", "wall", "walls",
@@ -84,18 +84,18 @@ def _keyword_patterns(keywords: dict[str, list[str]]) -> dict[str, re.Pattern]:
 
 
 def classify(text: str, tags: Iterable[str], patterns: dict[str, re.Pattern]) -> tuple[str, str]:
-    """(category, source): "etiquette", "mots-cles", or "aucune" (then category "autre")."""
+    """(category, source): "tag", "keywords", or "none" (then category "other")."""
     for tag in tags:
         if tag in TAG_CATEGORY:
-            return TAG_CATEGORY[tag], "etiquette"
+            return TAG_CATEGORY[tag], "tag"
     plain = re.sub(r"[*_`]", "", text)
     counts = {cat: len(p.findall(plain)) for cat, p in patterns.items()}
     if DOMAIN.search(plain):
-        counts["domaine"] = counts.get("domaine", 0) + 1
+        counts["domains"] = counts.get("domains", 0) + 1
     ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
     if not ranked or ranked[0][1] == 0 or (len(ranked) > 1 and ranked[0][1] == ranked[1][1]):
-        return "autre", "aucune"  # nothing, or a tie: to be decided later (AI, or the player)
-    return ranked[0][0], "mots-cles"
+        return "other", "none"  # nothing, or a tie: to be decided later (AI, or the player)
+    return ranked[0][0], "keywords"
 
 
 SCHEMA = """
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS translation(hash TEXT NOT NULL, lang TEXT NOT NULL, t
 """
 # Categories already assigned by the AI, reapplied on each rebuild (only once per text).
 APPLY_AI = """UPDATE tip SET category = (SELECT category FROM ai_category a WHERE a.hash = tip.hash),
-    category_source = 'ia' WHERE category_source = 'aucune' AND hash IN (SELECT hash FROM ai_category)"""
+    category_source = 'ai' WHERE category_source = 'none' AND hash IN (SELECT hash FROM ai_category)"""
 
 
 def _locked(method):
@@ -165,7 +165,7 @@ class TipIndex:
     def unclassified(self) -> list[tuple[str, str]]:
         """(hash, text) of the tips that neither the tags nor the keywords nor the AI have classified."""
         return list(self.con.execute(
-            "SELECT DISTINCT hash, text FROM tip WHERE category_source = 'aucune'"
+            "SELECT DISTINCT hash, text FROM tip WHERE category_source = 'none'"
             " AND hash NOT IN (SELECT hash FROM ai_category)"))
 
     @_locked

@@ -2,15 +2,17 @@
 
 A meta is a visual clue attached to one or more countries, filed in a category (poles,
 road markings, alphabet…). Sources, from highest to lowest priority:
-  "mes metas"  ~/.config/geonesclick/mes-metas.toml, entered or corrected by the player
-  "amorce"     metas_amorce.toml (in the package): a seed of a few well-established facts, to be checked
+  "mine"  ~/.config/geonesclick/my-metas.toml, entered or corrected by the player
+  "seed"  metas_amorce.toml (in the package): a seed of a few well-established facts, to be checked
 The player settles each seed clue from the coach ("Right" / "Wrong"): the verdict is appended
-to mes-metas.toml, as a verified copy ([[meta]]) or a dismissal ([[rejected]]).
+to my-metas.toml, as a verified copy ([[meta]] with seed = <id>) or a dismissal ([[rejected]] seed = <id>).
+The seed's texts are English; they are shown in the coach's language (catalogs: seed.<id>.hint, seed.<id>.look).
 The format does not depend on the source: a future import (Plonk It or other) will produce the same entries.
 """
 
 from __future__ import annotations
 
+import re
 import tomllib
 from collections.abc import Iterable
 from dataclasses import dataclass, field, replace
@@ -21,43 +23,19 @@ from typing import Any, Literal
 
 import tomlkit
 
-CATEGORIES: dict[str, str] = {
-    "langue": "Langue et alphabet",
-    "conduite": "Sens de circulation",
-    "marquage": "Marquage au sol",
-    "poteaux": "Poteaux",
-    "bornes": "Bornes et délinéateurs",
-    "plaques": "Plaques d'immatriculation",
-    "panneaux": "Panneaux",
-    "domaine": "Noms de domaine",
-    "voiture": "Voiture et caméra Google",
-    "vegetation": "Végétation et sol",
-    "architecture": "Architecture",
-    "autre": "Autres indices",
-}
+from .i18n import catalog, t
 
-
-# Default instruction of each category, without naming a country: what to observe in the view.
-# A meta can specify its own (field "look"), which then replaces this one.
-CATEGORY_LOOK: dict[str, str] = {
-    "langue": "les lettres et les mots des panneaux et des enseignes",
-    "conduite": "le côté de la route où roulent et se garent les voitures",
-    "marquage": "les lignes peintes sur la chaussée",
-    "poteaux": "la forme et la matière des poteaux électriques",
-    "bornes": "les bornes et les délinéateurs au bord de la route",
-    "plaques": "la couleur et la forme des plaques d'immatriculation",
-    "panneaux": "la forme et les couleurs des panneaux routiers",
-    "domaine": "les adresses web sur les enseignes, les camions et les publicités",
-    "voiture": "la voiture Google visible en bas de l'image",
-    "vegetation": "les arbres, l'herbe et la couleur de la terre",
-    "architecture": "les toits, les murs et les clôtures",
-    "autre": "les détails inhabituels de la vue",
-}
+# Categories, in display order; label: category.<id>, default instruction: category.<id>.look (catalogs).
+CATEGORIES: tuple[str, ...] = ("language", "driving", "road_lines", "poles", "bollards", "plates", "signs",
+                               "domains", "car", "vegetation", "architecture", "other")
 MAX_LOOKS = 2
 
 # Weight of a category in the tie-break: how often the clue is visible in a view.
 # A domain name separates as much as the language, but rarely appears: it counts for half.
-CATEGORY_WEIGHT: dict[str, float] = {"domaine": 0.5}
+CATEGORY_WEIGHT: dict[str, float] = {"domains": 0.5}
+
+MINE, SEED = "mine", "seed"  # sources of a meta
+SEED_ID = re.compile(r"[a-z0-9_]{1,40}")
 
 
 class MetaError(ValueError):
@@ -65,7 +43,7 @@ class MetaError(ValueError):
 
 
 class UserMetasError(MetaError):
-    """mes-metas.toml is invalid: to be fixed by hand before any new verdict."""
+    """my-metas.toml is invalid: to be fixed by hand before any new verdict."""
 
 
 @dataclass(frozen=True)
@@ -76,6 +54,7 @@ class Meta:
     source: str
     verified: bool = False
     look: str = ""  # what to observe, without naming a country; empty = the category's instruction
+    seed: str = ""  # id of the seed meta it is (seed) or comes from (a verified copy in my-metas.toml)
 
 
 @dataclass
@@ -84,6 +63,7 @@ class Hint:
     countries: list[str]
     source: str
     verified: bool
+    seed: str = ""  # seed meta to settle with "Right" / "Wrong"
 
 
 @dataclass
@@ -97,88 +77,106 @@ class LookFor:
     hints: list[Hint] = field(default_factory=list)
 
 
+def category_look(category: str) -> str:
+    return t(f"category.{category}.look")
+
+
 def parse_metas(text: str, source: str, known_countries: Iterable[str] | None = None) -> list[Meta]:
-    """Reads a TOML metas file ([[meta]] category, countries, hint, look, verified). Raises MetaError if invalid."""
+    """Reads a TOML metas file ([[meta]] category, countries, hint, look, verified, id or seed). Raises MetaError."""
     known = set(known_countries) if known_countries is not None else None
     metas = []
     for i, entry in enumerate(tomllib.loads(text).get("meta", [])):
-        where = f"{source}, meta n°{i + 1}"
+        where = t("metas.err.where", source=source, n=i + 1)
         category = entry.get("category")
         if category not in CATEGORIES:
-            raise MetaError(f"{where} : catégorie inconnue {category!r} (attendu : {', '.join(CATEGORIES)})")
+            raise MetaError(t("metas.err.category", where=where, category=repr(category), known=", ".join(CATEGORIES)))
         countries = entry.get("countries")
         if not countries or not all(isinstance(c, str) and len(c) == 2 for c in countries):
-            raise MetaError(f"{where} : « countries » doit lister des codes pays à 2 lettres")
+            raise MetaError(t("metas.err.countries", where=where))
         codes = frozenset(c.upper() for c in countries)
         if known is not None and (unknown := codes - known):
-            raise MetaError(f"{where} : pays absents de la configuration : {', '.join(sorted(unknown))}")
+            raise MetaError(t("metas.err.unknown_countries", where=where, list=", ".join(sorted(unknown))))
         hint = str(entry.get("hint", "")).strip()
         if not hint:
-            raise MetaError(f"{where} : « hint » vide")
+            raise MetaError(t("metas.err.hint", where=where))
         look = entry.get("look", "")
         if not isinstance(look, str):
-            raise MetaError(f"{where} : « look » doit être un texte")
-        metas.append(Meta(category, codes, hint, source, bool(entry.get("verified", False)), look.strip()))
+            raise MetaError(t("metas.err.look", where=where))
+        seed = entry.get("id" if source == SEED else "seed", "")
+        if not isinstance(seed, str) or (seed and not SEED_ID.fullmatch(seed)):
+            raise MetaError(t("metas.err.seed", where=where))
+        metas.append(Meta(category, codes, hint, source, bool(entry.get("verified", False)), look.strip(), seed))
     return metas
 
 
-def parse_rejected(text: str, source: str) -> set[tuple[str, str]]:
-    """Seed clues dismissed by the player: [[rejected]] category, hint."""
+def parse_rejected(text: str, source: str) -> set[str]:
+    """Seed clues dismissed by the player: [[rejected]] seed = <id>."""
     rejected = set()
     for i, entry in enumerate(tomllib.loads(text).get("rejected", [])):
-        category, hint = entry.get("category"), entry.get("hint")
-        if category not in CATEGORIES or not isinstance(hint, str) or not hint.strip():
-            raise MetaError(f"{source}, mise à l'écart n°{i + 1} : « category » et « hint » requis")
-        rejected.add((category, hint.strip()))
+        seed = entry.get("seed")
+        if not isinstance(seed, str) or not SEED_ID.fullmatch(seed):
+            raise MetaError(t("metas.err.rejected", source=source, n=i + 1))
+        rejected.add(seed)
     return rejected
+
+
+def _seed_file(known: frozenset[str]) -> list[Meta]:
+    """The seed as written (English reference texts), reduced to the configured countries."""
+    seed = parse_metas(resources.files(__package__).joinpath("metas_amorce.toml").read_text(), SEED)
+    return [replace(m, countries=m.countries & known) for m in seed if m.countries & known]
+
+
+def _in_language(m: Meta) -> Meta:
+    """A seed meta (or a verified copy of one) with its texts in the coach's language, when the catalog has them."""
+    texts = catalog("en")  # every language has the same keys (test_i18n.py)
+    hint, look = f"seed.{m.seed}.hint", f"seed.{m.seed}.look"
+    return replace(m, hint=t(hint) if hint in texts else m.hint, look=t(look) if look in texts else m.look)
 
 
 def seed_metas(known_countries: Iterable[str]) -> list[Meta]:
     """The seed, reduced to the configured countries: removing a country from the list must not break everything."""
-    known = frozenset(known_countries)
-    seed = parse_metas(resources.files(__package__).joinpath("metas_amorce.toml").read_text(), "amorce")
-    return [replace(m, countries=m.countries & known) for m in seed if m.countries & known]
+    return [_in_language(m) for m in _seed_file(frozenset(known_countries))]
 
 
 def load_metas(user_file: Path | None, include_seed: bool, known_countries: Iterable[str]) -> list[Meta]:
     known = list(known_countries)
     metas: list[Meta] = []
-    rejected: set[tuple[str, str]] = set()
+    settled: set[str] = set()
     if user_file and user_file.exists():
         text = user_file.read_text()
-        metas += parse_metas(text, "mes metas", known)
-        rejected = parse_rejected(text, "mes metas")
+        mine = parse_metas(text, MINE, known)
+        metas += [_in_language(m) if m.seed else m for m in mine]
+        settled = parse_rejected(text, MINE) | {m.seed for m in mine if m.seed}
     if include_seed:
-        metas += [m for m in seed_metas(known) if (m.category, m.hint) not in rejected]
+        metas += [m for m in seed_metas(known) if m.seed not in settled]
     return metas
 
 
-def judge_seed(
-    user_file: Path, category: str, hint: str, verdict: Literal["right", "wrong"], known_countries: Iterable[str]
-) -> None:
-    """Saves the player's verdict on a seed clue, at the end of mes-metas.toml.
+def judge_seed(user_file: Path, seed: str, verdict: Literal["right", "wrong"], known_countries: Iterable[str]) -> None:
+    """Saves the player's verdict on a seed clue, at the end of my-metas.toml.
 
-    "right": verified copy of the clue, which then becomes "your meta". "wrong": dismissal.
-    The file is never rewritten (its comments are kept); if it is invalid, nothing is written.
+    "right": verified copy of the clue (English reference text, shown in the coach's language), which then becomes
+    "your meta". "wrong": dismissal. The file is never rewritten (its comments are kept); if it is invalid, nothing
+    is written.
     """
     known = list(known_countries)
-    meta = next((m for m in seed_metas(known) if m.category == category and m.hint == hint), None)
+    meta = next((m for m in _seed_file(frozenset(known)) if m.seed == seed), None)
     if meta is None:
-        raise MetaError("indice inconnu dans l'amorce")
+        raise MetaError(t("metas.err.unknown_seed"))
     text = user_file.read_text() if user_file.exists() else ""
     try:
-        mine, rejected = parse_metas(text, "mes metas", known), parse_rejected(text, "mes metas")
+        mine, rejected = parse_metas(text, MINE, known), parse_rejected(text, MINE)
     except ValueError as exc:  # MetaError, or unreadable TOML
-        raise UserMetasError(f"mes-metas.toml invalide, corrige-le d'abord : {exc}") from exc
+        raise UserMetasError(t("metas.err.user_file", file=user_file.name, error=exc)) from exc
     if verdict == "right":
-        entry = {"category": meta.category, "countries": sorted(meta.countries), "hint": meta.hint}
+        entry = {"seed": seed, "category": meta.category, "countries": sorted(meta.countries), "hint": meta.hint}
         if meta.look:
             entry["look"] = meta.look
         block = _array_of_tables("meta", entry | {"verified": True})
-        done = any(m.category == category and m.hint == hint for m in mine)
+        done = any(m.seed == seed for m in mine)
     else:
-        block = _array_of_tables("rejected", {"category": meta.category, "hint": meta.hint})
-        done = (category, hint) in rejected
+        block = _array_of_tables("rejected", {"seed": seed})
+        done = seed in rejected
     if done:  # verdict already saved: nothing to add
         return
     new = text + ("\n" if text and not text.endswith("\n") else "") + "\n" + block
@@ -203,14 +201,14 @@ def tiebreak(
     Score = sum, over the pairs of candidates whose two profiles are known and different, of the product
     of their probabilities. A category that separates the two favourites therefore weighs more than one that
     separates two outsiders; a candidate without a known clue brings nothing.
-    looks and weights replace, category by category, CATEGORY_LOOK and CATEGORY_WEIGHT; max_looks = 0
-    removes the instructions.
+    looks and weights replace, category by category, the default instruction (category_look) and CATEGORY_WEIGHT;
+    max_looks = 0 removes the instructions.
     """
-    looks = CATEGORY_LOOK | (looks or {})
+    looks = looks or {}
     weights = CATEGORY_WEIGHT | (weights or {})
     probs = dict(candidates)
     results = []
-    for category, label in CATEGORIES.items():
+    for category in CATEGORIES:
         in_cat = [m for m in metas if m.category == category and m.countries & probs.keys()]
         if not in_cat:
             continue
@@ -228,16 +226,17 @@ def tiebreak(
                 [c for c in probs if c in m.countries],  # in order of probability
                 m.source,
                 m.verified,
+                m.seed if m.source == SEED else "",
             )
             for m in in_cat
         ]
-        # "mes metas" first, then the clues of the most likely candidates.
-        hints.sort(key=lambda h: (h.source != "mes metas", -max(probs[c] for c in h.countries)))
+        # Your metas first, then the clues of the most likely candidates.
+        hints.sort(key=lambda h: (h.source != MINE, -max(probs[c] for c in h.countries)))
         hints = _dedupe(hints)
         by_hint = {m.hint: m.look for m in in_cat}
         own = list(dict.fromkeys(by_hint[h.hint] for h in hints if by_hint[h.hint]))
-        shown = (own or [looks[category]])[:max_looks]
-        results.append(LookFor(category, label, round(score, 4), shown, hints))
+        shown = (own or [looks.get(category) or category_look(category)])[:max_looks]
+        results.append(LookFor(category, t(f"category.{category}"), round(score, 4), shown, hints))
     results.sort(key=lambda r: r.score, reverse=True)
     return results[:max_categories]
 

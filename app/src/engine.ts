@@ -15,8 +15,11 @@ export interface CountryScore {
 export interface Hint {
   hint: string;
   countries: string[];
-  source: string;
+  /** "mine" (my-metas.toml) or "seed" (metas_amorce.toml). */
+  source: "mine" | "seed";
   verified: boolean;
+  /** Seed clue to settle with "Right" / "Wrong" (empty: not a seed clue). */
+  seed: string;
 }
 
 /** A category to look at to tell the candidate countries apart. */
@@ -700,9 +703,9 @@ export async function setHelpLevel(level: number) {
   await saveSettings({ coach: { help_level: level } });
 }
 
-/** The metas categories (same keys as metas.py, internal and in French), in display order. */
-export const CATEGORIES = ["langue", "conduite", "marquage", "poteaux", "bornes", "plaques", "panneaux", "domaine",
-                           "voiture", "vegetation", "architecture", "autre"] as const;
+/** The metas categories (same ids as metas.py), in display order. */
+export const CATEGORIES = ["language", "driving", "road_lines", "poles", "bollards", "plates", "signs", "domains",
+                           "car", "vegetation", "architecture", "other"] as const;
 /** A category's label in the UI's language; an unknown category is shown as is. */
 const isCategory = (c: string): c is (typeof CATEGORIES)[number] => (CATEGORIES as readonly string[]).includes(c);
 export const categoryLabel = (c: string) => (isCategory(c) ? t(`category.${c}`) : c);
@@ -722,9 +725,9 @@ export function markdownSegments(md: string): { text: string; bold: boolean }[] 
   return plain.split("**").map((text, i) => ({ text, bold: i % 2 === 1 })).filter((s) => s.text);
 }
 
-/** Player's verdict on a seed clue; the engine writes it to mes-metas.toml. */
-export const judgeHint = (category: string, hint: string, verdict: "right" | "wrong") =>
-  request("/metas/judge", { category, hint, verdict, id: engine.current?.id ?? "" });
+/** Player's verdict on a seed clue; the engine writes it to my-metas.toml. */
+export const judgeHint = (seed: string, verdict: "right" | "wrong") =>
+  request("/metas/judge", { seed, verdict, id: engine.current?.id ?? "" });
 
 /** Country outlines (Natural Earth, served by the engine), loaded only once. */
 let outlines: Promise<GeoJSON.FeatureCollection | null> | null = null;

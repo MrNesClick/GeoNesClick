@@ -126,6 +126,10 @@ def main() -> int:
     import json
     import sys
 
+    from . import migrate
+
+    for converted in migrate.run():  # an update's assistant runs before the engine: 0.1's files first
+        print(f"GeoNesClick: {converted}", file=sys.stderr)
     try:
         changes = json.loads(sys.stdin.read() or "{}")
         if not isinstance(changes, dict):

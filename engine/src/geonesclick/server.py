@@ -102,10 +102,9 @@ class ClearRequest(BaseModel):
 
 
 class JudgeRequest(BaseModel):
-    """Player's verdict on a seed clue; id = displayed capture, to update it."""
+    """Player's verdict on a seed clue (its id in metas_amorce.toml); id = displayed capture, to update it."""
 
-    category: str = Field(max_length=20)
-    hint: str = Field(min_length=1, max_length=300)
+    seed: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
     verdict: Literal["right", "wrong"]
     id: str = Field(default="", max_length=32)
 
@@ -165,7 +164,7 @@ class Engine(MarksMixin, LocksMixin):
                     self.cfg.metas.user_path, self.cfg.metas.include_seed, self.cfg.streetclip.countries.values()
                 )
                 self.metas_message = i18n.t("srv.metas_loaded", n=len(self.metas))
-            except (MetaError, ValueError) as exc:  # invalid "mes metas" file: reported without blocking
+            except (MetaError, ValueError) as exc:  # invalid my-metas.toml: reported without blocking
                 self.metas_message, self.metas_error = i18n.t("srv.metas_unavailable", error=exc), True
 
     async def apply_settings(self, changes: dict[str, dict[str, Any]]) -> dict[str, Any]:
@@ -506,8 +505,8 @@ class Engine(MarksMixin, LocksMixin):
             except Exception as exc:  # 429, timeout, model unavailable: we will resume at the next update
                 await self._plonkit_status("ready", i18n.t("srv.classify_stopped", summary=summary, error=type(exc).__name__))
                 break
-            if found:  # usable answer: the tips it leaves aside stay "autre" for good
-                await asyncio.to_thread(index.store_ai_categories, {h: found.get(h, "autre") for h, _ in batch})
+            if found:  # usable answer: the tips it leaves aside stay "other" for good
+                await asyncio.to_thread(index.store_ai_categories, {h: found.get(h, "other") for h, _ in batch})
                 done += len(batch)
             # Batch without any valid answer (unreadable answer): nothing is remembered, it will be offered again.
             if start + pc.ai_batch < len(pending):
@@ -732,13 +731,13 @@ class Engine(MarksMixin, LocksMixin):
         )
 
     async def judge(self, req: JudgeRequest) -> dict[str, Any]:
-        """"Right" / "Wrong" on a seed clue: written to mes-metas.toml, then the metas are reloaded."""
+        """"Right" / "Wrong" on a seed clue: written to my-metas.toml, then the metas are reloaded."""
         if not (self.cfg.metas.enabled and self.cfg.metas.judge_buttons):
             raise HTTPException(409, i18n.t("srv.verdicts_off"))
         async with self.settings_lock:
             try:
                 await asyncio.to_thread(
-                    judge_seed, self.cfg.metas.user_path, req.category, req.hint, req.verdict,
+                    judge_seed, self.cfg.metas.user_path, req.seed, req.verdict,
                     self.cfg.streetclip.countries.values(),
                 )
             except UserMetasError as exc:  # the player's file must be fixed by hand

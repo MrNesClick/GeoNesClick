@@ -51,16 +51,16 @@ max_confusions = 3       # confusions shown with the metas that tell them apart 
 [metas]
 enabled = true
 include_seed = true      # seed of well-established facts (alphabets, driving side, lines), unverified
-user_file = ""           # empty = ~/.config/geonesclick/mes-metas.toml (your metas, take priority)
+user_file = ""           # empty = ~/.config/geonesclick/my-metas.toml (your metas, take priority)
 min_probability = 0.05   # candidate countries kept for the tie-break: above this threshold…
 max_candidates = 5       # … and at most this number
 max_categories = 3       # number of "where to look" categories shown
 show_looks = true        # "Look at the colour of the centre line." instructions before revealing the countries
 max_looks = 2            # instructions shown per category
 judge_buttons = true     # "Right" / "Wrong" buttons on the seed clues
-# Replace a category's instruction or weight (weight 0 = category ignored; "domaine" is worth 0.5):
-# category_looks = { poteaux = "les trous dans les poteaux" }
-# category_weights = { domaine = 1.0 }
+# Replace a category's instruction or weight (weight 0 = category ignored; "domains" is worth 0.5):
+# category_looks = { poles = "the holes in the poles" }
+# category_weights = { domains = 1.0 }
 category_looks = {}
 category_weights = {}
 
@@ -75,7 +75,7 @@ delay_s = 2.0            # pause between two pages (minimum 1 s)
 similar_tips = true      # "the tips that look like your view" for each candidate country
 similar_per_country = 2
 # Ranking keywords for the tips per category (English), replacing the default ones:
-# keywords = { poteaux = ["pole", "poles", "pylon"] }
+# keywords = { poles = ["pole", "poles", "pylon"] }
 keywords = {}
 # The tips that neither the tags nor the keywords classify (~25 %) are handed to the AI, in batches,
 # only once per text (result kept in cache). Only the known categories are accepted.

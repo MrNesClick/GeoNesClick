@@ -1,5 +1,6 @@
 import os
 
+from . import migrate
 from .apikey import key_file, migrate_env
 from .config import PROJECT_ROOT, load_config
 from .paths import hf_hub_cache, migrate_repo_data, quiet_token_nag
@@ -17,6 +18,8 @@ def _hf_model_cached(model_id: str, revision: str) -> bool:
 # Captures and the test set move out of the code folder once (read-only in an AppImage).
 for _moved in migrate_repo_data(PROJECT_ROOT):
     print(f"GeoNesClick: {_moved}", flush=True)
+for _converted in migrate.run():  # files of 0.1 (French ids), converted once
+    print(f"GeoNesClick: {_converted}", flush=True)
 _cfg = load_config()
 if migrate_env(_cfg.vision.api_key_env, PROJECT_ROOT / ".env"):  # key from the old .env: moved to the protected file
     print(f"GeoNesClick: key {_cfg.vision.api_key_env} moved from the .env to {key_file(_cfg.vision.api_key_env)}",

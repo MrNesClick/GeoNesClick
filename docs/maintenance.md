@@ -26,7 +26,7 @@ front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-p
 | Location | Content | If deleted |
 |---|---|---|
 | `~/.config/geonesclick/config.toml` | your settings | back to the default values |
-| `~/.config/geonesclick/mes-metas.toml` | your metas and verdicts on the seed | lost: back it up |
+| `~/.config/geonesclick/my-metas.toml` | your metas and verdicts on the seed | lost: back it up |
 | `~/.config/geonesclick/screencast.token` | GNOME sharing permission | GNOME asks for the window again |
 | `~/.local/share/geonesclick/plonkit/` | Plonk It guides, tips, vectors, translations | rebuilt at startup (~3 min, translations redone on demand) |
 | `~/.local/share/geonesclick/places/` | GeoNames places directory (CC BY 4.0), indexed | downloaded again at startup if missing (~11 MB) |

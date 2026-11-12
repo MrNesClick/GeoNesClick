@@ -38,10 +38,10 @@ def test_every_key_exists_in_every_language_with_the_same_placeholders(lang):
 
 
 def test_plurals_have_both_forms():
+    # A ".one" key declares a plural (tn); ".other" alone is an ordinary key ("category.other").
     for key in catalog("en"):
-        if key.endswith((".one", ".other")):
-            base = key.rsplit(".", 1)[0]
-            assert f"{base}.one" in catalog("en") and f"{base}.other" in catalog("en"), base
+        if key.endswith(".one"):
+            assert f"{key.removesuffix('.one')}.other" in catalog("en"), key
 
 
 # Keys written as plain strings, translated elsewhere: Rust's system checks (label: "setup.check.…", shown by the

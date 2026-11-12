@@ -21,24 +21,24 @@ defineProps<{ lookfor: LookFor[] | null }>();
           </span>
           <span class="text-papier">
             {{ h.hint }}
-            <span v-if="h.source === 'mes metas'" class="text-[0.8rem] text-foret">
+            <span v-if="h.source === 'mine'" class="text-[0.8rem] text-foret">
               {{ t(h.verified ? "metas.yours_verified" : "metas.yours") }}
             </span>
-            <span v-else-if="!h.verified && engine.metas.judge" class="inline-flex flex-wrap items-baseline gap-x-2 text-[0.8rem] text-courbe">
+            <span v-else-if="!h.verified && h.seed && engine.metas.judge" class="inline-flex flex-wrap items-baseline gap-x-2 text-[0.8rem] text-courbe">
               {{ t("metas.seed") }}
               <button
                 type="button"
                 class="rounded px-1.5 text-foret underline underline-offset-2 hover:bg-foret/10 disabled:opacity-40"
                 :disabled="engine.busy"
                 :aria-label="t('metas.right_aria', { hint: h.hint })"
-                @click="judgeHint(lf.category, h.hint, 'right')"
+                @click="judgeHint(h.seed, 'right')"
               >{{ t("metas.right") }}</button>
               <button
                 type="button"
                 class="rounded px-1.5 text-alerte underline underline-offset-2 hover:bg-alerte/10 disabled:opacity-40"
                 :disabled="engine.busy"
                 :aria-label="t('metas.wrong_aria', { hint: h.hint })"
-                @click="judgeHint(lf.category, h.hint, 'wrong')"
+                @click="judgeHint(h.seed, 'wrong')"
               >{{ t("metas.wrong") }}</button>
             </span>
             <span v-else-if="!h.verified" class="text-[0.8rem] text-courbe">{{ t("metas.seed") }}</span>

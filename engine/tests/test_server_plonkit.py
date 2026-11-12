@@ -143,29 +143,29 @@ class FakeLLM:
 
 def test_ai_classifies_leftover_tips_once(engine):
     engine.cfg.plonkit.ai_pause_s = 0
-    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    engine.vision.client = FakeLLM('{"0": "road_lines"}')
     asyncio.run(engine.refresh_plonkit(check=False))
     by_text = {t.text: t.category for t in engine.plonkit_tips}
-    assert by_text["White lines."] == "marquage"  # neither tag nor keyword: classified by the AI
+    assert by_text["White lines."] == "road_lines"  # neither tag nor keyword: classified by the AI
     assert "classées par l'IA" in engine.plonkit_message
     asyncio.run(engine.refresh_plonkit(check=False))
     assert engine.vision.client.calls == 1  # cached: never asked again
     by_text = {t.text: t.category for t in engine.plonkit_tips}
-    assert by_text["White lines."] == "marquage"  # and reapplied after the database rebuild
+    assert by_text["White lines."] == "road_lines"  # and reapplied after the database rebuild
 
 
 def test_ai_failure_is_reported_and_retried_later(engine):
     engine.vision.client = FakeLLM(error=TimeoutError("lent"))
     asyncio.run(engine.refresh_plonkit(check=False))
     assert engine.plonkit_status == "ready" and "interrompu" in engine.plonkit_message
-    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    engine.vision.client = FakeLLM('{"0": "road_lines"}')
     asyncio.run(engine.refresh_plonkit(check=False))
-    assert {t.text: t.category for t in engine.plonkit_tips}["White lines."] == "marquage"
+    assert {t.text: t.category for t in engine.plonkit_tips}["White lines."] == "road_lines"
 
 
 def test_ai_classification_can_be_disabled(engine):
     engine.cfg.plonkit.ai_classify = False
-    engine.vision.client = FakeLLM('{"0": "marquage"}')
+    engine.vision.client = FakeLLM('{"0": "road_lines"}')
     asyncio.run(engine.refresh_plonkit(check=False))
     assert engine.vision.client.calls == 0
 
@@ -258,7 +258,7 @@ class EchoLLM(FakeLLM):
     async def create(self, **kwargs):
         self.calls += 1
         prompt = kwargs["messages"][0]["content"]
-        count = len([line for line in prompt.split("Astuces :")[1].splitlines() if line.strip()])
+        count = len([line for line in prompt.split("Tips:")[1].splitlines() if line.strip()])
         message = type("M", (), {"content": json.dumps({str(i): f"FR {i}" for i in range(count)})})
         return type("R", (), {"choices": [type("C", (), {"message": message})]})
 
