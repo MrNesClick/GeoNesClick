@@ -22,7 +22,9 @@ The interface is in English and French (chosen on first launch, changeable in th
 
 ## Requirements
 
-- Ubuntu 24.04 or later with GNOME (Wayland or Xorg)
+- 64-bit Linux with GNOME (Wayland or Xorg) and glibc 2.39 or later: Ubuntu 24.04 or later, Debian 13, Fedora 40
+  or later… Tested on Ubuntu 24.04 and 26.04; elsewhere it should work: [tell us how it went](https://github.com/MrNesClick/GeoNesClick/issues/new?template=system-report.yml)
+  ([tested systems](docs/compatibility.md)).
 - About 11 GB of free disk space during the installation, 8 GB used afterwards (about 3 GB without an NVIDIA card)
 - 8 GB of RAM (without an NVIDIA card, the engine alone uses about 2.5 GB)
 - An NVIDIA card (recommended; without one, the local AI runs on the processor, more slowly)
@@ -35,8 +37,8 @@ The interface is in English and French (chosen on first launch, changeable in th
    page.
 2. Make it executable (right click › Properties › *Executable as Program*, or `chmod +x GeoNesClick_*.AppImage`),
    then open it.
-3. On first launch, an assistant checks your system: a missing component (`libgirepository-2.0-0` on a fresh
-   Ubuntu 24.04) is installed with one click, after your password. Then it lists everything it will download, with
+3. On first launch, an assistant checks your system: a missing component is installed with one click, after your
+   password (Debian, Ubuntu and their derivatives; elsewhere it names the package). Then it lists everything it will download, with
    the size and the licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/`
    and the AI models in `~/.cache/huggingface/`: nothing else is installed in the system. The download needs GitHub, PyPI, PyTorch and
    Hugging Face: if one of them does not answer, the assistant names it; retry later, what is already downloaded is
@@ -94,6 +96,7 @@ before anything is downloaded. Options can be turned off in the Settings.
 - [Measurements and benchmarks](docs/benchmarks.md): why each technical choice was made, and tests
 - [Maintenance](docs/maintenance.md): updates, where the data is, tools and licences
 - [Development](docs/development.md): build from source, build the AppImage, run the tests
+- [Compatibility](docs/compatibility.md): what GeoNesClick needs, the systems tested and reported
 - [Changelog](CHANGELOG.md): what changes from one version to the next
 - [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md): how to help, how to report a vulnerability
 

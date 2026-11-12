@@ -7,6 +7,12 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- The requirements name what GeoNesClick really needs (64-bit Linux with GNOME, glibc 2.39 or later) instead of
+  Ubuntu only, with the systems tested so far ([docs/compatibility.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md))
+  and a form to tell how it runs on yours.
+
 ## [0.2.2] - 2026-11-12
 
 ### Added

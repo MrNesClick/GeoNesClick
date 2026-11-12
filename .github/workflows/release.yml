@@ -96,7 +96,7 @@ jobs:
 
           ---
 
-          AI-assisted geolocation coach for OSINT and GeoGuessr training, for Ubuntu 24.04 or later with GNOME.
+          AI-assisted geolocation coach for OSINT and GeoGuessr training, for 64-bit Linux with GNOME (tested on Ubuntu 24.04 and 26.04).
 
           **Install**: download \`$appimage\`, make it executable, open it. On first launch, an installer lists
           everything it will download (about 5 GB with an NVIDIA card) before installing the engine in

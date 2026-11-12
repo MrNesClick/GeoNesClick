@@ -25,7 +25,9 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
 
 ## Prérequis
 
-- Ubuntu 24.04 ou plus récent, avec GNOME (Wayland ou Xorg)
+- Linux 64 bits avec GNOME (Wayland ou Xorg) et une glibc 2.39 ou plus récente : Ubuntu 24.04 ou plus récent,
+  Debian 13, Fedora 40 ou plus récent… Testé sur Ubuntu 24.04 et 26.04 ; ailleurs, ça devrait marcher :
+  [dis-nous ce qu'il en est](https://github.com/MrNesClick/GeoNesClick/issues/new?template=system-report.yml) ([systèmes testés](docs/compatibility.md), en anglais).
 - Environ 11 Go d'espace disque libre pendant l'installation, 8 Go occupés ensuite (environ 3 Go sans carte NVIDIA)
 - 8 Go de mémoire vive (sans carte NVIDIA, le moteur seul en occupe environ 2,5 Go)
 - Une carte NVIDIA (recommandé ; sans elle, l'IA locale tourne sur le processeur, plus lentement)
@@ -38,8 +40,8 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
    [Releases](https://github.com/MrNesClick/GeoNesClick/releases).
 2. Rends-la exécutable (clic droit › Propriétés › *Exécutable comme un programme*, ou
    `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
-3. Au premier lancement, un assistant vérifie ton système : un composant manquant (`libgirepository-2.0-0` sur une
-   Ubuntu 24.04 fraîchement installée) s'installe en un clic, avec ton mot de passe. Il liste ensuite tout ce qu'il
+3. Au premier lancement, un assistant vérifie ton système : un composant manquant s'installe en un clic, avec ton
+   mot de passe (Debian, Ubuntu et leurs dérivées ; ailleurs, il donne le nom du paquet). Il liste ensuite tout ce qu'il
    va télécharger, avec la taille et la licence de chaque élément. Une fois ton accord donné, il installe le moteur
    dans `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien d'autre n'est installé
    dans le système. Le téléchargement passe par GitHub, PyPI, PyTorch et Hugging Face : si l'un d'eux ne répond pas,
@@ -100,6 +102,7 @@ La documentation détaillée est en anglais :
 - [Measurements and benchmarks](docs/benchmarks.md) : pourquoi chaque choix technique, et les tests
 - [Maintenance](docs/maintenance.md) : mises à jour, emplacement des données, outils et licences
 - [Development](docs/development.md) : compiler depuis les sources, fabriquer l'AppImage, lancer les tests
+- [Compatibility](docs/compatibility.md) : ce qu'il faut à GeoNesClick, les systèmes testés et signalés
 - [Changelog](CHANGELOG.md) : ce qui change d'une version à l'autre (en anglais)
 - [Contributing](CONTRIBUTING.md) et [Security](SECURITY.md) : comment contribuer, comment signaler une faille
 

@@ -1,0 +1,86 @@
+name: Report on my system
+description: Tell us how GeoNesClick runs on your Linux, whether it works or not.
+title: "System report: "
+labels: ["compatibility"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! GeoNesClick is only tested on Ubuntu; your report, even "it works", goes into the list of
+        [tested systems](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md).
+        For a security issue, do not use this form: see [SECURITY.md](https://github.com/MrNesClick/GeoNesClick/blob/main/SECURITY.md).
+  - type: input
+    id: system
+    attributes:
+      label: Distribution and version
+      description: "`grep PRETTY_NAME /etc/os-release` prints it."
+      placeholder: Debian GNU/Linux 13 (trixie)
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop and version
+      description: "`gnome-shell --version` prints it."
+      placeholder: GNOME Shell 48.4
+    validations:
+      required: true
+  - type: dropdown
+    id: session
+    attributes:
+      label: Session
+      description: "`echo $XDG_SESSION_TYPE` prints it."
+      options:
+        - Wayland
+        - Xorg (x11)
+        - I don't know
+    validations:
+      required: true
+  - type: dropdown
+    id: gpu
+    attributes:
+      label: Graphics card
+      options:
+        - NVIDIA (GPU version)
+        - No NVIDIA card (processor version)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: GeoNesClick version
+      description: Shown at the top of the installer, and in Settings.
+      placeholder: 0.2.2
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Everything I tried works
+        - Works in part
+        - Does not work
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: What you tried
+      options:
+        - label: The installer went to the end
+        - label: Capture with Super+Shift+G
+        - label: Marks with Super+Shift+Z
+        - label: Online analysis (with an API key)
+        - label: Map and likely zones
+  - type: textarea
+    id: problem
+    attributes:
+      label: What did not work
+      description: What you did, what you saw (the message, a screenshot). Leave empty if everything works.
+  - type: textarea
+    id: log
+    attributes:
+      label: Installation log
+      description: If the installer failed, the content of its "Installation log".
+      render: text
