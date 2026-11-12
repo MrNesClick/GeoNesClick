@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-11-12
+
 ### Added
 
 - "Erase everything" can also remove the engine installed by the AppImage: with the models box too, a full
@@ -143,7 +145,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.3...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.4...HEAD
+[0.2.4]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.0...v0.2.1
