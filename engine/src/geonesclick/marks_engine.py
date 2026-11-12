@@ -77,7 +77,7 @@ def conclude(done: list[tuple[int, list[dict[str, Any]]]], scores: list[tuple[st
 class MarksMixin:
     # --- marks ---------------------------------------------------------------------------------
     async def freeze(self) -> dict[str, Any]:
-        """Freezes the view: the marks window shows it in full screen to circle clues on it.
+        """Freezes the view: the marks window shows it in full screen to draw a box around clues.
 
         The marks complete the current round: a capture is needed first (it opens the round).
         """

@@ -7,12 +7,14 @@
 The coach window starts the Python engine and stops it when closed. The first time, GNOME asks which window to
 share: choose the browser window where you play. The permission is remembered
 (`~/.config/geonesclick/screencast.token`). To change it (another browser, screen or resolution), open the
-**Settings** tab and click **Change window** (Capture section): the GNOME picker opens again.
+**Settings** tab and click **Change window** (Capture section): the GNOME picker opens again. If you stop the
+sharing from GNOME's indicator, the coach says so and offers **Restart sharing**, which also opens the picker; only
+the app's start resumes the remembered window without asking.
 
 ## Updates and data
 
-**Update (from source)**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with `uv.lock` and the
-front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-plonk-spike.sh` again.
+**Update (from source)**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with
+`uv.lock` and the front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-plonk-spike.sh` again.
 
 **Change a version**:
 - Python dependencies: `cd engine && uv add <package>==<version>` (updates `pyproject.toml` and `uv.lock`), then
@@ -28,7 +30,7 @@ front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-p
 | `~/.config/geonesclick/config.toml` | your settings | back to the default values |
 | `~/.config/geonesclick/my-metas.toml` | your metas and verdicts on the seed | lost: back it up |
 | `~/.config/geonesclick/screencast.token` | GNOME sharing permission | GNOME asks for the window again |
-| `~/.local/share/geonesclick/plonkit/` | Plonk It guides, tips, vectors, translations | rebuilt at startup (~3 min, translations redone on demand) |
+| `~/.local/share/geonesclick/plonkit/` | Plonk It guides, tips, vectors, translations | rebuilt at startup (a few minutes; the translations are redone ahead of time) |
 | `~/.local/share/geonesclick/places/` | GeoNames places directory (CC BY 4.0), indexed | downloaded again at startup if missing (~11 MB) |
 | `~/.cache/huggingface/hub/` | StreetCLIP and PLONK weights | downloaded again at the next launch (network required) |
 | `~/.local/share/geonesclick/dataset/` | test set (images, `labels.toml`, the bench's `rounds/`) | lost: back it up, it is the basis of all the measurements |
@@ -49,7 +51,8 @@ coach are deleted, never a whole folder.
 goes is shown with the sizes: API key, settings, your metas, screen-sharing permission, captures and logs, test set
 (flagged as precious), Plonk It guides and translations, GeoNames places and villages, UI state, the app's GNOME
 shortcuts. A separate box, unticked: also the downloaded models (StreetCLIP, PLONK: nothing personal; other
-software's models stay). You have to type "EFFACER"; then the engine and the UI start again from scratch. Only files
+software's models stay). You have to type the word shown ("ERASE" in English); then the engine and the UI start
+again from scratch. Only files
 known to the app are deleted, never a folder set by hand nor its foreign content. The copy of the test set
 versioned in the repository (`engine/dataset/`) is not touched.
 
@@ -66,18 +69,19 @@ module before modifying it. The outlines come from Natural Earth v5.1.2; for ano
 again.
 
 **Update the AppImage runtime**: the program embedded at the head of the AppImage, run on every launch, is pinned
-by its sha256 in `scripts/build-appimage.sh` (`RUNTIME_SHA256`, the one of v0.1.0), although upstream publishes it as
+by its sha256 in `scripts/build-appimage.sh` (`RUNTIME_SHA256`), although upstream publishes it as
 "continuous". When upstream publishes a new one, the build stops with "the AppImage runtime changed upstream": build
 with the new hash, test the AppImage on a clean Ubuntu (no libfuse2), then commit the hash.
 
-**Before each commit**: the tests (`cd engine && .venv/bin/python -m pytest -q`, without any network access), then a
-code review and a security review.
+**Before each commit**: the three test suites (see [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-send-a-change)),
+then a code review and a security review.
 
 ## Tools and licences
 
 **GeoNesClick code: [Apache-2.0](../LICENSE) licence** (© 2026 MrNesClick). The models and data downloaded on first
-launch keep their own licence (see [What GeoNesClick downloads](../README.md#what-geonesclick-downloads)): in particular **StreetCLIP is under CC BY-NC 4.0,
-non-commercial use**, which applies to any use of the app that relies on it.
+launch keep their own licence (see [What GeoNesClick downloads](../README.md#what-geonesclick-downloads)): in
+particular **StreetCLIP is under CC BY-NC 4.0, non-commercial use**, which applies to any use of the app that relies
+on it.
 
 | Tool | Role | Licence or terms |
 |---|---|---|

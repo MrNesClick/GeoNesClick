@@ -25,7 +25,7 @@ from .paths import DATA_DIR as APP_DATA
 from typing import Any
 
 BASE_URL = "https://www.plonkit.net"
-USER_AGENT = "GeoNesClick/0.1 (personal training tool)"
+USER_AGENT = "GeoNesClick (personal training tool; https://github.com/MrNesClick/GeoNesClick)"
 DATA_DIR = APP_DATA / "plonkit"
 CHECKED_FILE = "checked_at"  # date of the last check of the guides list
 MAX_BYTES = 5_000_000  # a guide page is ~30 KB: beyond that, something is wrong

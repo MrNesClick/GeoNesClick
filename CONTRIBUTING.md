@@ -6,15 +6,16 @@ agree on the approach before you spend time on it.
 ## Set up
 
 Follow [docs/development.md](docs/development.md) to build from source and run the app (Ubuntu 24.04 or later, GNOME).
+[docs/architecture.md](docs/architecture.md) explains how its Rust, Vue and Python parts fit together.
 
 ## Before you send a change
 
-- Run the tests; they need no network and no display:
+- Run the tests from the repository root; they need no network and no display:
 
   ```bash
-  cd engine && .venv/bin/python -m pytest -q
-  cd app && npx vue-tsc --noEmit
-  cd app/src-tauri && cargo test --lib
+  (cd engine && .venv/bin/python -m pytest -q)
+  (cd app && npx vue-tsc --noEmit)
+  (cd app/src-tauri && cargo test --lib)
   ```
 
 - Add a line to the `[Unreleased]` section of [CHANGELOG.md](CHANGELOG.md) when the change is visible to the

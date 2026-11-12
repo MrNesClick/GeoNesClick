@@ -9,8 +9,7 @@ At level 4, the Answer card honestly says what the coach knows:
   confirmed"**, with what it read; the other countries stay visible. Measured on a "Repkény utca"
   sign (Budapest): out of 8 calls, the model wrongly concluded twice with "strong certainty" (Czechia without having
   read the sign, Slovakia reading "ulica"). A conclusion only becomes **"certain"** (country first, others ruled
-  out, `[coach] trust_proof`) once confirmed by a local rule (word specific to a language, domain, dialling code):
-  that is the next step;
+  out, `[coach] trust_proof`) when the local rules confirm it on your marks (see below);
 - **without a reading**, a country is given only if it **stands out** from the look of the view (StreetCLIP): at
   least 40 % and a 15-point lead over the 2nd (`[coach] leader_min`, `leader_margin`). Otherwise: **"Hesitation"**
   between the first ones (e.g. Bulgaria 22 %, Hungary 21 %, Slovakia 16 %, Romania 14 %), without a false winner;
@@ -20,8 +19,8 @@ At level 4, the Answer card honestly says what the coach knows:
 
 ## Marks
 
-A detail matters (street sign, road sign, shop sign, number plate)? Press **Super+Shift+Z** (or "Mark",
-*Marquer*): the view is frozen and opens in full screen. Draw a rectangle around each clue; they are numbered ①,
+A detail matters (street sign, road sign, shop sign, number plate)? Press **Super+Shift+Z** (or the **Mark**
+button): the view is frozen and opens in full screen. Draw a box around each clue; they are numbered ①,
 ②… **Enter** has them read, **Esc** cancels, **Backspace** (or right click) removes the last one. Buttons do the same,
 in case GNOME does not give the keyboard to the window.
 
@@ -48,7 +47,7 @@ the answer cites the marks that prove it:
 | **Street words** | "utca", "iela", "-katu", "вулиця" | language → **very likely** country |
 | **Place names** (GeoNames) | Благоевград, София | **certain** country, if confirmed by another proof and **no mark contradicts it** |
 | **Lone place** | "MANTO" | a mere **clue**: it takes a 2nd nearby place, a letter or a word of the language, or StreetCLIP at 10 % at least (`prior_min`) |
-| **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street", *Rue*) |
+| **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street") |
 | **Country outside the candidates** | Manto → 🇭🇳 | shown, does not count |
 
 Measured: in one day, **lone** places were wrong four times (Gare → 🇫🇷🇱🇺, Laas → 🇮🇹, Orion →
@@ -97,15 +96,15 @@ missing from the general directory) landed on Lasa, in Italy ("Laas" in German),
 
 The places directory is that of the localities with more than 1,000 inhabitants from
 [GeoNames](https://www.geonames.org) (licence [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)),
-downloaded once (~11 MB) by `scripts/install.sh` or on first start, then indexed locally (~55 MB, 918,000 names in
+downloaded once (~11 MB) on first start, then indexed locally (~55 MB, 918,000 names in
 all languages). Each rule can be turned off in Settings › Marks (`[rules]`). The region of each place (GeoNames
 "admin1" code) is indexed too, with the region names (`admin1CodesASCII.txt`, ~140 KB, downloaded once; offline, the
 region is shown by its code): it is used by the locks.
 
-## Locks
+## What is certain (locks)
 
 At the top of the coach, "**Do you know where you are? Tell the coach**": the
-list of countries (the most likely first, from level 3); one click, and the line becomes "It's certain: 🇨🇿 Czechia
+list of countries (the most likely first, from level 3); one click, and the line becomes "Certain: 🇨🇿 Czechia
 (you) ✕", then Region and City are chosen the same way. What is certain (the "lock") narrows down the next search:
 places and namesakes of the country, villages of the region, map zones and Plonk It tips of the country. The rules:
 
@@ -121,8 +120,8 @@ places and namesakes of the country, villages of the region, map zones and Plonk
   can also say it yourself (list or search in the local index, offline; or "it's here" on a place read in your
   marks). The coach never replaces your choice; a chosen city also sets its region and its country;
 - **independent opinions stay independent**: the Answer drawn from your marks takes neither your choice nor your ✕
-  into account; the banner says whether it confirms it ("✓ your marks confirm it: ① ř, ů, ě") or contradicts it
-  ("⚠ your marks point to Poland"), and likewise for StreetCLIP and the AI. That is what reveals a wrong choice.
+  into account; the banner says whether it confirms it ("your marks confirm it") or contradicts it ("⚠ Your marks
+  prove something else"), and likewise for StreetCLIP and the AI. That is what reveals a wrong choice.
   Strong contradiction (another "certain" country, or an alphabet that excludes your country): alert at the top and
   two one-click ways out, "Switch to 🇵🇱 Poland" or "① is misread: remove it" (the mistake may come from you or from
   the reading); the coach never changes your choice itself. Your choice only narrows down what follows: namesakes
@@ -144,8 +143,8 @@ one that tells two outsiders apart.
 
 Sources, from highest to lowest priority:
 1. **Your metas**: `~/.config/geonesclick/my-metas.toml`, shown as "(your meta)";
-2. **The seed** (`metas_amorce.toml`): about fifty well-established facts (alphabets, driving side, colour of the centre line,
-   domains), written without a verified source, shown as "(seed, to be checked)".
+2. **The seed** (`metas_amorce.toml`): about fifty well-established facts (alphabets, driving side, colour of the
+   centre line, domains), written without a verified source, shown as "(seed, to be checked)".
 
 Format (categories: `language`, `driving`, `road_lines`, `poles`, `bollards`, `plates`, `signs`, `domains`, `car`,
 `vegetation`, `architecture`, `other`):
@@ -171,9 +170,6 @@ verified copy of it to `my-metas.toml` (`seed = "<id>"`: it becomes "your meta, 
 **Wrong** dismisses it (`[[rejected]]` block with `seed = "<id>"`). The verdicts are appended at the end of the file,
 without touching the rest: your comments are kept. To undo, delete the block.
 
-Files written by version 0.1 (`mes-metas.toml`, French category names in `config.toml`, the Plonk It cache) are
-converted once at the first start of the next version (`migrate.py`), each with a `.before-0.2` backup.
-
 ## Plonk It guides
 
 The coach collects the [Plonk It](https://www.plonkit.net) guides **on your machine, for your own use**: the
@@ -182,13 +178,14 @@ time, a 2 s pause (plus a random delay), immediate stop if the site answers 429,
 to (the `__PRELOADED_DATA__` block of the pages; their API only serves the beginner's guide). The site's
 `robots.txt` allows access (`Allow: /`) and only forbids AI training, which the coach does not do.
 
-- **First start**: built in the background (~3 min for 84 countries, about 4,000 tips); the coach works without it
-  in the meantime.
+- **First start**: built in the background: about 3 min to collect the 84 guides (4,060 tips), then their
+  comparison with the view is prepared (seconds with an NVIDIA card, about 5 min on a 4-core processor). The coach
+  works without them in the meantime and shows the progress.
 - **Afterwards**: one request on the list of guides at most every `refresh_days` days (30 by default), and only the
   modified guides are reloaded. "Update now" button in the Settings.
 - **Storage**: `~/.local/share/geonesclick/plonkit/` (raw pages + `plonkit.sqlite`: tips, FTS5 full-text search,
   cached CLIP vectors).
-- **At level 1**, when the countries are revealed: for each candidate, the Plonk It tips ranked by similarity with
+- **From level 3**, when the countries are revealed: for each candidate, the Plonk It tips ranked by similarity with
   the image, with a link to the guide. It is **a lead to check**: the comparison captures the general look of the
   view, not necessarily a precise element (see the search-engine measurements below).
 - Each tip is filed in a metas category by its Plonk It tags (30 %), then by keywords (`[plonkit] keywords`, 45 %),
@@ -199,10 +196,11 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
 - **Translation**: the guides are in English. The displayed tips are translated on demand into the coach's
   language (`[coach] language`, `en` by default = no translation), by the NVIDIA model, with a GeoGuessr
   glossary for the target language (bollard → borne, road line → marquage au sol in French…). The English shows
-  first; the translations arrive in batches of 3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
-  translated immediately. "See the original" lets you compare. Can be turned off (`[plonkit] translate`); model
-  configurable (`[plonkit] ai_model`). In practice, on demand is not enough: 31 tips out of 4,060
-  were cached, and a round waited more than 2 min for a batch that never came back. Hence:
+  first; the translations arrive in batches of 3 sent in parallel (~10 s per batch with Nemotron 3.5 Super VL),
+  then are cached: a tip already read shows translated immediately. "Show the original" lets you compare. Can be
+  turned off (`[plonkit] translate`); model configurable (`[plonkit] ai_model`). In practice, on demand is not
+  enough: 31 tips out of 4,060 were cached, and a round waited more than 2 min for a batch that never came back.
+  Hence:
   - **ahead-of-time translation** of the whole database, in the background, in batches of 10, always after the
     running rounds; it resumes where the cache stops (`[plonkit] pretranslate`, progress in Settings › Clues);
   - **a short timeout** per displayed batch (`[plonkit] translate_timeout_s`, 30 s, no retry): past this timeout,
@@ -212,11 +210,11 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
 Manual command: `cd engine && .venv/bin/python -m geonesclick.plonkit collect`.
 
 **Which search engine?** Measured on the 4,060 tips (`spikes/search_bench.py`): an in-memory dictionary, SQLite FTS5
-and Tantivy all answer in less than a millisecond (StreetCLIP: 60 ms); Elasticsearch or Meilisearch would only add
-one more server. Finding the country by searching the tips for the text of the level 2 sheet fails with every engine
-(mean rank ~50th out of 84); comparing the image with the tips (CLIP vectors) ranks the right country 1st or 2nd 4
-times out of 5, but does not improve StreetCLIP once merged (same model, redundant signal). Hence SQLite + vectors,
-without a dedicated engine.
+and Tantivy all answer in less than a millisecond (StreetCLIP: 60 ms with an NVIDIA card); Elasticsearch or
+Meilisearch would only add one more server. Finding the country by searching the tips for the text of the level 2
+sheet fails with every engine (mean rank ~50th out of 84); comparing the image with the tips (CLIP vectors) ranks the
+right country 1st or 2nd 4 times out of 5, but does not improve StreetCLIP once merged (same model, redundant
+signal). Hence SQLite + vectors, without a dedicated engine.
 
 Observed limit: if StreetCLIP ranks the right country too low (Serbia at 3 %, below the 5 % threshold), no meta can
 catch it up. The next levers are independent of StreetCLIP: the visible text and closed questions asked at level 2.
@@ -247,7 +245,8 @@ narrows it to its country. If the window is maximised, the map takes the full wi
 **Map background and privacy.** The background comes from the **online OpenStreetMap** tiles, darkened by a CSS
 filter for the coach's theme. The tile server therefore sees your IP address and the areas displayed, roughly the
 place of the round. The coach follows OpenStreetMap's
-[usage policy](https://operations.osmfoundation.org/policies/tiles/): app-specific User-Agent (`GeoNesClick/0.1`),
+[usage policy](https://operations.osmfoundation.org/policies/tiles/): app-specific User-Agent (with the project's
+address),
 attribution always visible, only the displayed tiles are loaded (normal browser cache, no downloading ahead of
 time), zoom limited to 13 by default (`[map] max_zoom`, configurable: 13 shows the streets around a position
 estimated from your marks; zones and countries are always framed at zoom 8 at most). The darkened background
@@ -270,52 +269,4 @@ the points and the zoom; the tile server, the attribution and the filter can onl
 tile server must also be allowed** in the window's security policy (`img-src` of the CSP, in
 `app/src-tauri/tauri.conf.json`), and its attribution link in `app/src-tauri/capabilities/default.json`.
 
-## Architecture
-
-```
-GNOME shortcut ─► Python engine (FastAPI, 127.0.0.1:47615) ◄─ WebSocket ─► Tauri + Vue window
-                     │
-                     ├─ capture: ScreenCast portal + PipeWire + GStreamer (continuous stream)
-                     ├─ level 1: local StreetCLIP (likely countries) + metas + Plonk It tips
-                     │    └─ map: local PLONK on the same vector (cloud of positions, background)
-                     └─ level 2: NVIDIA vision model (clue sheet, asynchronous)
-Tauri window ── OpenStreetMap tiles (online, map background only)
-```
-
-| Component | Choice | Configurable |
-|---|---|---|
-| UI | Tauri 2 + Vue 3 + Tailwind 4 | — |
-| Engine | Python 3.12, FastAPI + WebSocket | port, allowed origins |
-| Capture | ScreenCast portal + PipeWire + GStreamer | crop, masks, notification, sound |
-| Level 1 | StreetCLIP (`geolocal/StreetCLIP`) | model, prompt, list of countries, top N |
-| Level 2 | `nvidia/nemotron-3.5-super-vl-120b-a12b` | model, prompt, reasoning, timeout |
-| Metas | your metas, seed, Plonk It guides collected locally (SQLite + CLIP vectors) | activation, refresh, keywords, number of tips |
-| Map | Leaflet + OSM tiles; PLONK (`nicolas-dufour/PLONK_OSV_5M`); Natural Earth | activation, steps, points, tile server, filter, zoom |
-
-**Security**: the engine only listens on `127.0.0.1` and refuses any unknown web origin (a website open in the
-browser can neither trigger a capture nor read the results). The shortcut's socket is `0600`. The API key only goes
-to the NVIDIA API. The coach window only loads external images from `tile.openstreetmap.org` (CSP `img-src`) and
-only opens the Plonk It pages and the OpenStreetMap copyright page in the browser.
-
-## Repository layout
-
-```
-app/                      Tauri + Vue UI
-  src-tauri/src/lib.rs    starts and stops the engine
-  src/engine.ts           connection to the engine (WebSocket + HTTP)
-  src/components/         countries (Countries), map (CoachMap), what the AI sees (Observations), locks
-                          (Locks), "Where was it?" (LabelForm), settings (SettingsPanel + SettingField)…
-  src/settingsSchema.ts   description of each setting of the screen (label, help, type, section)
-engine/                   Python engine
-  src/geonesclick/        capture, StreetCLIP, PLONK (plonk.py), borders (borders.py), vision, metas
-                          (+ seed), marks and local rules (marks_engine, evidence, places, locate),
-                          locks (locks, locks_engine), test set, settings, server
-    data/                 Natural Earth 1:50m country outlines (public domain)
-  spikes/                 benchmarks: StreetCLIP, vision model, cropping, multi-crop,
-                          search, PLONK (third-party code of the PLONK bench in spikes/.vendor/, ignored)
-  dataset/labels.toml     labelled test set (local images in dataset/images/, not versioned)
-  dataset/rounds/         the bench's corpus: text of the marks and the coach's conclusion, per round
-  captures/               screen captures (ignored by git)
-scripts/install.sh        installation
-scripts/setup-plonk-spike.sh  dependencies of the PLONK bench, separate from the engine's venv
-```
+The parts of the app and how they talk to each other: [architecture.md](architecture.md).

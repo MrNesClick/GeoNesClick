@@ -17,7 +17,7 @@
         "height": 940,
         "minWidth": 360,
         "minHeight": 520,
-        "userAgent": "GeoNesClick/0.1 (desktop app, OpenStreetMap tiles for its coaching map)"
+        "userAgent": "GeoNesClick (desktop app, OpenStreetMap tiles for its coaching map; https://github.com/MrNesClick/GeoNesClick)"
       },
       {
         "label": "marks",

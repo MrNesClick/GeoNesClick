@@ -1,6 +1,6 @@
 """GNOME shortcut commands: python -m geonesclick.trigger [capture|mark]
 
-capture (default) analyses the view; mark freezes it in full screen to circle clues on it (marks).
+capture (default) analyses the view; mark freezes it in full screen to draw a box around clues (marks).
 """
 
 from __future__ import annotations

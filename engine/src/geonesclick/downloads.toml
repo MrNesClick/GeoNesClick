@@ -1,7 +1,6 @@
-# Everything GeoNesClick downloads or sends over the network: the single list, shown by the first-launch
-# flow BEFORE a single byte, and repeated in the README: everything that is
-# downloaded is stated clearly. A test (tests/test_downloads.py) checks that every
-# address written in the code is listed here, whether contacted or only displayed.
+# Everything GeoNesClick downloads or sends over the network: the single list, shown by the first-launch assistant
+# BEFORE a single byte, and repeated in the README. A test (tests/test_downloads.py) checks that every address
+# written in the code is listed here, whether contacted or only displayed.
 #
 # when: installation (once, on first launch) · option (once, if you accept it) · on_demand (during use, when
 #        useful) · continuous (on every use of the feature)

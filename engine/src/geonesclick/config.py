@@ -228,7 +228,7 @@ class VisionConfig(BaseModel):
 
 
 class MarksConfig(BaseModel):
-    # Marks: on the frozen view, the player circles clues (sign, plate…); each is cropped from
+    # Marks: on the frozen view, the player draws a box around clues (sign, plate…); each is cropped from
     # the raw image, enlarged if small, then transcribed by the vision model.
     enabled: bool
     max_marks: int = Field(ge=1, le=20)  # marks per frozen image (numbered ① to ⑳)

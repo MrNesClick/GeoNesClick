@@ -231,7 +231,7 @@ max_zoom = 13
 [vision]
 enabled = true
 base_url = "https://integrate.api.nvidia.com/v1"
-api_key_env = "NVAPI"    # variable read from the environment or from the project's .env
+api_key_env = "NVAPI"    # name of the key: environment variable, else ~/.config/geonesclick/nvapi.key
 model = "nvidia/nemotron-3.5-super-vl-120b-a12b"
 thinking = false         # model reasoning: slower, not necessarily more accurate
 timeout_s = 90

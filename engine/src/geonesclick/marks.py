@@ -1,4 +1,4 @@
-"""Marks: clues the player circles on the frozen view (road sign, street sign, shop sign…).
+"""Marks: clues the player boxes on the frozen view (road sign, street sign, shop sign…).
 
 Each mark is a piece of evidence: its zone in the raw image, its crop enlarged if small,
 and what the vision model read there, word for word. The model only transcribes; the conclusions will come

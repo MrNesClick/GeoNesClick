@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Marks window: the frozen view in full screen, where the player circles each clue (street sign,
+// Marks window: the frozen view in full screen, where the player draws a box around each clue (street sign,
 // road sign, shop sign…). Created hidden at startup (tauri.conf.json) to show without delay; it listens to the
 // engine and shows up on each "freeze" (Super+Shift+Z or the "Mark" button).
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -199,7 +199,7 @@ onBeforeUnmount(() => {
       <p class="min-w-0">
         <template v-if="error"><span class="text-alerte" role="alert">{{ error }}</span></template>
         <template v-else-if="full">{{ t("overlay.full", { max }) }}</template>
-        <template v-else>{{ t("overlay.circle") }}</template>
+        <template v-else>{{ t("overlay.box") }}</template>
         <span class="ml-2 text-courbe">{{ rects.length }} / {{ max }}</span>
       </p>
       <p class="text-courbe" :title="t('overlay.new_round')">
@@ -226,7 +226,7 @@ onBeforeUnmount(() => {
           {{ t("overlay.read") }} <kbd class="font-normal">{{ t("key.enter") }}</kbd>
         </button>
       </div>
-      <!-- What the coach draws from a mark: to know what to circle, and what does not count yet. -->
+      <!-- What the coach draws from a mark: to know what to box, and what does not count yet. -->
       <dl v-if="uses.length || notYet.length" class="w-full border-t border-courbe-fonce pt-2 text-[0.85rem]">
         <div v-if="uses.length" class="flex gap-2">
           <dt class="shrink-0 text-marque">{{ t("overlay.counted") }}</dt>

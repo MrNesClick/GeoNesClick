@@ -940,7 +940,7 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/marks/freeze")
     async def freeze() -> dict[str, Any]:
-        """"Mark" button: freezes the view to circle clues on it."""
+        """"Mark" button: freezes the view to draw a box around clues."""
         return await engine.freeze()
 
     @app.post("/marks/frame")

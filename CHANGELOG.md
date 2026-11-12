@@ -7,13 +7,32 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- A page explaining how the Rust, Vue and Python parts fit together
+  ([docs/architecture.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/architecture.md)).
+
+### Changed
+
+- Marks: the interface says "draw a box around" a clue, since you draw a rectangle.
+- The README and the documentation were checked against the app: download sizes without an NVIDIA card, Plonk It
+  update checks, what is sent to NVIDIA, the names of the Settings sections, GeoGuessr's rules.
+
+### Fixed
+
+- The help of "A proof read settles it" named local rules that do not exist (domain, dialling code).
+- The list of what is sent to NVIDIA now includes the Plonk It tips it classifies and translates.
+- The French installer texts use "tu", like the rest of the interface.
+- The User-Agent sent to OpenStreetMap, Plonk It and GeoNames named version 0.1; it now names the project.
+
 ## [0.2.3] - 2026-11-12
 
 ### Added
 
 - The requirements name what GeoNesClick really needs (64-bit Linux with GNOME, glibc 2.39 or later) instead of
-  Ubuntu only, with the systems tested so far ([docs/compatibility.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md))
-  and a form to tell how it runs on yours.
+  Ubuntu only, with the systems tested so far
+  ([docs/compatibility.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md)) and a form to
+  tell how it runs on yours.
 
 ### Changed
 
