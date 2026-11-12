@@ -100,6 +100,7 @@ La documentation détaillée est en anglais :
 - [Maintenance](docs/maintenance.md) : mises à jour, emplacement des données, outils et licences
 - [Development](docs/development.md) : compiler depuis les sources, fabriquer l'AppImage, lancer les tests
 - [Changelog](CHANGELOG.md) : ce qui change d'une version à l'autre (en anglais)
+- [Contributing](CONTRIBUTING.md) et [Security](SECURITY.md) : comment contribuer, comment signaler une faille
 
 ## Licence
 

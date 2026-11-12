@@ -94,6 +94,7 @@ before anything is downloaded. Options can be turned off in the Settings.
 - [Maintenance](docs/maintenance.md): updates, where the data is, tools and licences
 - [Development](docs/development.md): build from source, build the AppImage, run the tests
 - [Changelog](CHANGELOG.md): what changes from one version to the next
+- [Contributing](CONTRIBUTING.md) and [Security](SECURITY.md): how to help, how to report a vulnerability
 
 ## License
 
