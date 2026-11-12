@@ -38,10 +38,11 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
    [Releases](https://github.com/MrNesClick/GeoNesClick/releases).
 2. Rends-la exécutable (clic droit › Propriétés › *Exécutable comme un programme*, ou
    `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
-3. Au premier lancement, un assistant vérifie ton système et liste tout ce qu'il va télécharger, avec la taille et
-   la licence de chaque élément. Une fois ton accord donné, il installe le moteur dans
-   `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien n'est installé dans le
-   système. Le téléchargement passe par GitHub, PyPI, PyTorch et Hugging Face : si l'un d'eux ne répond pas,
+3. Au premier lancement, un assistant vérifie ton système : un composant manquant (`libgirepository-2.0-0` sur une
+   Ubuntu 24.04 fraîchement installée) s'installe en un clic, avec ton mot de passe. Il liste ensuite tout ce qu'il
+   va télécharger, avec la taille et la licence de chaque élément. Une fois ton accord donné, il installe le moteur
+   dans `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien d'autre n'est installé
+   dans le système. Le téléchargement passe par GitHub, PyPI, PyTorch et Hugging Face : si l'un d'eux ne répond pas,
    l'assistant le nomme ; réessaie plus tard, ce qui est déjà téléchargé est gardé.
 4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt.
 

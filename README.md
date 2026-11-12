@@ -35,9 +35,10 @@ The interface is in English and French (chosen on first launch, changeable in th
    page.
 2. Make it executable (right click › Properties › *Executable as Program*, or `chmod +x GeoNesClick_*.AppImage`),
    then open it.
-3. On first launch, an assistant checks your system and lists everything it will download, with the size and the
-   licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/` and the AI models in
-   `~/.cache/huggingface/`: nothing is installed in the system. The download needs GitHub, PyPI, PyTorch and
+3. On first launch, an assistant checks your system: a missing component (`libgirepository-2.0-0` on a fresh
+   Ubuntu 24.04) is installed with one click, after your password. Then it lists everything it will download, with
+   the size and the licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/`
+   and the AI models in `~/.cache/huggingface/`: nothing else is installed in the system. The download needs GitHub, PyPI, PyTorch and
    Hugging Face: if one of them does not answer, the assistant names it; retry later, what is already downloaded is
    kept.
 4. Choose your options, enter your API key if you have one, and you are ready.

@@ -125,6 +125,51 @@ fn system_checks() -> Vec<Check> {
     ]
 }
 
+const PKEXEC: &str = "/usr/bin/pkexec";
+const APT_GET: &str = "/usr/bin/apt-get";
+
+/// Installs the missing system packages (system_checks) with apt-get, as root through pkexec: the system asks for the
+/// password in its own window. The list comes from the checks, never from the UI. Debian-family systems only (apt);
+/// elsewhere the UI keeps the command, to adapt. Decided with the user on 2026-11-12, after a clean Ubuntu 24.04
+/// lacked libgirepository-2.0-0 (the "sudo apt" command stays shown).
+#[tauri::command]
+pub async fn setup_system_install() -> Result<(), String> {
+    let packages: Vec<&'static str> = system_checks().into_iter().filter(|c| !c.ok).map(|c| c.package).collect();
+    if packages.is_empty() {
+        return Ok(());
+    }
+    if !Path::new(PKEXEC).exists() || !Path::new(APT_GET).exists() {
+        return Err(i18n::tr("setup.system.cannot_install", &[]));
+    }
+    // Waits for the password and for apt: off the UI thread.
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        host_command(PKEXEC)
+            .arg(APT_GET)
+            // A fresh Ubuntu often runs its automatic updates: wait for apt's lock instead of failing at once.
+            .args(["-o", "DPkg::Lock::Timeout=300", "install", "-y"])
+            .args(&packages)
+            .stdin(Stdio::null())
+            .output()
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| i18n::tr("setup.system.install_failed", &[("error", &e.to_string())]))?;
+    apt_outcome(&i18n::current(), out.status.code(), &String::from_utf8_lossy(&out.stderr))
+}
+
+/// What pkexec + apt-get ended with: 126 / 127 are pkexec's (password dialog dismissed, not authorised), any other
+/// failure is apt's, explained by its last error line (in `lang`).
+fn apt_outcome(lang: &str, code: Option<i32>, stderr: &str) -> Result<(), String> {
+    match code {
+        Some(0) => Ok(()),
+        Some(126 | 127) => Err(i18n::t(lang, "setup.system.install_cancelled", &[])),
+        _ => {
+            let last = stderr.lines().rev().map(str::trim).find(|l| !l.is_empty()).unwrap_or("?");
+            Err(i18n::t(lang, "setup.system.install_failed", &[("error", last)]))
+        }
+    }
+}
+
 fn has_nvidia() -> bool {
     Path::new("/proc/driver/nvidia/version").exists()
 }
@@ -414,6 +459,19 @@ mod tests {
     fn appimage_entries_are_dropped_from_path_lists() {
         let value = OsString::from("/tmp/.mount_GeoNes/usr/bin:/usr/local/bin:/usr/bin:/tmp/.mount_GeoNes/bin");
         assert_eq!(without_appdir(&value, Path::new("/tmp/.mount_GeoNes")), OsString::from("/usr/local/bin:/usr/bin"));
+    }
+
+    #[test]
+    fn the_system_install_tells_a_refused_password_from_an_apt_failure() {
+        assert_eq!(apt_outcome("en", Some(0), ""), Ok(()));
+        let cancelled = i18n::t("en", "setup.system.install_cancelled", &[]);
+        assert_eq!(apt_outcome("en", Some(126), ""), Err(cancelled.clone()));
+        assert_eq!(apt_outcome("en", Some(127), "Error executing command as another user"), Err(cancelled));
+        let failed = apt_outcome("fr", Some(100), "Reading package lists...\nE: Unable to locate package libgirepository-2.0-0\n\n")
+            .unwrap_err();
+        assert!(failed.ends_with("E: Unable to locate package libgirepository-2.0-0"), "{failed}");
+        assert!(failed.starts_with("L'installation des composants a échoué"), "{failed}");
+        assert!(apt_outcome("en", None, "").unwrap_err().ends_with('?'));
     }
 
     fn lines(text: &str) -> Vec<String> {

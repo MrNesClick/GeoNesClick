@@ -85,6 +85,21 @@ const optional = computed(() => all.value.filter((x) => x.when === "option" || x
 const continuous = computed(() => all.value.filter((x) => x.when === "continuous"));
 const missing = computed(() => (status.value?.checks ?? []).filter((c) => !c.ok));
 const aptCommand = computed(() => `sudo apt install ${missing.value.map((c) => c.package).join(" ")}`);
+// The missing packages installed from here (setup.rs, setup_system_install: pkexec + apt-get), then checked again.
+const systemInstalling = ref(false);
+const systemError = ref("");
+async function installSystem() {
+  systemInstalling.value = true;
+  systemError.value = "";
+  try {
+    await invoke("setup_system_install");
+    await load();
+  } catch (e) {
+    systemError.value = String(e);
+  } finally {
+    systemInstalling.value = false;
+  }
+}
 
 // --- installation (in the background) --------------------------------------------------------------
 const phase = ref("");
@@ -277,6 +292,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <div v-if="missing.length" class="space-y-2">
           <p class="text-papier">{{ t("setup.system.missing") }}</p>
           <code class="block rounded bg-relief px-3 py-2 text-papier select-all">{{ aptCommand }}</code>
+          <p v-if="systemError" class="text-alerte" role="alert">{{ systemError }}</p>
         </div>
       </section>
 
@@ -435,8 +451,12 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         {{ t("setup.footer.download_next", { size: mb(requiredMb) }) }}
       </p>
       <template v-if="step === 'system'">
-        <button v-if="missing.length" type="button" :class="secondary" @click="step = 'components'">{{ t("setup.skip") }}</button>
-        <button v-if="missing.length" type="button" :class="primary" @click="load">{{ t("setup.recheck") }}</button>
+        <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling"
+                @click="step = 'components'">{{ t("setup.skip") }}</button>
+        <button v-if="missing.length" type="button" :class="secondary" :disabled="systemInstalling" @click="load">{{ t("setup.recheck") }}</button>
+        <button v-if="missing.length" type="button" :class="primary" :disabled="systemInstalling" @click="installSystem">
+          {{ systemInstalling ? t("setup.system.installing") : t("setup.system.install") }}
+        </button>
         <button v-else type="button" :class="primary" @click="step = 'components'">{{ t("setup.next") }}</button>
       </template>
       <template v-else-if="step === 'components'">

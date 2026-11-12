@@ -103,6 +103,7 @@ pub fn run() {
             erase_engine,
             i18n::set_language,
             setup::setup_status,
+            setup::setup_system_install,
             setup::setup_install,
             setup::setup_apply,
             setup::setup_shortcuts

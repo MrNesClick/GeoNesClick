@@ -7,6 +7,11 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- When a system component is missing (`libgirepository-2.0-0` on a fresh Ubuntu 24.04), the installer installs it
+  with one click after asking for your password; the command to type yourself is still shown.
+
 ### Fixed
 
 - The installation of the engine no longer fails at the AI model step ("No module named 'httpx'", 0.2.0 and 0.2.1).
