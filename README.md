@@ -37,7 +37,9 @@ The interface is in French for now.
    then open it.
 3. On first launch, an assistant checks your system and lists everything it will download, with the size and the
    licence of each item. Once you accept, it installs the engine in `~/.local/share/geonesclick/` and the AI models in
-   `~/.cache/huggingface/`: nothing is installed in the system.
+   `~/.cache/huggingface/`: nothing is installed in the system. The download needs GitHub, PyPI, PyTorch and
+   Hugging Face: if one of them does not answer, the assistant names it; retry later, what is already downloaded is
+   kept.
 4. Choose your options, enter your API key if you have one, and you are ready.
 
 To update, download the new AppImage and open it: the assistant updates the engine.

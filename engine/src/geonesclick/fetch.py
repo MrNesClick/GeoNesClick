@@ -22,6 +22,7 @@ FILES = {
 
 
 def fetch(which: str) -> None:
+    import httpx
     from huggingface_hub import hf_hub_download
 
     quiet_token_nag()
@@ -29,8 +30,21 @@ def fetch(which: str) -> None:
     model, revision = {"streetclip": (cfg.streetclip.model, cfg.streetclip.revision),
                        "plonk": (cfg.plonk.model, cfg.plonk.revision)}[which]
     for name in FILES[which]:
-        hf_hub_download(model, name, revision=revision)
+        try:
+            hf_hub_download(model, name, revision=revision)
+        except (OSError, httpx.HTTPError) as e:  # Hub unreachable or failing, interrupted transfer, disk full
+            raise FetchError(f"{model}/{name}", e) from e
         print(f"FICHIER {model}/{name}", flush=True)
+
+
+class FetchError(Exception):
+    """A model file that could not be downloaded (Hub unreachable, disk full...)."""
+
+    def __init__(self, file: str, cause: Exception):
+        from huggingface_hub import constants
+
+        reason = " ".join(f"{type(cause).__name__}: {cause}".split())  # one line, whatever the library wrote
+        super().__init__(f"erreur : {file} non téléchargé depuis {constants.ENDPOINT}/ : {reason}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -38,7 +52,12 @@ def main(argv: list[str] | None = None) -> int:
     if len(argv) != 1 or argv[0] not in FILES:
         print(f"usage : python -m geonesclick.fetch {{{'|'.join(FILES)}}}", file=sys.stderr)
         return 2
-    fetch(argv[0])
+    try:
+        fetch(argv[0])
+    except FetchError as e:
+        # One readable line instead of a traceback: the assistant names the site from it (setup.rs, diagnose).
+        print(e, file=sys.stderr)
+        return 1
     return 0
 
 

@@ -18,7 +18,8 @@ case "$VARIANT" in cuda|cpu) ;; *) echo "usage: install-engine.sh cuda|cpu [choi
 PYTHON_VERSION="3.12.12"  # the one used by the tests
 
 HOME_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/geonesclick/engine"
-export UV_PYTHON_INSTALL_DIR="$HOME_DIR/python" UV_CACHE_DIR="$HOME_DIR/cache" UV_NO_CONFIG=1
+# 5 retries per download instead of uv's 3: rides out a short outage of GitHub, PyPI or PyTorch (504s).
+export UV_PYTHON_INSTALL_DIR="$HOME_DIR/python" UV_CACHE_DIR="$HOME_DIR/cache" UV_NO_CONFIG=1 UV_HTTP_RETRIES=5
 NEW="$HOME_DIR/venv.new"
 mkdir -p "$HOME_DIR"
 rm -rf "$NEW"

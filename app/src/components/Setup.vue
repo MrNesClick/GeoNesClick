@@ -82,6 +82,7 @@ const aptCommand = computed(() => `sudo apt install ${missing.value.map((c) => c
 const phase = ref("");
 const lines = ref<string[]>([]);
 const installDone = ref<boolean | null>(null); // null: running; true / false: finished
+const failure = ref(""); // likely cause of a failure (site down, disk full), from setup.rs; empty: see the log
 const installing = ref(false);
 // Phases announced by install-engine.sh ("PHASE <name>"), in order.
 const PHASES = [
@@ -97,14 +98,18 @@ let unlisten: (() => void) | null = null;
 async function startInstall() {
   const { listen } = await import("@tauri-apps/api/event");
   unlisten?.(); // a retry must not add a second listener
-  unlisten = await listen<{ phase: string | null; line: string | null; done: boolean; ok: boolean }>(
+  unlisten = await listen<{ phase: string | null; line: string | null; done: boolean; ok: boolean; reason: string | null }>(
     "setup-progress", ({ payload: p }) => {
       if (p.phase) phase.value = p.phase;
       if (p.line && !p.line.startsWith("PHASE ")) lines.value = [...lines.value.slice(-199), p.line];
-      if (p.done) installDone.value = p.ok;
+      if (p.done) {
+        installDone.value = p.ok;
+        failure.value = p.reason ?? "";
+      }
     });
   installing.value = true;
   installDone.value = null;
+  failure.value = "";
   lines.value = [];
   if (step.value === "components") step.value = "options"; // options are chosen during the download
   try {
@@ -406,7 +411,10 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
           </li>
         </ol>
         <p v-if="installDone === true" class="font-bold text-foret">Installation terminée.</p>
-        <p v-else-if="installDone === false" class="font-bold text-alerte">L'installation a échoué.</p>
+        <div v-else-if="installDone === false" role="alert">
+          <p class="font-bold text-alerte">L'installation a échoué.</p>
+          <p v-if="failure" class="mt-1 text-[1.05rem] text-papier">{{ failure }}</p>
+        </div>
         <details v-if="lines.length" :open="installDone === false">
           <summary :class="disclosure">Journal d'installation</summary>
           <div ref="logBox" class="mt-2 max-h-48 overflow-auto rounded-md border border-courbe-fonce bg-relief px-3 py-2">

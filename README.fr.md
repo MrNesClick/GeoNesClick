@@ -39,7 +39,8 @@ tu le souhaites.
 3. Au premier lancement, un assistant vérifie ton système et liste tout ce qu'il va télécharger, avec la taille et
    la licence de chaque élément. Une fois ton accord donné, il installe le moteur dans
    `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien n'est installé dans le
-   système.
+   système. Le téléchargement passe par GitHub, PyPI, PyTorch et Hugging Face : si l'un d'eux ne répond pas,
+   l'assistant le nomme ; réessaie plus tard, ce qui est déjà téléchargé est gardé.
 4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt.
 
 Pour mettre à jour, télécharge la nouvelle AppImage et ouvre-la : l'assistant met le moteur à jour.

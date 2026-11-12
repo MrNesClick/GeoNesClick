@@ -7,10 +7,12 @@
 //! its progress to the UI, installs the GNOME shortcuts and removes the engine on request ("Erase everything").
 //! In development (no engine-bundle), none of this: the engine comes from engine/.venv.
 
+use std::collections::VecDeque;
 use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -170,6 +172,81 @@ struct Progress {
     line: Option<String>,
     done: bool,
     ok: bool,
+    /// On failure, its likely cause in plain words (see diagnose); the log keeps the details.
+    reason: Option<String>,
+}
+
+impl Progress {
+    fn line(line: String, phase: Option<String>) -> Self {
+        Progress { phase, line: Some(line), done: false, ok: true, reason: None }
+    }
+}
+
+/// Error lines kept to explain a failure: uv and geonesclick.fetch write their cause in the last ones.
+const ERROR_TAIL: usize = 40;
+
+/// Words of a download that failed (uv, huggingface_hub, geonesclick.fetch), compared in lower case.
+const NETWORK_SIGNS: [&str; 12] = [
+    "error sending request", "dns error", "request failed after", "failed to download", "failed to fetch",
+    "server error", "timed out", "connection", "name or service not known", "temporary failure in name resolution",
+    "network is unreachable", "non téléchargé depuis",
+];
+
+/// The host of the first https:// URL in a line.
+fn url_host(line: &str) -> Option<&str> {
+    let rest = &line[line.find("https://")? + "https://".len()..];
+    let end = rest
+        .find(|c: char| matches!(c, '/' | ':' | ')' | '`' | '\'' | '"') || c.is_whitespace())
+        .unwrap_or(rest.len());
+    Some(&rest[..end]).filter(|h| !h.is_empty())
+}
+
+/// The download site behind a host, as the assistant names it (the hosts of downloads.json).
+fn service(host: &str) -> Option<&'static str> {
+    let is = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
+    if is("github.com") || is("githubusercontent.com") {
+        Some("GitHub (Python)")
+    } else if is("pypi.org") || is("pythonhosted.org") {
+        Some("PyPI (bibliothèques Python)")
+    } else if is("pytorch.org") {
+        Some("download.pytorch.org (PyTorch)")
+    } else if is("huggingface.co") || is("hf.co") {
+        Some("Hugging Face (modèle StreetCLIP)")
+    } else {
+        None
+    }
+}
+
+/// Why install-engine.sh failed, in plain words: disk full, or a download site that does not answer (named from
+/// the URL in the error, otherwise from the phase). None when the cause is something else: the log shows it.
+fn diagnose(phase: &str, variant: &str, errors: &[String]) -> Option<String> {
+    const KEPT: &str = "Ce qui est déjà téléchargé est gardé.";
+    if errors.iter().any(|l| l.contains("No space left on device") || l.contains("os error 28")) {
+        return Some(format!("Plus assez de place sur le disque : en libérer, puis réessayer. {KEPT}"));
+    }
+    let network: Vec<&String> = errors
+        .iter()
+        .filter(|l| {
+            let lower = l.to_lowercase();
+            NETWORK_SIGNS.iter().any(|s| lower.contains(s))
+        })
+        .collect();
+    if network.is_empty() {
+        return None;
+    }
+    let named = network.iter().rev().filter_map(|l| url_host(l)).find_map(service);
+    let site = named.or(match (phase, variant) {
+        ("python", _) => Some("GitHub (Python)"),
+        ("paquets", "cpu") => Some("PyPI ou download.pytorch.org (bibliothèques Python)"),
+        ("paquets", _) => Some("PyPI (bibliothèques Python)"),
+        ("modele", _) => Some("Hugging Face (modèle StreetCLIP)"),
+        _ => None,
+    });
+    let who = site.map_or("Un site de téléchargement".to_string(), |s| format!("Le site {s}"));
+    Some(format!(
+        "{who} ne répond pas. Vérifier la connexion Internet ; si elle fonctionne, ce site est sans doute en panne : \
+         réessayer dans quelques minutes. {KEPT}"
+    ))
 }
 
 /// Runs install-engine.sh ("cuda" or "cpu" variant), after your consent to the required block. Your options are
@@ -191,23 +268,40 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
         .spawn()
         .map_err(|e| format!("installation impossible à lancer : {e}"))?;
 
-    // Script errors (stderr) relayed as is, like its output.
-    if let Some(err) = child.stderr.take() {
-        let app = app.clone();
+    // Script errors (stderr) relayed as is, like its output. The last ones of the current phase are kept to explain
+    // a failure: a retry that succeeded in an earlier phase (Hugging Face's "Retrying…") must not be blamed for it.
+    let tail = Arc::new(Mutex::new(VecDeque::with_capacity(ERROR_TAIL)));
+    let reader = child.stderr.take().map(|err| {
+        let (app, tail) = (app.clone(), Arc::clone(&tail));
         std::thread::spawn(move || {
             for line in BufReader::new(err).lines().map_while(Result::ok) {
-                let _ = app.emit("setup-progress", Progress { phase: None, line: Some(line), done: false, ok: true });
+                let _ = app.emit("setup-progress", Progress::line(line.clone(), None));
+                let mut tail = tail.lock().unwrap_or_else(PoisonError::into_inner);
+                if tail.len() == ERROR_TAIL {
+                    tail.pop_front();
+                }
+                tail.push_back(line);
             }
-        });
-    }
+        })
+    });
     let stdout = child.stdout.take().ok_or("sortie de l'installation indisponible")?;
     std::thread::spawn(move || {
+        let mut last_phase = String::new();
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
             let phase = line.strip_prefix("PHASE ").map(str::to_string);
-            let _ = app.emit("setup-progress", Progress { phase, line: Some(line), done: false, ok: true });
+            if let Some(p) = &phase {
+                last_phase.clone_from(p);
+                tail.lock().unwrap_or_else(PoisonError::into_inner).clear();
+            }
+            let _ = app.emit("setup-progress", Progress::line(line, phase));
         }
         let ok = child.wait().map(|s| s.success()).unwrap_or(false);
-        let _ = app.emit("setup-progress", Progress { phase: None, line: None, done: true, ok });
+        if let Some(reader) = reader {
+            let _ = reader.join(); // its last lines hold the cause
+        }
+        let errors = Vec::from(std::mem::take(&mut *tail.lock().unwrap_or_else(PoisonError::into_inner)));
+        let reason = if ok { None } else { diagnose(&last_phase, &variant, &errors) };
+        let _ = app.emit("setup-progress", Progress { phase: None, line: None, done: true, ok, reason });
     });
     Ok(())
 }
@@ -316,5 +410,79 @@ mod tests {
     fn appimage_entries_are_dropped_from_path_lists() {
         let value = OsString::from("/tmp/.mount_GeoNes/usr/bin:/usr/local/bin:/usr/bin:/tmp/.mount_GeoNes/bin");
         assert_eq!(without_appdir(&value, Path::new("/tmp/.mount_GeoNes")), OsString::from("/usr/local/bin:/usr/bin"));
+    }
+
+    fn lines(text: &str) -> Vec<String> {
+        text.lines().map(str::to_string).collect()
+    }
+
+    // Error outputs captured on 2026-11-12 (uv 0.9.17, huggingface_hub 2.4) with unreachable hosts, then given the
+    // real host names; the 504 one is written by hand in reqwest's format (uv's HTTP client).
+    const UV_PYTHON: &str = "error: Request failed after 5 retries
+  Caused by: Failed to download https://github.com/astral-sh/python-build-standalone/releases/download/20251209/cpython-3.12.12%2B20251209-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+  Caused by: error sending request for url (https://github.com/astral-sh/python-build-standalone/releases/download/20251209/cpython-3.12.12%2B20251209-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz)
+  Caused by: client error (Connect)
+  Caused by: dns error
+  Caused by: failed to lookup address information: Name or service not known";
+    const UV_PYPI: &str = "error: Failed to fetch: `https://pypi.org/simple/idna/`
+  Caused by: Request failed after 5 retries
+  Caused by: error sending request for url (https://pypi.org/simple/idna/)
+  Caused by: client error (Connect)
+  Caused by: dns error";
+    const UV_PYTORCH_504: &str = "error: Failed to download `torch==2.9.1+cpu`
+  Caused by: Request failed after 5 retries
+  Caused by: HTTP status server error (504 Gateway Timeout) for url (https://download.pytorch.org/whl/cpu/torch-2.9.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl)";
+    const HF: &str = "'[Errno -2] Name or service not known' thrown while requesting HEAD https://huggingface.co/geolocal/StreetCLIP/resolve/abc/config.json
+Retrying in 8s [Retry 5/5].
+erreur : geolocal/StreetCLIP/config.json non téléchargé depuis https://huggingface.co/ : LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub.";
+
+    fn site(reason: Option<String>) -> String {
+        let reason = reason.expect("a cause");
+        assert!(reason.ends_with("Ce qui est déjà téléchargé est gardé."), "{reason}");
+        reason
+    }
+
+    #[test]
+    fn an_unreachable_site_is_named_from_the_url_in_the_error() {
+        assert!(site(diagnose("python", "cpu", &lines(UV_PYTHON))).starts_with("Le site GitHub (Python) ne répond pas."));
+        assert!(site(diagnose("paquets", "cuda", &lines(UV_PYPI))).starts_with("Le site PyPI (bibliothèques Python) ne répond pas."));
+        assert!(site(diagnose("paquets", "cpu", &lines(UV_PYTORCH_504))).starts_with("Le site download.pytorch.org (PyTorch)"));
+        assert!(site(diagnose("modele", "cpu", &lines(HF))).starts_with("Le site Hugging Face (modèle StreetCLIP)"));
+        // Several sites in the errors: the last one named is the one that made the step fail.
+        let both = lines(&format!("{UV_PYPI}\n{UV_PYTORCH_504}"));
+        assert!(site(diagnose("paquets", "cpu", &both)).starts_with("Le site download.pytorch.org (PyTorch)"));
+    }
+
+    #[test]
+    fn without_a_known_url_the_phase_names_the_site() {
+        // A host that is none of the installation's sites (a mirror, say): download.geonames.org stands for it,
+        // because test_downloads.py forbids undeclared addresses in the code.
+        let other = lines("error: Failed to fetch: `https://download.geonames.org/simple/idna/`\n  Caused by: dns error");
+        assert!(site(diagnose("paquets", "cpu", &other)).starts_with("Le site PyPI ou download.pytorch.org"));
+        assert!(site(diagnose("paquets", "cuda", &other)).starts_with("Le site PyPI (bibliothèques Python)"));
+        assert!(site(diagnose("python", "cuda", &lines("Caused by: dns error"))).starts_with("Le site GitHub (Python)"));
+        assert!(site(diagnose("moteur", "cuda", &other)).starts_with("Un site de téléchargement ne répond pas."));
+    }
+
+    #[test]
+    fn a_full_disk_is_told_before_anything_else() {
+        let full = lines(&format!("{UV_PYPI}\nerror: failed to write to file `/x`: No space left on device (os error 28)"));
+        assert!(site(diagnose("paquets", "cpu", &full)).starts_with("Plus assez de place sur le disque"));
+    }
+
+    #[test]
+    fn other_failures_are_left_to_the_log() {
+        assert_eq!(diagnose("choix", "cpu", &lines("ValueError: réglage inconnu")), None);
+        assert_eq!(diagnose("python", "cpu", &[]), None);
+    }
+
+    #[test]
+    fn hosts_are_read_from_urls_and_matched_by_domain() {
+        assert_eq!(url_host("for url (https://pypi.org/simple/idna/)"), Some("pypi.org"));
+        assert_eq!(url_host("`https://files.pythonhosted.org`"), Some("files.pythonhosted.org"));
+        assert_eq!(url_host("no url here"), None);
+        assert_eq!(service("objects.githubusercontent.com"), Some("GitHub (Python)"));
+        assert_eq!(service("cas-bridge.xethub.hf.co"), Some("Hugging Face (modèle StreetCLIP)"));
+        assert_eq!(service("evilgithub.com"), None);
     }
 }

@@ -45,7 +45,10 @@ scripts/build-appimage.sh --engine-only   # only app/src-tauri/engine-bundle/ (s
 Run it on Ubuntu 24.04, the oldest target: what is compiled there works on the later versions. The AppImage stays
 light (~100 MB: the UI and uv) and bundles the engine as a wheel, PyGObject and pycairo compiled for it, the pinned
 dependencies with their hashes (CUDA and CPU variants) and the list of downloads. The engine itself is installed by
-the first-launch assistant, with `install-engine.sh`, once the user has accepted the list.
+the first-launch assistant, with `install-engine.sh`, once the user has accepted the list. Each download is tried 6
+times (`UV_HTTP_RETRIES=5`, huggingface_hub's own retries); on failure, `diagnose` in `setup.rs` reads the script's
+last error lines and tells the user which site does not answer (from the URL, else the phase) or that the disk is
+full; the uv and Hugging Face caches are kept, so "Réessayer" resumes.
 
 ## Publish a release
 
