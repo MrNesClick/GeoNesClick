@@ -70,17 +70,21 @@ The app icon's source is `app/src-tauri/icons/icon.svg`; after changing it, rege
 
 Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
 machine. Write the version's section in [CHANGELOG.md](../CHANGELOG.md) (move the `[Unreleased]` items under
-`## [x.y.z] - date`, written for the people who use the app), bump the version in the four manifests
-(`engine/pyproject.toml`, `app/package.json`, `app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`) and the
-two lock files, commit, then push an annotated tag:
+`## [x.y.z] - date`, written for the people who use the app). The section sets the number, strict SemVer: only `Fixed`
+entries → PATCH; any `Added`, `Changed` or `Deprecated` → MINOR; anything that breaks (a setting or data file no
+longer read without a migration, a raised system requirement, a removed feature) → MAJOR, or MINOR before 1.0.0. Then
+bump the version in the four manifests (`engine/pyproject.toml`, `app/package.json`, `app/src-tauri/Cargo.toml`,
+`app/src-tauri/tauri.conf.json`) and the two lock files, commit, then push an annotated tag:
 
 ```bash
 git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin v0.2.0
 ```
 
-The workflow checks that the tag matches the four versions and that CHANGELOG.md has a section for it
-(`scripts/release-notes.sh 0.2.0` prints it), runs the tests, builds the AppImage on Ubuntu 24.04 and publishes
-the release with the AppImage, its SHA-256 checksum and that section as release notes.
+The workflow checks that the tag matches the four versions, that CHANGELOG.md has a section for it
+(`scripts/release-notes.sh 0.2.0` prints it) and that the number follows the rule above against the previous tag
+(`scripts/check-version.py 0.2.0`, which gives the expected number otherwise); then it runs the tests, builds the
+AppImage on Ubuntu 24.04 and publishes the release with the AppImage, its SHA-256 checksum and that section as
+release notes.
 
 ## Tests
 

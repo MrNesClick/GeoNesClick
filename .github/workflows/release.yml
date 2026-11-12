@@ -35,6 +35,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0  # the previous tags, for the version check
 
       - name: Tag matches the version of every manifest
         run: |
@@ -53,6 +54,10 @@ jobs:
       # Checked before the build: a release is never published without its section in CHANGELOG.md.
       - name: CHANGELOG.md describes the version
         run: scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > /dev/null
+
+      # Strict SemVer against the previous tag and the version's CHANGELOG section (CLAUDE.md › Versions).
+      - name: The version number follows SemVer
+        run: python3 scripts/check-version.py "${GITHUB_REF_NAME#v}"
 
       # Same versions as the machine where the AppImage was built and tested.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0

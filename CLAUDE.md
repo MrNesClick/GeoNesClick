@@ -22,3 +22,13 @@ These rules apply to every change, whoever (or whatever) writes it. The rest is 
 - Each section becomes the release notes on GitHub: links in it are absolute (`https://github.com/...`), since
   relative links break there. `scripts/release-notes.sh x.y.z` prints what will be published.
 - Releases are built by the GitHub Action only, from an annotated `v*` tag (see docs/development.md).
+
+## Versions
+
+Strict [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), read from the version's CHANGELOG section:
+
+- **PATCH** (0.3.0 → 0.3.1): only `Fixed` (and `Security`) entries.
+- **MINOR** (0.3.1 → 0.4.0): any `Added`, `Changed` or `Deprecated` entry, compatible with the previous version.
+- **MAJOR** (1.x → 2.0.0): anything that breaks, listed under `Removed` or flagged in `Changed`: a setting or a data
+  file the new version no longer reads without a migration, a raised system requirement (glibc, GNOME, a
+  distribution), a removed feature. Before 1.0.0, a breaking change raises the MINOR instead.
