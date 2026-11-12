@@ -95,11 +95,15 @@ def run(name: str, bundle: Path, hf_cache: Path) -> tuple[bool, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    # [] among the choices: argparse checks an empty nargs="*" list against them; no name given = all the systems.
-    parser.add_argument("systems", nargs="*", choices=[*SYSTEMS, []], default=list(SYSTEMS))
+    # Checked by hand: argparse validates an empty nargs="*" list against `choices` differently across Python
+    # versions (the default list on 3.12, [] on 3.15).
+    parser.add_argument("systems", nargs="*", metavar="system", help=f"default: all of {', '.join(SYSTEMS)}")
     parser.add_argument("--bundle", type=Path, default=ROOT / "app/src-tauri/engine-bundle")
     parser.add_argument("--remove-images", action="store_true", help="remove each image after its test (CI disk)")
     args = parser.parse_args()
+    unknown = [name for name in args.systems if name not in SYSTEMS]
+    if unknown:
+        parser.error(f"unknown system {', '.join(unknown)} (choose from {', '.join(SYSTEMS)})")
     bundle = args.bundle.resolve()
     if not (bundle / "install-engine.sh").is_file():
         raise SystemExit(f"no engine bundle in {bundle}: run scripts/build-appimage.sh --engine-only")
