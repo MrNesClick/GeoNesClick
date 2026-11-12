@@ -246,8 +246,12 @@ def erase(groups: dict[str, list[Path]], models: list[Path], with_models: bool, 
         hubs = {m.parent for m in models}
         still_used = {link.resolve() for hub in hubs for link in hub.glob("*--*/blobs/*") if link.is_symlink()}
         for blob in shared - still_used:
-            freed += blob.stat().st_size
-            blob.unlink(missing_ok=True)
+            try:
+                size = blob.stat().st_size
+                blob.unlink()
+            except OSError:  # gone meanwhile, or not ours to remove: the rest of the erase goes on
+                continue
+            freed += size
             try:
                 blob.parent.rmdir()  # its shard folder, if now empty
             except OSError:

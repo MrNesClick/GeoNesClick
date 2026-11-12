@@ -95,6 +95,7 @@ def run(name: str, bundle: Path, hf_cache: Path) -> tuple[bool, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    # [] among the choices: argparse checks an empty nargs="*" list against them; no name given = all the systems.
     parser.add_argument("systems", nargs="*", choices=[*SYSTEMS, []], default=list(SYSTEMS))
     parser.add_argument("--bundle", type=Path, default=ROOT / "app/src-tauri/engine-bundle")
     parser.add_argument("--remove-images", action="store_true", help="remove each image after its test (CI disk)")
