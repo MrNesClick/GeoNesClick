@@ -12,8 +12,8 @@ the view on your screen and points you to the useful clues, with as much help as
 ## Features
 
 - **Four help levels**, from "where to look" to the full answer with its proof.
-- **Local AI** (StreetCLIP) for the likely countries, in about 60 ms with an NVIDIA card, plus a remote vision model
-  that reads the text in the view.
+- **Local AI** (StreetCLIP) for the likely countries, in about 60 ms with an NVIDIA card (1.6 s on a 4-core
+  processor), plus a remote vision model that reads the text in the view.
 - **Marks**: draw a box around a sign or a shop front; the coach reads it and draws local, sourced conclusions.
 - **Map** of the likely zones (PLONK, computed locally) and of the places read on your signs.
 - **Progress tracking**: after each round, "Where was it?" records the real country and shows your confusions.

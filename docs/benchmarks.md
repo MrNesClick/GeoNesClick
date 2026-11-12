@@ -5,14 +5,31 @@
 Each technical choice is measured on the test set before entering the coach. This page gives the measurements and
 what they decided, then the benches that produce them.
 
+## Machines
+
+Two machines, named in each measurement:
+
+| Name | Hardware | System |
+|---|---|---|
+| **NVIDIA laptop** | Intel Core i7-12700H, NVIDIA RTX 3050 Ti Laptop GPU (4 GB) | Ubuntu 24.04, GNOME 46 |
+| **Processor VM** | a virtual machine on that laptop (QEMU/KVM): 4 virtual cores, 8 GB of RAM, no GPU | fresh Ubuntu 24.04.5, GNOME 46 |
+
+Unless a measurement says otherwise, it was taken on the NVIDIA laptop. The VM gives the times of a machine without
+an NVIDIA card, and they match a physical processor with as many cores: on the laptop's own processor (GPU unused),
+StreetCLIP takes 1.55 s with 4 threads, against 1.6 s in the VM, and 1.26 s with all its 14 threads.
+
 ## Response times
 
-| Step | Measured |
-|---|---|
-| Shortcut → capture | about 0.3 s, GNOME notification with thumbnail and sound |
-| Level 1: local StreetCLIP (RTX 3050 Ti) | about 60 ms warm, 846 MB of video memory |
-| Level 2: Nemotron 3.5 Super VL (NVIDIA), no reasoning | 3 to 5 s usually, up to 15 s depending on load |
-| Map: local PLONK cloud, in the background | about 0.8 s for 512 points, 119 MB of extra video memory |
+| Step | NVIDIA laptop | Processor VM |
+|---|---|---|
+| Shortcut → capture (GNOME notification with thumbnail and sound) | about 0.3 s | 0.33 s |
+| Level 1: local StreetCLIP, warm | about 60 ms, 846 MB of video memory | about 1.6 s |
+| Plonk It tips prepared for the comparison with the view (first launch, 4,054 tips) | 6.4 s | about 5 min, in the background |
+| Map: local PLONK cloud, in the background | about 0.8 s for 512 points, 119 MB of extra video memory | not measured |
+| Engine memory, StreetCLIP and the Plonk It tips loaded | — | 2.5 GB of RAM |
+
+Level 2 runs on NVIDIA's servers, whatever the machine: Nemotron 3.5 Super VL, no reasoning, answers in 3 to 5 s
+usually, up to 15 s depending on load.
 
 ## StreetCLIP over several crops
 

@@ -14,8 +14,8 @@ tu le souhaites.
 ## Fonctionnalités
 
 - **Quatre niveaux d'aide**, de « où regarder » à la réponse complète avec sa preuve.
-- **IA locale** (StreetCLIP) pour les pays probables, en 60 ms environ avec une carte NVIDIA, plus un modèle de
-  vision distant qui lit le texte de la vue.
+- **IA locale** (StreetCLIP) pour les pays probables, en 60 ms environ avec une carte NVIDIA (1,6 s sur un
+  processeur à 4 cœurs), plus un modèle de vision distant qui lit le texte de la vue.
 - **Marques** : encadre un panneau ou une enseigne ; le coach le lit et en tire des conclusions locales et sourcées.
 - **Carte** des zones probables (PLONK, calculé en local) et des lieux lus sur tes panneaux.
 - **Suivi de ta progression** : après chaque manche, « C'était où ? » enregistre le pays réel et montre tes

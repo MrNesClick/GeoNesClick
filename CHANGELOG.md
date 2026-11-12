@@ -24,6 +24,7 @@ its release notes.
 
 - The help of "A proof read settles it" named local rules that do not exist (domain, dialling code).
 - The list of what is sent to NVIDIA now includes the Plonk It tips it classifies and translates.
+- The installer said "nothing is changed in the system" right after installing a missing system component.
 - The French installer texts use "tu", like the rest of the interface.
 - The User-Agent sent to OpenStreetMap, Plonk It and GeoNames named version 0.1; it now names the project.
 

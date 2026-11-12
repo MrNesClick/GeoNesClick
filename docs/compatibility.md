@@ -21,7 +21,7 @@ even when everything works.
 |---|---|---|---|---|---|---|
 | Ubuntu 24.04.5 | GNOME 46 | Wayland | NVIDIA | 0.1.0 | Works | maintainer's machine |
 | Ubuntu 26.04.1 (fresh install) | GNOME 50 | Wayland | none | 0.1.1 | Works | maintainer, VM |
-| Ubuntu 24.04.5 (fresh install) | GNOME 46 | Wayland | none | 0.2.1 | Engine installation fails (fixed in 0.2.2); `libgirepository-2.0-0` to install | maintainer, VM |
+| Ubuntu 24.04.5 (fresh install) | GNOME 46 | Wayland | none | 0.2.3 | Works; `libgirepository-2.0-0` installed with one click | maintainer, VM |
 
 A line is added for each report, with a link to it; a failure stays listed until a version fixes it. A report where
 everything works also adds the system (distribution and version) to the "Validated on" list of both READMEs.
