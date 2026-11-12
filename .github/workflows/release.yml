@@ -50,6 +50,10 @@ jobs:
             fi
           done
 
+      # Checked before the build: a release is never published without its section in CHANGELOG.md.
+      - name: CHANGELOG.md describes the version
+        run: scripts/release-notes.sh "${GITHUB_REF_NAME#v}" > /dev/null
+
       # Same versions as the machine where the AppImage was built and tested.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
         with:
@@ -85,7 +89,12 @@ jobs:
           cd app/src-tauri/target/release/bundle/appimage
           appimage="$(ls GeoNesClick_*.AppImage)"
           sha256sum "$appimage" > "$appimage.sha256"
-          cat > notes.md <<EOF
+          # What changes in this version (CHANGELOG.md), then what every release says.
+          "$GITHUB_WORKSPACE/scripts/release-notes.sh" "${GITHUB_REF_NAME#v}" > notes.md
+          cat >> notes.md <<EOF
+
+          ---
+
           AI-assisted geolocation coach for OSINT and GeoGuessr training, for Ubuntu 24.04 or later with GNOME.
 
           **Install**: download \`$appimage\`, make it executable, open it. On first launch, an installer lists

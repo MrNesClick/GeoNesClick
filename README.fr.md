@@ -99,6 +99,7 @@ La documentation détaillée est en anglais :
 - [Measurements and benchmarks](docs/benchmarks.md) : pourquoi chaque choix technique, et les tests
 - [Maintenance](docs/maintenance.md) : mises à jour, emplacement des données, outils et licences
 - [Development](docs/development.md) : compiler depuis les sources, fabriquer l'AppImage, lancer les tests
+- [Changelog](CHANGELOG.md) : ce qui change d'une version à l'autre (en anglais)
 
 ## Licence
 

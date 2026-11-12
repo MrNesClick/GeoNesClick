@@ -62,15 +62,18 @@ full; the uv and Hugging Face caches are kept, so "Réessayer" resumes.
 ## Publish a release
 
 Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
-machine. Bump the version in the four manifests (`engine/pyproject.toml`, `app/package.json`,
-`app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`), commit, then push a tag:
+machine. Write the version's section in [CHANGELOG.md](../CHANGELOG.md) (move the `[Unreleased]` items under
+`## [x.y.z] - date`, written for the people who use the app), bump the version in the four manifests
+(`engine/pyproject.toml`, `app/package.json`, `app/src-tauri/Cargo.toml`, `app/src-tauri/tauri.conf.json`) and the
+two lock files, commit, then push an annotated tag:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin v0.2.0
 ```
 
-The workflow checks that the tag matches the four versions, runs the tests, builds the AppImage on Ubuntu 24.04
-and publishes the release with the AppImage and its SHA-256 checksum.
+The workflow checks that the tag matches the four versions and that CHANGELOG.md has a section for it
+(`scripts/release-notes.sh 0.2.0` prints it), runs the tests, builds the AppImage on Ubuntu 24.04 and publishes
+the release with the AppImage, its SHA-256 checksum and that section as release notes.
 
 ## Tests
 
