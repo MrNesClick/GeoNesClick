@@ -2,9 +2,10 @@
 // Settings › Storage: what the coach keeps on disk, the size of each item, and "Empty".
 // Emptying takes two steps (Empty → Confirm, with what it costs): nothing goes on a stray click.
 // The test set, your metas and your config are not listed: they are never emptied.
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, reactive, ref } from "vue";
 import type { EraseGroup } from "../engine";
 import { clearStorage, engine, erasePlan, eraseEverything, num, getJSON } from "../engine";
+import type { Key } from "../i18n";
 import { t } from "../i18n";
 
 interface Item {
@@ -34,24 +35,33 @@ async function load() {
 }
 onMounted(load);
 
-// "Erase everything" (right to erasure, GDPR): the list with the sizes, the word EFFACER to type, then the engine
-// and the UI start again from scratch. The models (nothing personal) only if the box is ticked.
+// "Erase everything" (right to erasure, GDPR): the list with the sizes, the confirmation word to type, then the engine
+// and the UI start again from scratch. Each optional group has its own box: the models (nothing personal), and the
+// engine installed by the AppImage (an uninstall: the app then only offers to close).
 const erase = ref<EraseGroup[] | null>(null);
 const typed = ref("");
-const withModels = ref(false);
+const withOptional = reactive<Record<string, boolean>>({ models: false, engine: false });
+const ALSO: Record<string, [Key, Key]> = {
+  models: ["storage.also.models", "storage.also_note.models"],
+  engine: ["storage.also.engine", "storage.also_note.engine"],
+};
 const erasing = ref(false);
 const eraseError = ref<string | null>(null);
 async function openErase() {
   erase.value = (await erasePlan())?.groups ?? [];
   typed.value = "";
-  withModels.value = false;
+  withOptional.models = withOptional.engine = false;
   eraseError.value = null;
 }
 const eraseTotal = computed(() =>
-  (erase.value ?? []).filter((g) => !g.optional || withModels.value).reduce((n, g) => n + g.size, 0));
+  (erase.value ?? []).filter((g) => !g.optional || withOptional[g.id]).reduce((n, g) => n + g.size, 0));
+async function closeApp() {
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().close(); // closing the coach quits the app (lib.rs)
+}
 async function confirmErase() {
   erasing.value = true;
-  eraseError.value = await eraseEverything(withModels.value);
+  eraseError.value = await eraseEverything(withOptional.models, withOptional.engine);
   erasing.value = false;
 }
 
@@ -107,7 +117,14 @@ async function clear(item: Item) {
       <p class="mt-0.5 text-[0.85rem] text-courbe">
         {{ t("storage.erase_intro") }}
       </p>
-      <p v-if="engine.erased" class="mt-2 text-[0.85rem] text-alerte" role="status">
+      <div v-if="engine.uninstalled" class="mt-2 space-y-2" role="status">
+        <p class="text-[0.9rem] text-papier">{{ t("storage.uninstalled") }}</p>
+        <button type="button" class="rounded-md border border-courbe-fonce px-3 py-1.5 text-papier hover:bg-relief"
+                @click="closeApp">
+          {{ t("storage.close") }}
+        </button>
+      </div>
+      <p v-else-if="engine.erased" class="mt-2 text-[0.85rem] text-alerte" role="status">
         {{ t("storage.erased") }}
       </p>
       <button v-else-if="!erase" type="button"
@@ -124,9 +141,10 @@ async function clear(item: Item) {
           </li>
           <li class="text-papier">{{ t("storage.ui_state") }}</li>
         </ul>
-        <label v-for="g in erase.filter((x) => x.optional)" :key="g.id" class="flex items-baseline gap-2 text-[0.9rem] text-papier">
-          <input v-model="withModels" type="checkbox" :disabled="!g.files" />
-          <span class="flex-1">{{ t("storage.also", { what: g.label[0].toLowerCase() + g.label.slice(1) }) }} <span class="text-courbe">{{ t("storage.also_note") }}</span></span>
+        <label v-for="g in erase.filter((x) => x.optional && ALSO[x.id])" :key="g.id"
+               class="flex items-baseline gap-2 text-[0.9rem] text-papier">
+          <input v-model="withOptional[g.id]" type="checkbox" :disabled="!g.files" />
+          <span class="flex-1">{{ t(ALSO[g.id][0]) }} <span class="text-courbe">{{ t(ALSO[g.id][1]) }}</span></span>
           <span class="tabular-nums text-courbe">{{ g.files ? size(g.size) : t("storage.absent") }}</span>
         </label>
         <p class="text-[0.85rem] text-courbe">{{ t("storage.total", { size: size(eraseTotal) }) }}</p>

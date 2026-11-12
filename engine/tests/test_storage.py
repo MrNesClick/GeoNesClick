@@ -135,13 +135,13 @@ def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
     plan = {g["id"]: g for g in client.get("/storage/erase").json()["groups"]}
     assert plan["dataset"]["precious"] and plan["dataset"]["files"] == 3 and plan["models"]["optional"]
     assert client.post("/storage/erase", json={"confirm": "oui"}, headers=origin).status_code == 422
-    res = client.post("/storage/erase", json={"confirm": "EFFACER"}, headers=origin).json()
+    res = client.post("/storage/erase", json={"confirm": "ERASE"}, headers=origin).json()
     assert res["ok"] and res["shortcuts"] == 1
     assert not any(p.exists() for p in gone) and apikey.read("NVAPI") is None
     assert all(p.exists() for p in kept) and ours.exists()  # models: only on request
     assert ["set", storage.MEDIA_KEYS, "custom-keybindings", "['/a/']"] in calls
     assert client.get("/health").json()["erased"] is True
-    client.post("/storage/erase", json={"confirm": "EFFACER", "models": True}, headers=origin)
+    client.post("/storage/erase", json={"confirm": "ERASE", "models": True}, headers=origin)
     assert not ours.exists() and kept[1].exists()  # other software's models stay
 
 
@@ -149,3 +149,21 @@ def test_model_ids_cannot_escape_the_cache(tmp_path):
     (tmp_path / "hub").mkdir()
     (tmp_path / "victim").mkdir()
     assert storage.model_dirs(tmp_path / "hub", ["../victim", "a/../../victim", "x"]) == []
+
+
+def test_the_engine_box_is_offered_only_for_the_engine_installed_by_the_appimage(tmp_path, monkeypatch):
+    """The development venv is never offered for removal; the AppImage's installed engine is, as an optional group."""
+    from geonesclick import paths, storage
+
+    monkeypatch.setattr(paths, "DATA_DIR", tmp_path)
+    venv = tmp_path / "engine" / "venv"
+    (venv / "lib").mkdir(parents=True)
+    (venv / "lib" / "big.bin").write_bytes(b"x" * 1000)
+    monkeypatch.setattr(storage.sys, "prefix", str(venv))
+    assert storage.installed_engine() == tmp_path / "engine"
+    plan = {g["id"]: g for g in storage.erase_plan({}, [], storage.installed_engine())}
+    assert plan["engine"]["optional"] and plan["engine"]["size"] == 1000
+
+    monkeypatch.setattr(storage.sys, "prefix", str(tmp_path / "elsewhere" / ".venv"))
+    assert storage.installed_engine() is None
+    assert "engine" not in {g["id"] for g in storage.erase_plan({}, [], storage.installed_engine())}

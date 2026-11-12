@@ -394,6 +394,8 @@ export const engine = reactive({
   leader: { min: 0.4, margin: 0.15 },
   /** "Erase everything" done: the engine is waiting to be restarted. */
   erased: false,
+  /** The engine was removed by "Erase everything": only closing is left. */
+  uninstalled: false,
   busy: false,
   error: null as string | null,
   current: null as Analysis | null,
@@ -651,8 +653,8 @@ export const refreshPlonkit = () => request("/plonkit/refresh");
 export interface EraseGroup { id: string; label: string; files: number; size: number; precious: boolean; optional: boolean }
 export const erasePlan = () => getJSON<{ groups: EraseGroup[] }>("/storage/erase");
 /** Erases everything about you, then restarts the engine (Tauri) and the UI, which start again from scratch. */
-export async function eraseEverything(models: boolean): Promise<string | null> {
-  const res = await request("/storage/erase", { confirm: "EFFACER", models });
+export async function eraseEverything(models: boolean, removeEngine: boolean): Promise<string | null> {
+  const res = await request("/storage/erase", { confirm: "ERASE", models });
   if (!res?.ok) return engine.error ?? t("engine.erase_failed");
   try {
     localStorage.clear(); // the UI state (open sections…) goes too
@@ -661,9 +663,15 @@ export async function eraseEverything(models: boolean): Promise<string | null> {
   }
   try {
     const { invoke } = await import("@tauri-apps/api/core");
+    if (removeEngine) {
+      // Uninstall: Tauri stops the engine then removes its installation; the app then only offers to close.
+      await invoke("erase_engine");
+      engine.uninstalled = true;
+      return null;
+    }
     await invoke("restart_engine");
-  } catch {
-    return t("engine.erased_restart");
+  } catch (e) {
+    return removeEngine ? String(e) : t("engine.erased_restart");
   }
   window.location.reload();
   return null;

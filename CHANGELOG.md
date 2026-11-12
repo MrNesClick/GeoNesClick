@@ -9,6 +9,8 @@ its release notes.
 
 ### Added
 
+- "Erase everything" can also remove the engine installed by the AppImage: with the models box too, a full
+  uninstall from the app, after which only the AppImage is left.
 - A page explaining how the Rust, Vue and Python parts fit together
   ([docs/architecture.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/architecture.md)).
 

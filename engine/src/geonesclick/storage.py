@@ -16,11 +16,13 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from . import paths
 from .i18n import t
 from .places import ARCHIVE, DB_NAME, OLD_DBS, REGIONS
 
@@ -168,12 +170,27 @@ def dir_size(path: Path) -> int:
     return size_of(p for p in path.rglob("*") if p.is_file() and not p.is_symlink())
 
 
-def erase_plan(groups: dict[str, list[Path]], models: list[Path]) -> list[dict[str, Any]]:
+def installed_engine() -> Path | None:
+    """The engine installed by the AppImage's assistant, if this engine runs from it (never the development venv)."""
+    home = paths.DATA_DIR / "engine"
+    try:
+        running = Path(sys.prefix).resolve()
+        return home if home.is_dir() and running.is_relative_to(home.resolve()) else None
+    except OSError:
+        return None
+
+
+def erase_plan(groups: dict[str, list[Path]], models: list[Path], engine: Path | None = None) -> list[dict[str, Any]]:
+    """What "Erase everything" deletes. The optional groups have their own box: the models, and the installed engine
+    (removed by the app once this engine has stopped)."""
     out = [{"id": key, "label": t(f"storage.group.{key}"), "files": len(files), "size": size_of(files),
             "precious": key == "dataset",
             "optional": False} for key, files in groups.items()]
     out.append({"id": "models", "label": t("storage.group.models"), "files": len(models),
                 "size": sum(dir_size(m) for m in models), "precious": False, "optional": True})
+    if engine is not None:
+        out.append({"id": "engine", "label": t("storage.group.engine"), "files": 1, "size": dir_size(engine),
+                    "precious": False, "optional": True})
     return out
 
 

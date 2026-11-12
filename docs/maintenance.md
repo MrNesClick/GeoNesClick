@@ -50,9 +50,11 @@ coach are deleted, never a whole folder.
 **Erase everything** (right to erasure, GDPR): at the bottom of Settings › Storage. The list of what
 goes is shown with the sizes: API key, settings, your metas, screen-sharing permission, captures and logs, test set
 (flagged as precious), Plonk It guides and translations, GeoNames places and villages, UI state, the app's GNOME
-shortcuts. A separate box, unticked: also the downloaded models (StreetCLIP, PLONK: nothing personal; other
-software's models stay). You have to type the word shown ("ERASE" in English); then the engine and the UI start
-again from scratch. Only files
+shortcuts. Two separate boxes, unticked: also the downloaded models (StreetCLIP, PLONK: nothing personal; other
+software's models stay), and, with the AppImage, the engine installed in `~/.local/share/geonesclick/engine/`. You
+have to type the word shown ("ERASE" in English). Then the engine and the UI start again from scratch; with the
+engine box, GeoNesClick is uninstalled instead (with the models box too, only the AppImage is left), and opening
+the AppImage again reinstalls the engine. Only files
 known to the app are deleted, never a folder set by hand nor its foreign content. The copy of the test set
 versioned in the repository (`engine/dataset/`) is not touched.
 

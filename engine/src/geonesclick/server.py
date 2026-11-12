@@ -96,7 +96,7 @@ class TruthRequest(BaseModel):
 
 
 class EraseRequest(BaseModel):
-    confirm: Literal["EFFACER"]  # typed by the player: nothing goes on a stray click
+    confirm: Literal["ERASE"]  # sent once the player typed the word shown: nothing goes on a stray click
     models: bool = False  # also the downloaded models (nothing personal)
 
 
@@ -338,7 +338,7 @@ class Engine(MarksMixin, LocksMixin):
 
     def erase_plan(self) -> dict[str, Any]:
         groups, models, _ = self._erase_targets()
-        return {"groups": storage.erase_plan(groups, models)}
+        return {"groups": storage.erase_plan(groups, models, storage.installed_engine())}
 
     async def erase_all(self, with_models: bool) -> dict[str, Any]:
         """Erases everything about you; the engine must then be restarted (the UI asks Tauri to)."""
@@ -1081,7 +1081,8 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/storage/erase")
     async def erase_all(req: EraseRequest) -> dict[str, Any]:
-        """"Erase everything" (GDPR): confirmed by the word EFFACER; the engine is then restarted by the UI."""
+        """"Erase everything" (GDPR), confirmed by the typed word; then the UI restarts the engine, or has Tauri remove
+        it (the "engine" box: only the engine installed by the AppImage, which cannot remove itself while running)."""
         return await engine.erase_all(req.models)
 
     @app.post("/storage/clear")
