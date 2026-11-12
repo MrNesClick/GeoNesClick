@@ -19,6 +19,11 @@ its release notes.
   (Fedora), `pacman` (Arch) or `zypper` (openSUSE), with each one's package names; the command shown is that of your
   system.
 
+### Fixed
+
+- The Settings screen no longer stays on "Loading the settings…" when it was opened while the engine was still
+  starting (first launch): it loads once the engine answers.
+
 ## [0.2.2] - 2026-11-12
 
 ### Added

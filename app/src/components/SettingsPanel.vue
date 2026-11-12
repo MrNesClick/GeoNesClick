@@ -3,7 +3,7 @@
 // summary), described in settingsSchema.ts; fine-grained settings are under "Advanced". Each change applies and
 // is saved right away. File-only settings (security) are shown read-only, with their reason and where to
 // change them.
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, reactive, ref, watch } from "vue";
 import type { FileOnly, Settings } from "../engine";
 import { engine, num, getJSON, refreshPlonkit, reselectWindow, saveApiKey, saveSetting, testModel } from "../engine";
 import type { Field, Group } from "../settingsSchema";
@@ -25,9 +25,15 @@ const timers: Record<string, ReturnType<typeof setTimeout>> = {};
 async function load() {
   [s.value, fileOnly.value] = await Promise.all([getJSON<Settings>("/settings"), getJSON<FileOnly>("/settings/file-only")]);
 }
-onMounted(async () => {
+async function loadAll() {
   await load();
   models.value = (await getJSON<{ models: string[] }>("/models"))?.models ?? [];
+}
+onMounted(loadAll);
+// Opened while the engine was still starting (first launch: it loads StreetCLIP), the requests failed: load again
+// once it answers, instead of staying on "Loading the settings…".
+watch(() => engine.connected, (connected) => {
+  if (connected && !s.value) void loadAll();
 });
 
 const fieldId = (f: Field) => `${f.section}.${f.key}`;
