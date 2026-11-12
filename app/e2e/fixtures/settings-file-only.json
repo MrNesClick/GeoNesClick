@@ -1,0 +1,102 @@
+{
+  "capture": {
+    "directory": {
+      "value": "",
+      "why": "a path on the disk: a request must not be able to make the engine write elsewhere"
+    }
+  },
+  "dataset": {
+    "directory": {
+      "value": "",
+      "why": "a path on the disk: a request must not be able to make the engine write elsewhere"
+    }
+  },
+  "map": {
+    "attribution_url": {
+      "value": "https://www.openstreetmap.org/copyright",
+      "why": "must also be allowed in the window (CSP and Tauri permissions)"
+    },
+    "tile_url": {
+      "value": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      "why": "must also be allowed in the window (CSP and Tauri permissions)"
+    }
+  },
+  "metas": {
+    "user_file": {
+      "value": "",
+      "why": "a path on the disk: a request must not be able to make the engine write elsewhere"
+    }
+  },
+  "plonk": {
+    "model": {
+      "value": "nicolas-dufour/PLONK_OSV_5M",
+      "why": "a model downloaded then run on your machine: a trapped model could run code"
+    },
+    "revision": {
+      "value": "e23229f4dd91d52560e8827f5bb2c68257fa162f",
+      "why": "a model downloaded then run on your machine: a trapped model could run code"
+    }
+  },
+  "plonkit": {
+    "data_dir": {
+      "value": "",
+      "why": "a path on the disk: a request must not be able to make the engine write elsewhere"
+    }
+  },
+  "rules": {
+    "detail_url": {
+      "value": "https://download.geonames.org/export/dump/{}.zip",
+      "why": "a source downloaded then read on your machine: it must not be diverted"
+    },
+    "places_dir": {
+      "value": "",
+      "why": "a path on the disk: a request must not be able to make the engine write elsewhere"
+    },
+    "places_url": {
+      "value": "https://download.geonames.org/export/dump/cities1000.zip",
+      "why": "a source downloaded then read on your machine: it must not be diverted"
+    },
+    "regions_url": {
+      "value": "https://download.geonames.org/export/dump/admin1CodesASCII.txt",
+      "why": "a source downloaded then read on your machine: it must not be diverted"
+    }
+  },
+  "server": {
+    "allowed_origins": {
+      "value": [
+        "http://localhost:1420",
+        "tauri://localhost",
+        "http://tauri.localhost"
+      ],
+      "why": "the engine's network: it must listen only to your machine and your coach window"
+    },
+    "host": {
+      "value": "127.0.0.1",
+      "why": "the engine's network: it must listen only to your machine and your coach window"
+    },
+    "port": {
+      "value": 47615,
+      "why": "the engine's network: it must listen only to your machine and your coach window"
+    }
+  },
+  "streetclip": {
+    "model": {
+      "value": "geolocal/StreetCLIP",
+      "why": "a model downloaded then run on your machine: a trapped model could run code"
+    },
+    "revision": {
+      "value": "adbc2bc00ccebc327500e42a973c98ed7c17b17a",
+      "why": "a model downloaded then run on your machine: a trapped model could run code"
+    }
+  },
+  "vision": {
+    "api_key_env": {
+      "value": "NVAPI",
+      "why": "would redirect your API key to another server"
+    },
+    "base_url": {
+      "value": "https://integrate.api.nvidia.com/v1",
+      "why": "would redirect your API key to another server"
+    }
+  }
+}

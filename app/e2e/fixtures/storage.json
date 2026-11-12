@@ -1,0 +1,41 @@
+{
+  "items": [
+    {
+      "confirm": false,
+      "detail": "no country so far",
+      "effect": "Downloaded again when the country comes first again (France: 7.3 MB).",
+      "id": "villages",
+      "kind": "cache",
+      "label": "Villages of the countries met",
+      "size": 0
+    },
+    {
+      "confirm": false,
+      "detail": "localities of more than 1,000 inhabitants, all languages",
+      "effect": "Place names unavailable until the next start, which downloads it again (~11 MB); also empties the villages.",
+      "id": "places",
+      "kind": "base",
+      "label": "Place directory (GeoNames)",
+      "size": 0
+    },
+    {
+      "confirm": true,
+      "detail": "guides, vectors, classification and translations",
+      "effect": "Collected again at the next start (~3 min), but the translations made ahead must be redone: hours of API calls.",
+      "id": "plonkit",
+      "kind": "base",
+      "label": "Plonk It guides",
+      "size": 0
+    },
+    {
+      "confirm": false,
+      "detail": "0 captures, crops of the marks, logs",
+      "effect": "Lost; the test set is not touched.",
+      "id": "captures",
+      "kind": "history",
+      "label": "Captures and debug logs",
+      "size": 0
+    }
+  ],
+  "max_cache_mb": 500
+}

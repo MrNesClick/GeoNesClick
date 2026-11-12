@@ -94,7 +94,13 @@ From the repository root; no network access, no display:
 (cd engine && .venv/bin/python -m pytest -q)   # engine
 (cd app && npx vue-tsc --noEmit)               # UI type check
 (cd app/src-tauri && cargo test --lib)         # installer and Tauri side
+(cd app && pnpm exec playwright test)          # interface, in WebKit (once: pnpm exec playwright install webkit)
 ```
+
+The interface tests (`app/e2e/`) run the real Vue interface in WebKit, the engine of the Tauri window on Linux, with
+the Rust side simulated by Tauri's mocks and the engine replayed from `app/e2e/fixtures/`. Those fixtures are written
+by the real engine (`app/e2e/make_fixtures.py`, run from `engine/`); `tests/test_e2e_fixtures.py` fails when they no
+longer match the engine's answers.
 
 Before each commit: the tests, then a code review and a security review. The benchmarks are described in
 [benchmarks.md](benchmarks.md).

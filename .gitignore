@@ -24,3 +24,7 @@ engine/spikes/.vendor/
 
 # AppImage resources, produced by scripts/build-appimage.sh
 app/src-tauri/engine-bundle/
+
+# Interface tests (Playwright): results and traces of the last run
+app/test-results/
+app/playwright-report/

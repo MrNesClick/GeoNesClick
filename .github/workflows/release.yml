@@ -82,6 +82,13 @@ jobs:
           (cd app && pnpm exec vue-tsc --noEmit)
           (cd app/src-tauri && cargo test --lib)
 
+      # The interface in WebKit (the engine of the Tauri window), with the Rust side and the engine simulated.
+      - name: Interface tests
+        run: |
+          cd app
+          pnpm exec playwright install --with-deps webkit
+          pnpm exec playwright test
+
       - name: AppImage
         run: |
           df -h /

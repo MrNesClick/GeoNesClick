@@ -16,6 +16,7 @@ Follow [docs/development.md](docs/development.md) to build from source and run t
   (cd engine && .venv/bin/python -m pytest -q)
   (cd app && npx vue-tsc --noEmit)
   (cd app/src-tauri && cargo test --lib)
+  (cd app && pnpm exec playwright test)   # interface tests, once: pnpm exec playwright install webkit
   ```
 
 - Add a line to the `[Unreleased]` section of [CHANGELOG.md](CHANGELOG.md) when the change is visible to the

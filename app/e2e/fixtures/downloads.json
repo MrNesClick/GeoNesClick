@@ -1,0 +1,136 @@
+{
+  "download": [
+    {
+      "hosts": [
+        "github.com",
+        "objects.githubusercontent.com"
+      ],
+      "id": "python",
+      "license": "PSF-2.0",
+      "required": true,
+      "size_mb": 30,
+      "when": "installation"
+    },
+    {
+      "hosts": [
+        "pypi.org",
+        "files.pythonhosted.org"
+      ],
+      "id": "packages",
+      "license": "various (BSD, MIT, Apache-2.0…), detailed package by package below",
+      "required": true,
+      "size_mb": 3060,
+      "when": "installation"
+    },
+    {
+      "hosts": [
+        "download.pytorch.org"
+      ],
+      "id": "pytorch-cpu",
+      "license": "BSD-3-Clause",
+      "required": true,
+      "size_mb": 200,
+      "when": "installation"
+    },
+    {
+      "hosts": [
+        "huggingface.co",
+        "cas-bridge.xethub.hf.co",
+        "cdn-lfs.hf.co"
+      ],
+      "id": "streetclip",
+      "license": "CC BY-NC 4.0 (non-commercial use)",
+      "required": true,
+      "size_mb": 1712,
+      "when": "installation"
+    },
+    {
+      "hosts": [
+        "download.geonames.org"
+      ],
+      "id": "geonames",
+      "license": "CC BY 4.0 (GeoNames)",
+      "option": "rules.places",
+      "required": false,
+      "size_mb": 11,
+      "when": "option"
+    },
+    {
+      "hosts": [
+        "download.geonames.org"
+      ],
+      "id": "villages",
+      "license": "CC BY 4.0 (GeoNames)",
+      "option": "rules.detail",
+      "required": false,
+      "size_mb": 8,
+      "when": "on_demand"
+    },
+    {
+      "hosts": [
+        "www.plonkit.net"
+      ],
+      "id": "plonkit",
+      "license": "no reuse licence: collected for your personal use, never redistributed",
+      "option": "plonkit.enabled",
+      "required": false,
+      "size_mb": 2,
+      "when": "option"
+    },
+    {
+      "hosts": [
+        "huggingface.co",
+        "cas-bridge.xethub.hf.co",
+        "cdn-lfs.hf.co"
+      ],
+      "id": "plonk",
+      "license": "MIT",
+      "option": "plonk.enabled",
+      "required": false,
+      "size_mb": 144,
+      "when": "option"
+    },
+    {
+      "hosts": [
+        "integrate.api.nvidia.com"
+      ],
+      "id": "nvidia",
+      "license": "terms of use of the NVIDIA API (build.nvidia.com); your API key",
+      "option": "vision.enabled",
+      "required": false,
+      "size_mb": 0,
+      "when": "continuous"
+    },
+    {
+      "hosts": [
+        "tile.openstreetmap.org"
+      ],
+      "id": "tiles",
+      "license": "data © OpenStreetMap contributors (ODbL); OSMF tile usage policy",
+      "option": "map.enabled",
+      "required": false,
+      "size_mb": 0,
+      "when": "continuous"
+    }
+  ],
+  "shown": {
+    "hosts": [
+      "en.wikipedia.org",
+      "build.nvidia.com",
+      "www.openstreetmap.org",
+      "operations.osmfoundation.org",
+      "www.geonames.org",
+      "www.naturalearthdata.com",
+      "raw.githubusercontent.com",
+      "github.com",
+      "www.google.com",
+      "schema.tauri.app",
+      "v2.tauri.app",
+      "pygobject.gnome.org",
+      "rustup.rs",
+      "nodejs.org",
+      "pnpm.io",
+      "astral.sh"
+    ]
+  }
+}

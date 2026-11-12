@@ -1,0 +1,52 @@
+{
+  "groups": [
+    {
+      "files": 1,
+      "id": "account",
+      "label": "API key, settings, your metas",
+      "optional": false,
+      "precious": false,
+      "size": 71
+    },
+    {
+      "files": 0,
+      "id": "captures",
+      "label": "Captures and logs",
+      "optional": false,
+      "precious": false,
+      "size": 0
+    },
+    {
+      "files": 0,
+      "id": "dataset",
+      "label": "Test set (rounds, images, bench)",
+      "optional": false,
+      "precious": true,
+      "size": 0
+    },
+    {
+      "files": 0,
+      "id": "plonkit",
+      "label": "Plonk It guides and translations",
+      "optional": false,
+      "precious": false,
+      "size": 0
+    },
+    {
+      "files": 0,
+      "id": "places",
+      "label": "GeoNames places and villages",
+      "optional": false,
+      "precious": false,
+      "size": 0
+    },
+    {
+      "files": 0,
+      "id": "models",
+      "label": "Downloaded models (StreetCLIP, PLONK)",
+      "optional": true,
+      "precious": false,
+      "size": 0
+    }
+  ]
+}

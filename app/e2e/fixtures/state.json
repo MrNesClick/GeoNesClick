@@ -1,0 +1,164 @@
+{
+  "capture": {
+    "alive": false,
+    "message": "starting the screen sharing…",
+    "starting": true
+  },
+  "countries": [
+    "AD",
+    "AE",
+    "AL",
+    "AR",
+    "AT",
+    "AU",
+    "BD",
+    "BE",
+    "BG",
+    "BO",
+    "BR",
+    "BT",
+    "BW",
+    "CA",
+    "CH",
+    "CL",
+    "CO",
+    "CZ",
+    "DE",
+    "DK",
+    "DO",
+    "EC",
+    "EE",
+    "ES",
+    "FI",
+    "FR",
+    "GB",
+    "GH",
+    "GR",
+    "GT",
+    "HR",
+    "HU",
+    "ID",
+    "IE",
+    "IL",
+    "IN",
+    "IS",
+    "IT",
+    "JO",
+    "JP",
+    "KE",
+    "KG",
+    "KH",
+    "KR",
+    "LK",
+    "LS",
+    "LT",
+    "LU",
+    "LV",
+    "ME",
+    "MK",
+    "MN",
+    "MT",
+    "MX",
+    "MY",
+    "NG",
+    "NL",
+    "NO",
+    "NZ",
+    "PA",
+    "PE",
+    "PH",
+    "PL",
+    "PT",
+    "RO",
+    "RS",
+    "RU",
+    "RW",
+    "SE",
+    "SG",
+    "SI",
+    "SK",
+    "SN",
+    "SZ",
+    "TH",
+    "TN",
+    "TR",
+    "TW",
+    "UA",
+    "UG",
+    "US",
+    "UY",
+    "VN",
+    "ZA"
+  ],
+  "dataset": {
+    "ask_guessed": true,
+    "enabled": true
+  },
+  "erased": false,
+  "help_level": 4,
+  "language": "en",
+  "leader": {
+    "margin": 0.15,
+    "min": 0.4
+  },
+  "locks": {
+    "enabled": true
+  },
+  "map": {
+    "attribution": "© OpenStreetMap",
+    "attribution_url": "https://www.openstreetmap.org/copyright",
+    "close_zoom": 11,
+    "enabled": true,
+    "max_zoom": 13,
+    "tile_filter": "invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.85) contrast(0.9)",
+    "tile_filter_close": "brightness(0.9) contrast(0.95)",
+    "tile_url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+  },
+  "marks": {
+    "enabled": true,
+    "max": 9,
+    "not_yet": [
+      "the place names (GeoNames, villages of the leading country included): a lone place is only a clue, it takes another proof; street names (Via…, Rue…) do not count (turned off in the settings)",
+      "poles, bollards, road markings, vegetation: described by the AI, not interpreted yet"
+    ],
+    "uses": [
+      "the text, read word for word: signs, street signs, shop signs, licence plates",
+      "the alphabet, which rules out the countries that do not write it",
+      "the letters and street words specific to a language (ъ, ő, ș, “utca”…)"
+    ]
+  },
+  "metas": {
+    "count": 51,
+    "error": false,
+    "judge": true,
+    "message": "51 metas loaded"
+  },
+  "places": {
+    "enabled": true,
+    "message": "waiting",
+    "ready": false
+  },
+  "plonk": {
+    "enabled": true,
+    "message": "waiting for StreetCLIP",
+    "ready": false
+  },
+  "plonkit": {
+    "enabled": true,
+    "message": "",
+    "status": "absent",
+    "tips": 0
+  },
+  "streetclip": {
+    "message": "loading the model…",
+    "ready": true
+  },
+  "trust_proof": true,
+  "type": "state",
+  "vision": {
+    "enabled": true,
+    "key": null,
+    "model": "nvidia/nemotron-3.5-super-vl-120b-a12b",
+    "ready": false
+  }
+}
