@@ -7,9 +7,9 @@
 - **GNOME** (Wayland or Xorg): the screen is captured through GNOME's sharing portal and the shortcuts are GNOME
   settings. Other desktops (KDE, Xfce, Cinnamon…) are not supported for now.
 - **System components that come with GNOME** (GStreamer, its PipeWire source, GObject Introspection, Cairo): the
-  installer checks them. On Debian, Ubuntu and their derivatives (apt), it installs a missing one with one click; on
-  Fedora (dnf) and Arch (pacman), it shows the command with their package names; elsewhere, Debian's names as a
-  hint.
+  installer checks them and installs a missing one with one click, after your password, through apt (Debian,
+  Ubuntu), dnf (Fedora), pacman (Arch) or zypper (openSUSE), with each distribution's package names; the command is
+  shown too. Only apt has been tried for real. With another package manager, Debian's names are shown as a hint.
 
 ## Reported systems
 
@@ -23,4 +23,5 @@ even when everything works.
 | Ubuntu 26.04.1 (fresh install) | GNOME 50 | Wayland | none | 0.1.1 | Works | maintainer, VM |
 | Ubuntu 24.04.5 (fresh install) | GNOME 46 | Wayland | none | 0.2.1 | Engine installation fails (fixed in 0.2.2); `libgirepository-2.0-0` to install | maintainer, VM |
 
-A line is added for each report, with a link to it; a failure stays listed until a version fixes it.
+A line is added for each report, with a link to it; a failure stays listed until a version fixes it. A report where
+everything works also adds the system (distribution and version) to the "Validated on" list of both READMEs.

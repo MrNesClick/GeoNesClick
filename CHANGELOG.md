@@ -15,8 +15,9 @@ its release notes.
 
 ### Changed
 
-- A missing system component is shown with the command of your system: `apt` (Debian, Ubuntu), `dnf` (Fedora) or
-  `pacman` (Arch), with their package names; the one-click install stays on apt systems.
+- A missing system component is installed with one click on more systems: through `apt` (Debian, Ubuntu), `dnf`
+  (Fedora), `pacman` (Arch) or `zypper` (openSUSE), with each one's package names; the command shown is that of your
+  system.
 
 ## [0.2.2] - 2026-11-12
 

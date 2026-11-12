@@ -25,9 +25,11 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
 
 ## Prérequis
 
-- Linux 64 bits avec GNOME (Wayland ou Xorg) et une glibc 2.39 ou plus récente : Ubuntu 24.04 ou plus récent,
-  Debian 13, Fedora 40 ou plus récent… Testé sur Ubuntu 24.04 et 26.04 ; ailleurs, ça devrait marcher :
-  [dis-nous ce qu'il en est](https://github.com/MrNesClick/GeoNesClick/issues/new?template=system-report.yml) ([systèmes testés](docs/compatibility.md), en anglais).
+- Linux 64 bits avec GNOME (Wayland ou Xorg) et une glibc 2.39 ou plus récente.
+  - **Validé sur** : Ubuntu 24.04, Ubuntu 26.04.
+  - Les autres distributions avec GNOME et une glibc 2.39 ou plus récente (Debian 13, Fedora 40 ou plus récent…) ne
+    sont pas encore validées mais devraient marcher : [dis-nous ce qu'il en est](https://github.com/MrNesClick/GeoNesClick/issues/new?template=system-report.yml) ;
+    un retour positif ajoute ton système à cette liste ([détail des retours](docs/compatibility.md), en anglais).
 - Environ 11 Go d'espace disque libre pendant l'installation, 8 Go occupés ensuite (environ 3 Go sans carte NVIDIA)
 - 8 Go de mémoire vive (sans carte NVIDIA, le moteur seul en occupe environ 2,5 Go)
 - Une carte NVIDIA (recommandé ; sans elle, l'IA locale tourne sur le processeur, plus lentement)
@@ -41,7 +43,7 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
 2. Rends-la exécutable (clic droit › Propriétés › *Exécutable comme un programme*, ou
    `chmod +x GeoNesClick_*.AppImage`), puis ouvre-la.
 3. Au premier lancement, un assistant vérifie ton système : un composant manquant s'installe en un clic, avec ton
-   mot de passe (Debian, Ubuntu et leurs dérivées ; ailleurs, il donne le nom du paquet). Il liste ensuite tout ce qu'il
+   mot de passe (avec apt, dnf, pacman ou zypper). Il liste ensuite tout ce qu'il
    va télécharger, avec la taille et la licence de chaque élément. Une fois ton accord donné, il installe le moteur
    dans `~/.local/share/geonesclick/` et les modèles d'IA dans `~/.cache/huggingface/` : rien d'autre n'est installé
    dans le système. Le téléchargement passe par GitHub, PyPI, PyTorch et Hugging Face : si l'un d'eux ne répond pas,
