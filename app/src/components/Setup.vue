@@ -307,7 +307,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
                 <tr v-for="d in all" :key="d.id" class="border-t border-courbe-fonce/50 align-top">
                   <td class="py-1 pr-2 text-papier">{{ dl(d, "what") }}<span class="block text-courbe">{{ dl(d, "why") }}</span></td>
                   <td class="py-1 pr-2 text-courbe">{{ d.hosts.join(", ") }}<span class="block">{{ dl(d, "license") }} · {{ t(`setup.when.${d.when}`) }}</span></td>
-                  <td class="py-1 text-right tabular-nums text-papier">{{ d.id === "pytorch-cpu" ? t("setup.included") : mb(sizeOf(d)) }}</td>
+                  <td class="py-1 text-right tabular-nums whitespace-nowrap text-papier">{{ d.id === "pytorch-cpu" ? t("setup.included") : mb(sizeOf(d)) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -320,7 +320,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
                 <tr v-for="p in packages" :key="p.name" class="border-t border-courbe-fonce/40">
                   <td class="py-0.5 pr-2 text-papier">{{ p.name }} {{ p.version }}</td>
                   <td class="py-0.5 pr-2 text-courbe">{{ p.license }}</td>
-                  <td class="py-0.5 text-right tabular-nums text-courbe">{{ p.note ? packageNote(p.note) : mb(p.size / 1e6) }}</td>
+                  <td class="py-0.5 text-right tabular-nums whitespace-nowrap text-courbe">{{ p.note ? packageNote(p.note) : mb(p.size / 1e6) }}</td>
                 </tr>
               </tbody>
             </table>

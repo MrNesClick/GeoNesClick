@@ -126,7 +126,7 @@ async function clear(item: Item) {
         </ul>
         <label v-for="g in erase.filter((x) => x.optional)" :key="g.id" class="flex items-baseline gap-2 text-[0.9rem] text-papier">
           <input v-model="withModels" type="checkbox" :disabled="!g.files" />
-          <span class="flex-1">{{ t("storage.also", { what: g.label.toLowerCase() }) }} <span class="text-courbe">{{ t("storage.also_note") }}</span></span>
+          <span class="flex-1">{{ t("storage.also", { what: g.label[0].toLowerCase() + g.label.slice(1) }) }} <span class="text-courbe">{{ t("storage.also_note") }}</span></span>
           <span class="tabular-nums text-courbe">{{ g.files ? size(g.size) : t("storage.absent") }}</span>
         </label>
         <p class="text-[0.85rem] text-courbe">{{ t("storage.total", { size: size(eraseTotal) }) }}</p>

@@ -703,7 +703,7 @@
   "download.python.what": "Python 3.12 (interpréteur autonome, python-build-standalone)",
   "download.python.why": "faire tourner le moteur d'analyse, sans toucher au Python de ton système",
   "download.packages.what": "Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte",
-  "download.packages.license": "variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet dans le tunnel",
+  "download.packages.license": "variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet ci-dessous",
   "download.packages.why": "le moteur : analyse locale de la vue, serveur de l'interface, lecture des réponses de l'IA",
   "download.pytorch-cpu.what": "PyTorch pour processeur (à la place de la version CUDA, s'il n'y a pas de carte NVIDIA)",
   "download.pytorch-cpu.why": "faire tourner StreetCLIP sans carte graphique NVIDIA (plus lent)",
