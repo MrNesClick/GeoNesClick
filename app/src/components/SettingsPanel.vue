@@ -110,6 +110,8 @@ function summary(g: Group): string {
         .filter(Boolean).join(t("settings.sum.and"));
       return `${auto ? t("settings.sum.coach_sets", { what: auto }) : t("settings.sum.only_you")}${v.locks.propose_city ? t("settings.sum.city_suggested") : ""}`;
     }
+    case "marks":
+      return v.marks.enabled ? t("settings.sum.marks", { n: Number(v.marks.max_marks) }) : t("settings.sum.marks_off");
     case "storage":
       return t("settings.sum.caches", { size: t("unit.mb", { n: num(Number(v.storage.max_cache_mb)) }) });
     case "dataset":

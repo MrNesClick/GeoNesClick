@@ -592,6 +592,8 @@
   "settings.sum.all_kept": "toutes gardées",
   "settings.sum.no_copy": "sans copie",
   "settings.sum.locks_off": "désactivés",
+  "settings.sum.marks": "jusqu'à {n} par vue figée",
+  "settings.sum.marks_off": "désactivées",
   "settings.sum.country": "pays",
   "settings.sum.region": "région",
   "settings.sum.and": " et ",

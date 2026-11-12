@@ -7,6 +7,10 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- The "Marks" group of the Settings shows a one-line summary, like the other groups.
+
 ## [0.2.5] - 2026-11-12
 
 ### Fixed

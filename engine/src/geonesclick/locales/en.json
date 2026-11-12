@@ -592,6 +592,8 @@
   "settings.sum.all_kept": "all kept",
   "settings.sum.no_copy": "no copy",
   "settings.sum.locks_off": "off",
+  "settings.sum.marks": "up to {n} per frozen view",
+  "settings.sum.marks_off": "off",
   "settings.sum.country": "country",
   "settings.sum.region": "region",
   "settings.sum.and": " and ",
