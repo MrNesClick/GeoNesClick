@@ -193,7 +193,7 @@ def test_turning_plonk_off_frees_it(cfg, tmp_path):
     [
         {"map": {"tile_url": "https://attaquant.example/{z}/{x}/{y}.png"}},  # server: file only
         {"map": {"attribution_url": "https://attaquant.example/"}},
-        {"plonk": {"model": "quelqu-un/autre"}},
+        {"plonk": {"model": "someone/else"}},
         {"plonk": {"revision": "0" * 40}},
     ],
 )

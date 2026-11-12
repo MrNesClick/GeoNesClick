@@ -25,7 +25,7 @@ def test_key_is_saved_private_and_only_its_end_is_shown(monkeypatch):
     assert apikey.read("NVAPI") is None
 
 
-@pytest.mark.parametrize("bad", ["court", "avec espace 123", "a" * 301, "ligne\nnouvelle", "abcdefgh12345678"])
+@pytest.mark.parametrize("bad", ["short", "with space 123", "a" * 301, "line\nbreak", "abcdefgh12345678"])
 def test_invalid_keys_are_refused(bad):
     with pytest.raises(apikey.ApiKeyError):
         apikey.save("NVAPI", bad)
@@ -38,10 +38,10 @@ def test_name_cannot_escape_the_folder():
 
 def test_old_env_file_is_migrated_then_cleaned(tmp_path):
     env = tmp_path / ".env"
-    env.write_text("# Clé API NVIDIA\nNVAPI=nvapi-old-key-0001\nAUTRE=garde\n")
+    env.write_text("# NVIDIA API key\nNVAPI=nvapi-old-key-0001\nOTHER=kept\n")
     assert apikey.migrate_env("NVAPI", env) is True
     assert apikey.read("NVAPI") == "nvapi-old-key-0001"
-    assert env.read_text() == "# Clé API NVIDIA\nAUTRE=garde\n"  # the rest of the .env is kept
+    assert env.read_text() == "# NVIDIA API key\nOTHER=kept\n"  # the rest of the .env is kept
     assert apikey.migrate_env("NVAPI", env) is False  # only once
 
 

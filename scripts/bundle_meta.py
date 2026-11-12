@@ -102,7 +102,7 @@ def main(out: Path) -> None:
                  "license": license_of(n)} for n in names]
         if variant == "cpu":
             torch = next(r for r in rows if r["name"] == "torch")
-            torch.update(version=f"{torch_version}+cpu", size=0, note="taille publiée par download.pytorch.org")
+            torch.update(version=f"{torch_version}+cpu", size=0, note="published_size")  # shown as setup.package_note.published_size
         (out / f"packages-{variant}.json").write_text(json.dumps(sorted(rows, key=lambda r: -r["size"]),
                                                                  ensure_ascii=False, indent=1))
     manifest = tomllib.loads((ENGINE / "src" / "geonesclick" / "downloads.toml").read_text())

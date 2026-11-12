@@ -25,12 +25,24 @@ def test_no_crop_no_mask_keeps_image():
 
 
 def test_parse_fiche_ignores_surrounding_text():
-    text = 'Voici la fiche :\n```json\n{"relief": "plat", "poteaux": ["bois"]}\n```\nBonne partie !'
-    assert parse_fiche(text) == {"relief": "plat", "poteaux": ["bois"]}
+    text = 'Here is the sheet:\n```json\n{"relief": "flat", "poles": ["wood"]}\n```\nGood game!'
+    assert parse_fiche(text) == {"relief": "flat", "poles": ["wood"]}
 
 
-@pytest.mark.parametrize("text", ["", "pas de json ici", "{ cassé", "} à l'envers {"])
+@pytest.mark.parametrize("text", ["", "no json here", "{ broken", "} reversed {"])
 def test_parse_fiche_rejects_unreadable(text):
     with pytest.raises(VisionError, match="unreadable"):
         parse_fiche(text)
 
+
+
+def test_prompts_get_the_ui_language_and_keep_their_json_braces():
+    from geonesclick import i18n
+    from geonesclick.vision import with_language
+
+    prompt = 'Answer {"a": 1} in {language}.'
+    assert with_language(prompt) == 'Answer {"a": 1} in English.'
+    i18n.set_language("fr")
+    assert with_language(prompt) == 'Answer {"a": 1} in français.'
+    i18n.set_language("es")  # no Spanish catalog: the UI, and the AI's answers shown in it, stay English
+    assert with_language(prompt) == 'Answer {"a": 1} in English.'

@@ -239,32 +239,36 @@ max_tokens = 2000
 temperature = 0.2
 max_side_px = 1280       # the image is shrunk to this size before sending
 # Measured prompt: making it longer degrades text reading (2026-11-07, "Repkény utca" sign: 8 readings
-# out of 10 with this one, 4 out of 12 with extra instructions on the game's UI and unreadable text).
+# out of 10 with the French one, 4 out of 12 with extra instructions on the game's UI and unreadable text).
+# This English version (2026-11-12, spikes/prompt_bench.py) reads as well as the French one it replaces; keep it
+# short, and measure again before changing it. {language}: the UI's language, for the free texts.
 prompt = '''
-Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue Street View.
-Ne devine jamais un pays d'après le paysage : seule la clé "conclusion" peut nommer un lieu, et seulement
-sur une preuve explicite. Réponds par un objet JSON valide, en français, avec ces clés :
-- "sens_circulation": "droite" | "gauche" | "indéterminé" ; ne conclus que sur une preuve forte
-  (véhicules EN MOUVEMENT, panneaux orientés, marquage), jamais sur des voitures garées
-- "preuve_circulation": la preuve utilisée
-- "marquage_routier": lignes (couleur, continues/discontinues, centrales/de rive) ou "aucun"
-- "poteaux": matériau, forme, trous, marquages, couleurs
-- "bornes_et_glissieres": bornes kilométriques, délinéateurs, glissières
-- "panneaux_et_texte": textes lus mot pour mot, alphabet
-- "plaques_immatriculation": couleurs, forme, bande latérale
-- "architecture": style, toits, matériaux, clôtures
-- "vegetation_et_sol": végétation reconnaissable, couleur du sol, climat apparent
-- "relief": plat, collines, montagnes
-- "camera_et_voiture_google": génération de caméra, partie visible du véhicule, antenne
-- "autres_indices": tout autre détail discriminant
-- "confiance": "faible" | "moyenne" | "élevée"
-- "conclusion": objet {"pays": code ISO 3166-1 à 2 lettres, "region": région, province ou ville,
-  "preuve": l'élément exact qui le prouve, "certitude": "forte" | "moyenne"} ; remplis-le UNIQUEMENT si
-  un élément explicite désigne le lieu (texte lu nommant un lieu ou une administration, nom de domaine,
-  indicatif téléphonique, drapeau, plaque nationale) ; sinon mets "pays": "", "region": "", "preuve": "".
-  Un nom de région ne vaut que s'il est lu ; laisse "region" vide s'il n'est pas écrit.
-Si un élément n'est pas visible, écris "non visible". N'invente rien.
-Ignore l'interface du jeu (boutons, boussole, carte, logos).
+You are the eye of a GeoGuessr coach. Describe ONLY what is visible in this Street View view.
+Never guess a country from the landscape: only the "conclusion" key may name a place, and only
+on explicit proof. Answer with a valid JSON object with these keys, the free texts in {language},
+the listed values as they are:
+- "driving_side": "right" | "left" | "unknown"; conclude only on strong proof
+  (vehicles IN MOTION, oriented signs, markings), never on parked cars
+- "driving_proof": the proof used
+- "road_lines": lines (colour, solid/dashed, centre/edge)
+- "poles": material, shape, holes, markings, colours
+- "bollards_and_guardrails": kilometre markers, delineators, guardrails
+- "signs_and_text": texts read word for word, alphabet
+- "licence_plates": colours, shape, side band
+- "architecture": style, roofs, materials, fences
+- "vegetation_and_soil": recognisable vegetation, soil colour, apparent climate
+- "relief": flat, hills, mountains
+- "google_camera_and_car": camera generation, visible part of the vehicle, antenna
+- "other_clues": any other discriminating detail
+- "confidence": "low" | "medium" | "high"
+- "conclusion": object {"country": ISO 3166-1 2-letter code, "region": region, province or city,
+  "proof": the exact element that proves it, "certainty": "strong" | "medium"}; fill it ONLY if
+  an explicit element designates the place (text read naming a place or an administration, domain name,
+  phone code, flag, national plate); otherwise put "country": "", "region": "", "proof": "".
+  The proof must be a text you read word for word in this image; if no text is legible, leave it all empty.
+  A region name only counts if it is read; leave "region" empty if it is not written.
+If an element is not visible, write "". Make nothing up.
+Ignore the game's interface (buttons, compass, map, logos).
 '''
 
 [marks]
@@ -280,15 +284,17 @@ max_upscale = 4.0
 parallel = 3             # readings sent at the same time (free tier limits)
 model = ""               # empty = the level 2 model ([vision] model)
 max_tokens = 600
-# The model only TRANSCRIBES: the coach draws the conclusions (local rules, to come).
+# The model only TRANSCRIBES: the coach draws the conclusions (local rules). Measured with spikes/prompt_bench.py:
+# without the accents sentence, the English prompt dropped them (BÉARN → BEARN, HÔTEL → HOTEL).
 prompt = '''
-Cette image est un détail agrandi d'une vue Street View. Recopie mot pour mot tout le texte visible, tel
-qu'il est écrit (accents, alphabet, majuscules), sans traduire ni corriger. Réponds par un objet JSON valide :
-- "texte": liste des lignes lues ; [] s'il n'y a pas de texte
-- "illisible": true si du texte est visible mais pas lisible, sinon false
-- "objet": ce que montre l'image, en quelques mots, en français (plaque de rue, panneau, enseigne, plaque d'immatriculation, borne, poteau…)
-- "alphabet": latin, cyrillique, grec, arabe, hébreu, thaï, hangeul, kana ou kanji, devanagari, autre, ou "aucun"
-N'invente rien et ne nomme aucun pays.
+This image is an enlarged detail of a Street View view. Copy word for word all the visible text, letter for
+letter as it is written: keep every accent and special letter (é, ô, ä, ø, ł, ș…), the alphabet and the capitals;
+never translate, correct or complete a word. Answer with a valid JSON object:
+- "text": list of the lines read; [] if there is no text
+- "unreadable": true if text is visible but not readable, otherwise false
+- "object": what the image shows, in a few words, in {language} (street sign, road sign, shop sign, licence plate, marker, pole…)
+- "script": latin, cyrillic, greek, arabic, hebrew, thai, hangul, kana, chinese, devanagari, other, or ""
+Make nothing up and name no country.
 '''
 
 [rules]

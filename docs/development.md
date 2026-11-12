@@ -23,10 +23,9 @@ To run the engine alone (without the UI): `cd engine && .venv/bin/python -m geon
 ## Details
 
 `scripts/install.sh` can safely be run again, for example after each `git pull`. On first launch, enter your NVIDIA API
-key (free on [build.nvidia.com](https://build.nvidia.com), "Get API Key") in **Settings › Analysis**
-(*Réglages › Analyse*). It is stored outside the repository, in `~/.config/geonesclick/nvapi.key`, readable by you
-only (0600), and is never shown again (only its last 4 characters). The `NVAPI` environment variable, if set, takes
-priority. A key still in the old `.env` is **moved** there at startup (the line is removed from the `.env`).
+key (free on [build.nvidia.com](https://build.nvidia.com), "Get API Key") in **Settings › Analysis**. It is stored
+outside the repository, in `~/.config/geonesclick/nvapi.key`, readable by you only (0600), and is never shown again
+(only its last 4 characters). The `NVAPI` environment variable, if set, takes priority. A key still in the old `.env` is **moved** there at startup (the line is removed from the `.env`).
 
 To change the shortcuts: `GNC_SHORTCUT="<Super><Shift>h" GNC_MARK_SHORTCUT="<Super><Shift>m"
 scripts/install.sh --setup-shortcut`.

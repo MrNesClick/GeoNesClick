@@ -28,7 +28,7 @@ def no_network_to_plonkit(monkeypatch):
     """No test may contact plonkit.net: a test that forgot it fails instead of collecting."""
 
     def blocked(url, timeout=20.0):
-        raise AssertionError(f"accès réseau interdit pendant les tests : {url}")
+        raise AssertionError(f"network access forbidden during the tests: {url}")
 
     monkeypatch.setattr(plonkit, "_get", blocked)
 
@@ -39,7 +39,7 @@ def no_model_download(monkeypatch):
     import huggingface_hub
 
     def blocked(repo_id, *_args, **_kwargs):
-        raise AssertionError(f"téléchargement de modèle interdit pendant les tests : {repo_id}")
+        raise AssertionError(f"model download forbidden during the tests: {repo_id}")
 
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", blocked)
 
@@ -55,7 +55,7 @@ def no_geonames_download(monkeypatch):
     """No test downloads the GeoNames directory: the tests provide their own small archive."""
 
     def blocked(url):
-        raise AssertionError(f"téléchargement interdit pendant les tests : {url}")
+        raise AssertionError(f"download forbidden during the tests: {url}")
 
     monkeypatch.setattr(places, "_fetch", blocked)
 
@@ -75,7 +75,7 @@ def no_real_shortcuts(monkeypatch):
     from geonesclick import storage
 
     def blocked(args):
-        raise AssertionError(f"gsettings interdit pendant les tests : {args}")
+        raise AssertionError(f"gsettings forbidden during the tests: {args}")
 
     monkeypatch.setattr(storage, "_gsettings", blocked)
 

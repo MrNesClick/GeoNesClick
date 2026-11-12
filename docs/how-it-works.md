@@ -2,9 +2,6 @@
 
 # How it works
 
-> The app's interface is in French for now: UI labels are given in English, followed by the French label shown
-> on screen in italics, e.g. **Settings** (*Réglages*).
-
 ## The Answer card (level 4)
 
 At level 4, the Answer card honestly says what the coach knows:
@@ -107,7 +104,7 @@ region is shown by its code): it is used by the locks.
 
 ## Locks
 
-At the top of the coach, "**Do you know where you are? Tell the coach**" (*Tu sais où tu es ? Dis-le au coach*): the
+At the top of the coach, "**Do you know where you are? Tell the coach**": the
 list of countries (the most likely first, from level 3); one click, and the line becomes "It's certain: 🇨🇿 Czechia
 (you) ✕", then Region and City are chosen the same way. What is certain (the "lock") narrows down the next search:
 places and namesakes of the country, villages of the region, map zones and Plonk It tips of the country. Decided on
@@ -136,7 +133,7 @@ places and namesakes of the country, villages of the region, map zones and Plonk
 - locks **last one capture**: a new capture starts from scratch (a stale lock would skew the next round). In debug
   mode, each lock and each rejection is logged in `capture-<id>.json`.
 
-Settings › What is certain (*Ce qui est sûr*, `[locks]`): activation, country and region set by the coach on its own,
+Settings › What is certain (`[locks]`): activation, country and region set by the coach on its own,
 suggested city, radius.
 
 
@@ -202,8 +199,8 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
 
 - **Translation**: the guides are in English. The displayed tips are translated on demand into the coach's
   language (`[coach] language`, `en` by default = no translation), by the NVIDIA model, with a GeoGuessr
-  glossary for the target language (bollard → borne, road line → marquage au sol in French…). The English shows first; the translations arrive in batches of
-  3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
+  glossary for the target language (bollard → borne, road line → marquage au sol in French…). The English shows
+  first; the translations arrive in batches of 3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
   translated immediately. "See the original" lets you compare. Can be turned off (`[plonkit] translate`); model
   configurable (`[plonkit] ai_model`). In practice, on demand is not enough: on 2026-11-07, 31 tips out of 4,060
   were cached, and a round waited more than 2 min for a batch that never came back. Hence:
@@ -227,7 +224,7 @@ catch it up. The next levers are independent of StreetCLIP: the visible text and
 
 ## Map
 
-The window has three tabs, at the bottom: **Coach**, **Map** (*Carte*) and **Settings**; the help levels stay at the
+The window has three tabs, at the bottom: **Coach**, **Map** and **Settings**; the help levels stay at the
 top. The **Map** tab opens from level 3 and fills the whole window; a blue dot lights up on it when new zones are
 ready. At levels 1 and 2, the tab is greyed out: the map would reveal the countries. It shows:
 - the **likely countries** according to StreetCLIP, the more coloured the more likely;

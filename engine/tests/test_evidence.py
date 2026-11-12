@@ -167,7 +167,7 @@ def test_places_of_another_country_are_not_used(gazetteer):
 def test_rebuild_reuses_the_downloaded_archive(tmp_path, monkeypatch):
     monkeypatch.setattr(places, "_fetch", lambda _url: archive())
     build("https://example.org/cities1000.zip", tmp_path)
-    monkeypatch.setattr(places, "_fetch", lambda _url: (_ for _ in ()).throw(AssertionError("retéléchargé")))
+    monkeypatch.setattr(places, "_fetch", lambda _url: (_ for _ in ()).throw(AssertionError("downloaded again")))
     (tmp_path / places.DB_NAME).unlink()
     assert Places(build("https://example.org/cities1000.zip", tmp_path)).count > 0
 

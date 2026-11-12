@@ -20,7 +20,7 @@ class FakeVision:
     ready, client = True, None
 
     async def describe(self, _img):
-        return {"panneaux_et_texte": "plaque « Repkény utca »"}, 0.1
+        return {"signs_and_text": "street sign “Repkény utca”"}, 0.1
 
 
 def analyse(tmp_path, debug: bool) -> tuple[str, list]:
@@ -55,7 +55,7 @@ def test_debug_log_collects_every_result(tmp_path):
     log = json.loads((tmp_path / "captures" / f"capture-{capture_id}.json").read_text())
     assert log["capture"] == f"capture-{capture_id}.png"
     assert log["streetclip"]["scores"][0]["code"] == "HU"
-    assert "Repkény utca" in log["vision"]["fiche"]["panneaux_et_texte"]
+    assert "Repkény utca" in log["vision"]["fiche"]["signs_and_text"]
     assert not list((tmp_path / "captures").glob("*.tmp"))  # atomic write finished
 
 

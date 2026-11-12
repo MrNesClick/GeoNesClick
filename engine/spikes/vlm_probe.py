@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import base64
 import io
+import tomllib
 import json
 import time
 from pathlib import Path
@@ -23,21 +24,10 @@ BASE_URL = "https://integrate.api.nvidia.com/v1"
 DEFAULT_MODEL = "z-ai/glm-5.3-flash"
 MAX_SIDE = 1280  # px: trade-off between readable details and request size
 
-PROMPT = """Tu es l'œil d'un coach GeoGuessr. Décris UNIQUEMENT ce qui est visible dans cette vue
-Street View, sans deviner de pays. Réponds par un objet JSON valide, en français, avec ces clés :
-- "sens_circulation": "droite" | "gauche" | "indéterminé", avec la preuve dans "preuve_circulation"
-- "marquage_routier": lignes (couleur, continues/discontinues, centrales/de rive) ou "aucun"
-- "poteaux": matériau, forme, trous, marquages, couleurs
-- "bornes_et_glissieres": bornes kilométriques, délinéateurs, glissières
-- "panneaux_et_texte": textes lus mot pour mot, alphabet, langue probable
-- "plaques_immatriculation": couleurs, forme, bande latérale
-- "architecture": style, toits, matériaux, clôtures
-- "vegetation_et_sol": espèces reconnaissables, couleur du sol, climat apparent
-- "relief": plat, collines, montagnes
-- "camera_et_voiture_google": génération de caméra, partie visible du véhicule, antenne
-- "autres_indices": tout autre détail discriminant
-- "confiance": "faible" | "moyenne" | "élevée" sur la qualité globale de l'observation
-Si un élément n'est pas visible, mets "non visible". Ignore l'interface du jeu (boutons, boussole, carte)."""
+def prompt() -> str:
+    """The app's vision prompt (default_config.toml), answers in English."""
+    cfg = tomllib.loads((ROOT / "engine/src/geonesclick/default_config.toml").read_text())
+    return cfg["vision"]["prompt"].replace("{language}", "English")
 
 
 def load_key() -> str:
@@ -75,7 +65,7 @@ def main() -> None:
         messages=[{
             "role": "user",
             "content": [
-                {"type": "text", "text": PROMPT},
+                {"type": "text", "text": prompt()},
                 {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
             ],
         }],

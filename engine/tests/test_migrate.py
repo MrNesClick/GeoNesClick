@@ -147,3 +147,22 @@ def test_a_damaged_file_never_stops_the_engine(tmp_path):
     assert len(done) == 2 and all("left as it is" in d for d in done)
     assert (config_dir / "mes-metas.toml").read_text() == "[[meta\n"  # untouched: the Settings report it
     assert not (config_dir / "my-metas.toml").exists()
+
+
+OLD_PROMPTS = """[vision]
+model = "x/y"
+prompt = '''Answer with "panneaux_et_texte" and the rest'''
+
+[marks]
+prompt = '''Answer with "text" only'''
+"""
+
+
+def test_a_prompt_written_for_0_1_goes_back_to_the_default(tmp_path):
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    (config_dir / "config.toml").write_text(OLD_PROMPTS)
+    assert migrate.run(config_dir, tmp_path / "no-plonkit")
+    values = tomllib.loads((config_dir / "config.toml").read_text())
+    assert values["vision"] == {"model": "x/y"}  # the old prompt goes, the rest stays
+    assert values["marks"]["prompt"] == 'Answer with "text" only'  # already in the current format: kept

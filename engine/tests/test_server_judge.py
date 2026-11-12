@@ -41,7 +41,7 @@ class FakeVision:
     client = None  # no OpenAI client: neither translation nor classification
 
     async def describe(self, _img):
-        return {"confiance": "faible"}, 0.1
+        return {"confidence": "low"}, 0.1
 
 
 def test_analyse_runs_both_levels(setup):

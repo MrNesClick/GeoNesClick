@@ -1,9 +1,8 @@
 // One-line summaries of the coach sections: readable even when the section is collapsed.
 import type { Analysis } from "./engine";
-import { i18n, pct, quote, t, tn } from "./i18n";
+import { i18n, isEmptyValue, pct, quote, t, tn } from "./i18n";
 import { certainProof, circled, clearLeader, contenders, countryName, flag, num, proofOf, tipsByCountry, viable } from "./engine";
 
-const EMPTY = /^(non visible|aucun|indéterminé)?\.?$/i;
 const analysing = () => t("sum.analysing");
 
 export function answer(a: Analysis): string {
@@ -31,7 +30,7 @@ export function countries(a: Analysis): string {
   }
   const proof = proofOf(a);
   if (proof?.source === "marks") return `${flag(proof.country)} ${t("sum.very_likely")} · ${t("sum.your_marks")}`;
-  if (proof) return `${flag(proof.country)} ${t(proof.certainty === "forte" ? "sum.very_likely" : "sum.likely")} · ${t("sum.read_by_ai")}`;
+  if (proof) return `${flag(proof.country)} ${t(proof.certainty === "strong" ? "sum.very_likely" : "sum.likely")} · ${t("sum.read_by_ai")}`;
   return viable(a).slice(0, 3).map((s) => `${flag(s.code)} ${pct(s.probability)}`).join(" · ") || analysing();
 }
 
@@ -53,8 +52,8 @@ export function vision(a: Analysis): string {
   if (v.status === "off") return t("sum.off");
   if (v.status === "pending") return t("sum.vision_pending");
   if (v.status === "error") return t("sum.unavailable");
-  const text = v.fiche.panneaux_et_texte;
-  const hasText = typeof text === "string" ? !EMPTY.test(text.trim()) : Array.isArray(text) && text.length > 0;
+  const text = v.fiche.signs_and_text;
+  const hasText = typeof text === "string" ? !isEmptyValue(text) : Array.isArray(text) && text.length > 0;
   return `${t(hasText ? "sum.text_read" : "sum.no_text")} · ${num(v.seconds)} s`;
 }
 

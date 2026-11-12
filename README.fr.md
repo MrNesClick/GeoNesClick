@@ -21,6 +21,8 @@ tu le souhaites.
   confusions.
 - Tout se règle dans l'app, et tout ce qu'elle télécharge est annoncé avant le premier octet.
 
+L'interface existe en anglais et en français (au choix dès le premier lancement, modifiable dans les Réglages).
+
 ## Prérequis
 
 - Ubuntu 24.04 ou plus récent, avec GNOME (Wayland ou Xorg)

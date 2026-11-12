@@ -12,11 +12,11 @@ def frame():
 
 def test_add_saves_raw_image_and_label(tmp_path, frame):
     ds = Dataset(tmp_path)
-    label = ds.add("20261107-080023-137", frame, "LV", found=True, predicted="EE", area='côte "ouest"')
+    label = ds.add("20261107-080023-137", frame, "LV", found=True, predicted="EE", area='"west" coast')
     assert (tmp_path / "images" / label.file).exists()
     [read] = ds.labels()
     assert (read.country, read.found, read.predicted, read.layout) == ("LV", True, "EE", "window 64x40")
-    assert read.area == 'côte "ouest"'  # quotes correctly escaped in TOML
+    assert read.area == '"west" coast'  # quotes correctly escaped in TOML
 
 
 def test_found_false_is_kept(tmp_path, frame):

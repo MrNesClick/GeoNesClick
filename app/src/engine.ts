@@ -1,7 +1,7 @@
 // Connection to the Python engine: WebSocket for pushed results, HTTP for commands.
 import { reactive } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { setLanguage, t } from "./i18n";
+import { setLanguage, t, unreadableWords } from "./i18n";
 
 export const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
 export const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
@@ -85,11 +85,11 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
     const v = (c as Record<string, unknown>)[key];
     return typeof v === "string" ? v.trim() : "";
   };
-  const country = field("pays").toUpperCase();
+  const country = field("country").toUpperCase();
   if (!engine.countries.includes(country)) return null;
   return {
-    source: "vision", country, region: field("region"), proof: field("preuve"),
-    certainty: field("certitude").toLowerCase(),
+    source: "vision", country, region: field("region"), proof: field("proof"),
+    certainty: field("certainty").toLowerCase(),
     confirmed: false, // the AI alone is never "certain": only the local rules confirm
   };
 }
@@ -200,7 +200,7 @@ export function marksConclusion(a: Analysis): Conclusion | null {
   return {
     source: "marks", country: v.country, region: "",
     proof: v.cites.map((c) => `${circled(c.n)} ${c.items.join(", ")}`).join(" · "),
-    certainty: v.level === "certain" ? "forte" : "moyenne", confirmed: v.level === "certain",
+    certainty: v.level === "certain" ? "strong" : "medium", confirmed: v.level === "certain",
   };
 }
 
@@ -221,13 +221,13 @@ export function proofOf(a: Analysis): Conclusion | null {
 /** Label of a proof according to its source and its confirmation. */
 export function proofLabel(c: Conclusion): string {
   if (c.source === "marks") return t(c.confirmed ? "proof.marks_certain" : "proof.marks_likely");
-  return t(c.certainty === "forte" ? "proof.ai_strong" : "proof.ai_medium");
+  return t(c.certainty === "strong" ? "proof.ai_strong" : "proof.ai_medium");
 }
 
 /** CERTAIN proof: strong, confirmed by a local rule, and the "a proof read settles it" setting on. */
 export function certainProof(a: Analysis): Conclusion | null {
   const proof = proofOf(a);
-  return engine.trustProof && proof?.certainty === "forte" && proof.confirmed ? proof : null;
+  return engine.trustProof && proof?.certainty === "strong" && proof.confirmed ? proof : null;
 }
 
 /** Country that clearly stands out according to StreetCLIP, or null: the coach then talks of hesitation. */
@@ -248,9 +248,10 @@ export const contenders = (a: Analysis): CountryScore[] =>
 /** The vision model saw text without being able to read it (too small or blurry). */
 export function unreadableText(a: Analysis): boolean {
   if (a.vision.status !== "done") return false;
-  const text = a.vision.fiche.panneaux_et_texte;
-  const all = Array.isArray(text) ? text.join(" ") : String(text ?? "");
-  return /illisible/i.test(all);
+  const text = a.vision.fiche.signs_and_text;
+  const all = (Array.isArray(text) ? text.join(" ") : String(text ?? "")).toLowerCase();
+  // The model writes it in the UI's language: the word of every catalog ("unreadable", "illisible"…).
+  return unreadableWords().some((w) => all.includes(w));
 }
 
 /** Leading country: proven (certain, the others ruled out) or read by the AI (very likely, the others stay). */

@@ -70,14 +70,14 @@ const out = (code: string) => !!certain.value || excluded(props.analysis, code);
         <span class="w-12 shrink-0 text-right tabular-nums text-papier">{{ pct(leader.probability) }}</span>
       </div>
       <p v-if="proof" class="mt-1.5 text-[0.85rem] text-lac">
-        {{ t("countries.proof_read", { certainty: proof.certainty ? valueLabel("value.certitude", proof.certainty) : t("countries.unspecified"), country: countryName(proof.country), proof: proof.proof }) }}
+        {{ t("countries.proof_read", { certainty: proof.certainty ? valueLabel("value.certainty", proof.certainty) : t("countries.unspecified"), country: countryName(proof.country), proof: proof.proof }) }}
       </p>
     </div>
 
     <div v-else>
       <p class="text-papier"><span class="font-bold">{{ t("summary.hesitation") }}</span><span class="text-courbe">{{ t("countries.no_standout") }}</span></p>
       <p v-if="proof" class="mt-1.5 text-[0.85rem] text-lac">
-        {{ t("countries.proof_read", { certainty: proof.certainty ? valueLabel("value.certitude", proof.certainty) : t("countries.unspecified"), country: countryName(proof.country), proof: proof.proof }) }}
+        {{ t("countries.proof_read", { certainty: proof.certainty ? valueLabel("value.certainty", proof.certainty) : t("countries.unspecified"), country: countryName(proof.country), proof: proof.proof }) }}
       </p>
     </div>
 

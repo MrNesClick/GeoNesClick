@@ -27,7 +27,7 @@ from .marks import MAX_PER_ANALYSIS, DeleteRequest, FrameRequest, MarksRequest, 
 from .places import DB_NAME as PLACES_DB
 from .places import COUNTRY, OLD_DBS, VERSION, Places, PlacesError, detail_name
 from .places import build as build_places
-from .vision import VisionError
+from .vision import with_language, VisionError
 
 FROZEN_FRAMES = 3  # frozen views waiting for marks
 MARK_THUMB_SIDE = 360
@@ -156,7 +156,7 @@ class MarksMixin:
         else:
             async with self.mark_slots:
                 try:
-                    fiche, seconds = await self.vision.ask(img, mc.prompt, mc.model or self.cfg.vision.model,
+                    fiche, seconds = await self.vision.ask(img, with_language(mc.prompt), mc.model or self.cfg.vision.model,
                                                            mc.max_tokens)
                     mark.update(status="done", seconds=round(seconds, 1), **reading(fiche))
                     mark["evidence"] = as_dict(await asyncio.to_thread(self.evidence_of, mark["text"]))

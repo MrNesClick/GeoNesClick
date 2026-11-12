@@ -3,7 +3,7 @@
 // They are pieces of evidence: the coach's conclusions will cite them by number.
 import type { Evidence, Mark, Verdict } from "../engine";
 import { engine, flag, num, removeMark, setLock } from "../engine";
-import { quote, t } from "../i18n";
+import { quote, t, valueLabel } from "../i18n";
 
 const props = defineProps<{ marks: Mark[]; analysisId: string; verdict: Verdict | null }>();
 
@@ -98,7 +98,7 @@ const kind = (k: Evidence["kind"]) => t(`marks.kind.${k}`);
             >
               {{ t("marks.remove") }}
             </button>
-            {{ [m.object, m.script && m.script !== "aucun" ? t("marks.alphabet", { script: m.script }) : "", m.scale > 1 ? t("marks.enlarged", { scale: num(m.scale) }) : "", m.seconds !== undefined ? `${num(m.seconds)} s` : ""].filter(Boolean).join(" · ") }}
+            {{ [m.object, m.script ? t("marks.alphabet", { script: valueLabel("script", m.script) }) : "", m.scale > 1 ? t("marks.enlarged", { scale: num(m.scale) }) : "", m.seconds !== undefined ? `${num(m.seconds)} s` : ""].filter(Boolean).join(" · ") }}
           </p>
         </template>
       </div>

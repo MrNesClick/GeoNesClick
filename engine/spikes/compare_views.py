@@ -1,9 +1,9 @@
 """Experiment: what do we gain by cropping the view and masking the game's UI?
 
 Compares three variants on the labelled test set (dataset/labels.toml):
-  fenetre  the whole browser window
-  cadre    the Street View view alone (without the browser bar)
-  masques  the view, with the GeoGuessr UI masked (logo, compass, scores, buttons, mini-map)
+  window   the whole browser window
+  frame    the Street View view alone (without the browser bar)
+  masks    the view, with the GeoGuessr UI masked (logo, compass, scores, buttons, mini-map)
 Measures, for each variant: rank and probability of the right country according to StreetCLIP, and for the
 vision model, the country names copied from the image (mini-map leak).
 
@@ -42,9 +42,10 @@ MASKS = [
     [0.80, 0.69, 1.00, 1.00],   # mini-map + "placez votre épingle" (place your pin) button
     [0.00, 0.975, 1.00, 1.00],  # Google banner at the bottom
 ]
-VARIANTS = {"fenetre": ([], []), "cadre": (CROP, []), "masques": (CROP, MASKS)}
+VARIANTS = {"window": ([], []), "frame": (CROP, []), "masks": (CROP, MASKS)}
 
-# Country names visible on the mini-map (in French) and their English equivalents.
+# Country names visible on the game's mini-map (data: the captures were taken with GeoGuessr in French) and their
+# English equivalents.
 MAP_NAMES = ["Norvège", "Finlande", "Suède", "Pologne", "Ukraine", "Roumanie", "France", "Allemagne",
              "Royaume-Uni", "Autriche", "Espagne", "Italie", "Norway", "Finland", "Sweden", "Poland",
              "Romania", "Germany", "Lettonie", "Lituanie", "Serbie", "Latvia", "Lithuania", "Serbia"]

@@ -4,7 +4,8 @@ files are converted once, the code then knows a single set of names; the test se
 through the old names, see vision.py). Each step does nothing once done, and keeps a backup of what it rewrites.
 
   my-metas.toml   was mes-metas.toml: categories renamed, seed clues settled by their id (seed = "...")
-  config.toml     category names in [metas] category_looks / category_weights and [plonkit] keywords
+  config.toml     category names in [metas] category_looks / category_weights and [plonkit] keywords; a vision or
+                  marks prompt written for 0.1 (French answer keys) is removed: the default one applies again
   plonkit.sqlite  categories and classification sources of the Plonk It tips (the AI's work is kept)
 
 The French names below exist only to read those old files.
@@ -178,12 +179,17 @@ def migrate_config(config_dir: Path) -> str | None:
                 value = table.pop(old)
                 if new not in table:
                     table[new] = value
+    # A prompt written for 0.1 asks for the French answer keys, which the coach no longer reads: back to the default.
+    for section, old_key in (("vision", "panneaux_et_texte"), ("marks", "illisible")):
+        part = doc.get(section)
+        if hasattr(part, "get") and old_key in str(part.get("prompt", "")):
+            del part["prompt"]
     new_text = tomlkit.dumps(doc)
     if new_text == text:
         return None
     _backup(path)
     _write(path, new_text)
-    return f"{path}: category names converted (backup: config.toml.before-0.2)"
+    return f"{path}: converted to the current names (backup: config.toml.before-0.2)"
 
 
 def migrate_plonkit(plonkit_dir: Path) -> str | None:

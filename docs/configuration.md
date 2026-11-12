@@ -2,9 +2,6 @@
 
 # Configuration
 
-> The app's interface is in French for now: UI labels are given in English, followed by the French label shown
-> on screen in italics, e.g. **Settings** (*Réglages*).
-
 Everything is set in `~/.config/geonesclick/config.toml`, which overrides key by key the commented default values
 of [`engine/src/geonesclick/default_config.toml`](../engine/src/geonesclick/default_config.toml). Example:
 

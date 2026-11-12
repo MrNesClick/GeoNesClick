@@ -111,7 +111,7 @@ elif [[ -s "$KEY_FILE" ]]; then
 elif [[ -f .env ]] && grep -q '^NVAPI=.\+' .env; then
   ok "API key in the old .env: it will be moved on first start"
 else
-  warn "no API key yet: enter it in the app, Settings › Analysis (Réglages › Analyse, https://build.nvidia.com)"
+  warn "no API key yet: enter it in the app, Settings › Analysis (https://build.nvidia.com)"
 fi
 
 # ---------------------------------------------------------------------------

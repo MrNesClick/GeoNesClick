@@ -66,6 +66,11 @@ const dl = (d: Download, field: "what" | "why" | "license" | "sends") => {
   const key = `download.${d.id}.${field}`;
   return hasKey(key) ? t(key) : field === "license" ? d.license : "";
 };
+/** A note of the package list (bundle_meta.py): an id with its text in the catalogs, shown as is otherwise. */
+const packageNote = (note: string) => {
+  const key = `setup.package_note.${note}`;
+  return hasKey(key) ? t(key) : note;
+};
 // Short names for the summary; the full text (why, sources, licence) stays under the details.
 const short = (d: Download) => {
   const key = `setup.short.${d.id}`;
@@ -315,7 +320,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
                 <tr v-for="p in packages" :key="p.name" class="border-t border-courbe-fonce/40">
                   <td class="py-0.5 pr-2 text-papier">{{ p.name }} {{ p.version }}</td>
                   <td class="py-0.5 pr-2 text-courbe">{{ p.license }}</td>
-                  <td class="py-0.5 text-right tabular-nums text-courbe">{{ p.note ? p.note : mb(p.size / 1e6) }}</td>
+                  <td class="py-0.5 text-right tabular-nums text-courbe">{{ p.note ? packageNote(p.note) : mb(p.size / 1e6) }}</td>
                 </tr>
               </tbody>
             </table>

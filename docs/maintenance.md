@@ -7,7 +7,7 @@
 The coach window starts the Python engine and stops it when closed. The first time, GNOME asks which window to
 share: choose the browser window where you play. The permission is remembered
 (`~/.config/geonesclick/screencast.token`). To change it (another browser, screen or resolution), open the
-**Settings** tab and click **Change window** (*Changer de fenêtre*, Captures section): the GNOME picker opens again.
+**Settings** tab and click **Change window** (Capture section): the GNOME picker opens again.
 
 ## Updates and data
 
@@ -38,14 +38,14 @@ front end with `pnpm-lock.yaml`). For the PLONK bench, also run `scripts/setup-p
 The test set and the captures lived in `engine/` until 2026-11-07 (read-only in an AppImage): on first launch, the
 captures are moved and the test set copied (the copy tracked by git stays in the repository).
 
-**Settings › Storage** (*Stockage*) shows the size of each item and an **Empty** button (*Vider*, in two steps:
+**Settings › Storage** shows the size of each item and an **Empty** button (in two steps:
 Empty, then Confirm, with what it costs; Plonk It warns that the ahead-of-time translations will have to be redone).
 The maximum size (`[storage] max_cache_mb`, 500 MB) only applies to the caches **that grow** on their own (villages
 of the countries met): the least recently used go first. The base (GeoNames directory, Plonk It guides) never goes
 on its own, and your test set, your metas and your config are never emptied. For safety, only files known to the
 coach are deleted, never a whole folder.
 
-**Erase everything** (*Tout effacer*, right to erasure, GDPR): at the bottom of Settings › Storage. The list of what
+**Erase everything** (right to erasure, GDPR): at the bottom of Settings › Storage. The list of what
 goes is shown with the sizes: API key, settings, your metas, screen-sharing permission, captures and logs, test set
 (flagged as precious), Plonk It guides and translations, GeoNames places and villages, UI state, the app's GNOME
 shortcuts. A separate box, unticked: also the downloaded models (StreetCLIP, PLONK: nothing personal; other

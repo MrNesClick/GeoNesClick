@@ -30,13 +30,13 @@ class FakeVision:
         self.sizes, self.fail = [], fail
 
     async def describe(self, _img):
-        return {"panneaux_et_texte": "non visible"}, 0.1
+        return {"signs_and_text": ""}, 0.1
 
     async def ask(self, img, prompt, model, max_tokens):
         self.sizes.append(img.size)
         if self.fail:
             raise VisionError("RateLimitError : 429")
-        return {"texte": ["Monumentul Eroilor Neamului"], "illisible": False, "objet": "panneau", "alphabet": "latin"}, 0.2
+        return {"text": ["Monumentul Eroilor Neamului"], "unreadable": False, "object": "sign", "script": "latin"}, 0.2
 
 
 def frame() -> Image.Image:
@@ -64,9 +64,9 @@ def test_large_mark_keeps_its_size():
 
 
 def test_reading_has_a_fixed_shape_whatever_the_model_says():
-    assert reading({"texte": "Repkény utca", "illisible": "true"}) == {
-        "text": ["Repkény utca"], "unreadable": True, "object": "", "script": ""}
-    assert reading({"texte": [None, "", "a" * 999]})["text"] == ["a" * 300]
+    assert reading({"text": "Repkény utca", "unreadable": "true", "script": "Cyrillic"}) == {
+        "text": ["Repkény utca"], "unreadable": True, "object": "", "script": "cyrillic"}
+    assert reading({"text": [None, "", "a" * 999]})["text"] == ["a" * 300]
     assert reading({})["text"] == []
 
 
@@ -226,7 +226,7 @@ class ReaderVision(FakeVision):
         self.readings = list(readings)
 
     async def ask(self, img, prompt, model, max_tokens):
-        return {"texte": self.readings.pop(0)}, 0.1
+        return {"text": self.readings.pop(0)}, 0.1
 
 
 def test_marks_feed_a_verdict_and_removing_the_wrong_one_updates_it(setup):
@@ -314,7 +314,7 @@ def test_a_mark_removed_while_being_read_does_not_come_back(setup):
     class Slow(FakeVision):
         async def ask(self, img, prompt, model, max_tokens):
             await gate.wait()
-            return {"texte": ["Гърмен"]}, 0.1
+            return {"text": ["Гърмен"]}, 0.1
 
     engine.vision = Slow()
     from geonesclick.marks import DeleteRequest

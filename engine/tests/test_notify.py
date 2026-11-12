@@ -10,7 +10,7 @@ def _no_bus(*_args):
 def test_missing_session_bus_does_not_break_the_engine(monkeypatch, capsys):
     monkeypatch.setattr(Gio, "bus_get_sync", _no_bus)
     notifier = Notifier(enabled=True, sound=False)  # built at engine start: must not touch the bus
-    notifier.send("Capture enregistrée")
+    notifier.send("Capture saved")
     assert "no session bus" in capsys.readouterr().out
 
 

@@ -2,18 +2,17 @@
 // What the AI sees (remote vision model), shown from help level 2.
 import { computed } from "vue";
 import type { Analysis, Fiche } from "../engine";
-import { t, valueLabel } from "../i18n";
+import { isEmptyValue, t, valueLabel } from "../i18n";
 
 const props = defineProps<{ vision: Analysis["vision"] }>();
 
 // The text read first: it is the most decisive clue when there is one.
 // Keys of the model's answer (internal, in French as in the prompt), in display order.
-const FIELDS = ["panneaux_et_texte", "sens_circulation", "marquage_routier", "poteaux", "bornes_et_glissieres",
-                "plaques_immatriculation", "architecture", "vegetation_et_sol", "relief", "camera_et_voiture_google",
-                "autres_indices"] as const;
+const FIELDS = ["signs_and_text", "driving_side", "road_lines", "poles", "bollards_and_guardrails", "licence_plates",
+                "architecture", "vegetation_and_soil", "relief", "google_camera_and_car", "other_clues"] as const;
 
 const asText = (v: unknown) => (Array.isArray(v) ? v.join(" ; ") : String(v ?? ""));
-const isEmpty = (v: string) => /^(non visible|aucun|indéterminé)?\.?$/i.test(v.trim());
+const isEmpty = isEmptyValue;
 
 const rows = computed(() => {
   if (props.vision.status !== "done") return { seen: [], unseen: [] as string[] };
@@ -22,13 +21,13 @@ const rows = computed(() => {
   const unseen: string[] = [];
   for (const key of FIELDS) {
     const label = t(`vision.field.${key}`);
-    const value = asText(fiche[key]);
+    const value = key === "driving_side" ? valueLabel("value.driving_side", asText(fiche[key])) : asText(fiche[key]);
     if (isEmpty(value)) unseen.push(label);
-    else seen.push({ label, value, proof: key === "sens_circulation" ? asText(fiche.preuve_circulation) : undefined });
+    else seen.push({ label, value, proof: key === "driving_side" ? asText(fiche.driving_proof) : undefined });
   }
   return { seen, unseen };
 });
-const confidence = computed(() => (props.vision.status === "done" ? valueLabel("value.confiance", asText(props.vision.fiche.confiance)) : ""));
+const confidence = computed(() => (props.vision.status === "done" ? valueLabel("value.confidence", asText(props.vision.fiche.confidence)) : ""));
 </script>
 
 <template>

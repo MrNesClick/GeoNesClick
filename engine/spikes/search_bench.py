@@ -44,11 +44,10 @@ from geonesclick.vision import VisionClient  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 WORK = Path(os.environ.get("BENCH_DIR", "/tmp/ggc-search-bench"))
 FICHE_FIELDS = [
-    "sens_circulation", "preuve_circulation", "marquage_routier", "poteaux", "bornes_et_glissieres",
-    "panneaux_et_texte", "plaques_immatriculation", "architecture", "vegetation_et_sol", "relief",
-    "camera_et_voiture_google", "autres_indices",
+    "driving_side", "driving_proof", "road_lines", "poles", "bollards_and_guardrails", "signs_and_text",
+    "licence_plates", "architecture", "vegetation_and_soil", "relief", "google_camera_and_car", "other_clues",
 ]
-EMPTY = re.compile(r"^(non visible|aucun|indéterminé|not visible|none|unknown|n/a)?\.?$", re.I)
+EMPTY = re.compile(r"^(not visible|none|unknown|n/a)?\.?$", re.I)  # the prompt asks for "" (0.2)
 E5 = "intfloat/multilingual-e5-small"
 KEYWORDS = ["bollard", "yellow center line", "concrete pole holes", "cyrillic", "snow poles", "guardrail"]
 TYPOS = ["bolard", "guardrial", "cyrilic", "bolards"]
@@ -219,10 +218,8 @@ def rank_of(country, ranking, pool=None):
 async def fiches_for(labels, cfg) -> dict:
     cache = WORK / "fiches.json"
     cached = json.loads(cache.read_text()) if cache.exists() else {}
-    fr_client = VisionClient(cfg.vision)
-    en_cfg = cfg.vision.model_copy(update={"prompt": cfg.vision.prompt + (
-        "\n\nIMPORTANT : rédige toutes les valeurs du JSON en anglais ; les clés restent identiques.")})
-    en_client = VisionClient(en_cfg)
+    fr_client = VisionClient(cfg.vision.model_copy(update={"prompt": cfg.vision.prompt.replace("{language}", "French")}))
+    en_client = VisionClient(cfg.vision.model_copy(update={"prompt": cfg.vision.prompt.replace("{language}", "English")}))
     for lb in labels:
         for lang, client in (("fr", fr_client), ("en", en_client)):
             key = f"{lb['file']}|{lang}"

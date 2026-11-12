@@ -40,7 +40,7 @@ class VisionClient:
 
     async def describe(self, img: Image.Image) -> tuple[dict[str, Any], float]:
         """Clue sheet of the whole view."""
-        return await self.ask(img, self.cfg.prompt, self.cfg.model, self.cfg.max_tokens)
+        return await self.ask(img, with_language(self.cfg.prompt), self.cfg.model, self.cfg.max_tokens)
 
     async def ask(self, img: Image.Image, prompt: str, model: str, max_tokens: int) -> tuple[dict[str, Any], float]:
         """One image, one instruction: returns the JSON object of the answer and the duration of the call."""
@@ -97,6 +97,12 @@ class VisionClient:
         except Exception as exc:
             raise VisionError(f"{type(exc).__name__}: {exc}") from exc
         return time.perf_counter() - t0
+
+
+def with_language(prompt: str) -> str:
+    """The prompt with {language} replaced by the UI's language, which the free texts of the answer are shown in
+    (not str.format: the prompts contain JSON braces)."""
+    return prompt.replace("{language}", t("language.ai_name"))
 
 
 def parse_fiche(text: str) -> dict[str, Any]:

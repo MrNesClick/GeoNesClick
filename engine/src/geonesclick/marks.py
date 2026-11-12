@@ -77,13 +77,13 @@ def _text(value: Any, limit: int = MAX_CHARS) -> str:
 
 def reading(fiche: dict[str, Any]) -> dict[str, Any]:
     """Reading of a mark, in a fixed shape whatever the model's response."""
-    raw = fiche.get("texte")
+    raw = fiche.get("text")
     lines = raw if isinstance(raw, list) else [raw] if isinstance(raw, str) else []
-    text = [t for t in (_text(line) for line in lines[:MAX_LINES]) if t]
-    unreadable = fiche.get("illisible")
+    text = [line for line in (_text(line) for line in lines[:MAX_LINES]) if line]
+    unreadable = fiche.get("unreadable")
     return {
         "text": text,
-        "unreadable": unreadable is True or (isinstance(unreadable, str) and unreadable.lower() in ("true", "oui")),
-        "object": _text(fiche.get("objet"), 120),
-        "script": _text(fiche.get("alphabet"), 40),
+        "unreadable": unreadable is True or (isinstance(unreadable, str) and unreadable.lower() == "true"),
+        "object": _text(fiche.get("object"), 120),
+        "script": _text(fiche.get("script"), 40).lower(),
     }

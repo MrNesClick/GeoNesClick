@@ -60,6 +60,11 @@ export function valueLabel(prefix: string, value: string): string {
   return hasKey(key) ? t(key) : value;
 }
 
+/** An empty field of the model's answer ("" since 0.2's prompts; "unknown" for the driving side). */
+export const isEmptyValue = (v: string) => ["", "unknown", "-"].includes(v.trim().toLowerCase().replace(/\.$/, ""));
+/** The word "unreadable" in every catalog: the model writes it in the UI's language. */
+export const unreadableWords = () => Object.values(CATALOGS).map((c) => (c["sum.unreadable"] ?? "").toLowerCase()).filter(Boolean);
+
 /** Plural text: the key ".one" or ".other" (Intl.PluralRules, same as plural_one in i18n.py), with {n}. */
 type PluralKey = Key extends infer K ? (K extends `${infer B}.one` ? B : never) : never;
 export function tn(key: PluralKey, n: number, params?: Params): string {
