@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-11-12
+
 ### Added
 
 - The requirements name what GeoNesClick really needs (64-bit Linux with GNOME, glibc 2.39 or later) instead of
@@ -119,7 +121,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.1.1...v0.2.0
