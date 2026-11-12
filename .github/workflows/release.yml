@@ -4,7 +4,8 @@
 #
 # Runs on Ubuntu 24.04, the oldest target (what is compiled there works on the later versions). The tag must match
 # the version of the four manifests; the tests must pass before anything is built. Actions are pinned to a commit,
-# not a tag (a tag can be moved), and the job only gets the right to write the release.
+# not a tag (a tag can be moved), and the job only gets the right to write the release. It waits for the repository
+# owner's approval (environment "release", limited to v* tags): a pushed tag alone never publishes anything.
 name: Release
 run-name: Release ${{ github.ref_name }}  # otherwise the run is named after the tagged commit's message
 
@@ -17,6 +18,7 @@ permissions: {}
 jobs:
   release:
     runs-on: ubuntu-24.04
+    environment: release
     timeout-minutes: 90
     permissions:
       contents: write  # create the release and upload the AppImage

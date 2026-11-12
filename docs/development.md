@@ -80,7 +80,9 @@ bump the version in the four manifests (`engine/pyproject.toml`, `app/package.js
 git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin v0.2.0
 ```
 
-The workflow checks that the tag matches the four versions, that CHANGELOG.md has a section for it
+The run first waits for the repository owner to approve it (Actions tab › the run › **Review deployments**): the
+`release` environment, limited to `v*` tags, requires that approval, so a pushed tag alone publishes nothing. The
+workflow then checks that the tag matches the four versions, that CHANGELOG.md has a section for it
 (`scripts/release-notes.sh 0.2.0` prints it) and that the number follows the rule above against the previous tag
 (`scripts/check-version.py 0.2.0`, which gives the expected number otherwise). It then runs the tests and the
 interface tests, builds the AppImage on Ubuntu 24.04, installs the engine bundle it has just built on six systems
