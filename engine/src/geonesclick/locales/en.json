@@ -802,7 +802,6 @@
   "srv.unknown_country": "unknown country",
   "srv.capture_unknown": "capture too old or unknown",
   "srv.origin_refused": "origin refused",
-  "srv.sharing_restarting": "restarting the screen sharing…",
   "srv.pick_window": "choose the game window to share…",
   "srv.plonkit_off": "Plonk It turned off in the configuration",
   "srv.update_running": "update already running",

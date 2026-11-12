@@ -23,7 +23,7 @@ def client(tmp_path):
     return TestClient(create_app(load_config(user)), base_url="http://127.0.0.1:47615")
 
 
-@pytest.mark.parametrize("path", ["/capture", "/capture/restart", "/capture/reselect"])
+@pytest.mark.parametrize("path", ["/capture", "/capture/reselect"])
 def test_foreign_origin_cannot_trigger_actions(client, path):
     assert client.post(path, headers={"Origin": EVIL_ORIGIN}).status_code == 403
 
@@ -65,3 +65,13 @@ def test_cors_preflight_allowed_for_app_only(client):
     assert ok.status_code == 200
     assert ok.headers["access-control-allow-origin"] == APP_ORIGIN
     assert client.options("/label", headers={"Origin": EVIL_ORIGIN, **pre}).status_code == 403
+
+
+def test_restarting_the_sharing_reopens_the_gnome_picker(client):
+    """A remembered window that no longer exists must not block the restart: the picker opens (decided 2026-11-12)."""
+    calls = []
+    engine = client.app.state.engine
+    engine.capture.restart = lambda forget_window=False: calls.append(forget_window)
+    assert client.post("/capture/reselect", headers={"Origin": APP_ORIGIN}).status_code == 200
+    assert calls == [True]
+    assert client.post("/capture/restart", headers={"Origin": APP_ORIGIN}).status_code in (404, 405)  # route removed

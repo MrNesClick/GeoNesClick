@@ -971,13 +971,12 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
             await asyncio.to_thread(engine.capture.restart, forget_window)
         return {"ok": True}
 
-    @app.post("/capture/restart")
-    async def restart() -> dict[str, Any]:
-        return await _restart(i18n.t("srv.sharing_restarting"), forget_window=False)
-
     @app.post("/capture/reselect")
     async def reselect() -> dict[str, Any]:
-        """Change window (other browser, screen, resolution): reopens the GNOME picker."""
+        """"Restart sharing" and "Change window": forgets the remembered window and reopens the GNOME picker. Decided
+        with the user on 2026-11-12: stopping the sharing from GNOME is deliberate, often to change window, and a
+        remembered window that no longer exists ("target not found") must not block the restart. Only the app's start
+        resumes the remembered window without asking."""
         return await _restart(i18n.t("srv.pick_window"), forget_window=True)
 
     @app.post("/label")

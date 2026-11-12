@@ -98,7 +98,9 @@ Lessons from phase 0 (feasibility tests):
 - On the NVIDIA free tier, availability varies: on 2026-11-07, `z-ai/glm-5.3-flash` and
   `meta/llama-3.2-90b-vision-instruct` did not answer; Nemotron Nano Omni answered in 5 s but made up details.
   Hence Nemotron 3.5 Super VL as the default.
-- Screen sharing can be stopped from the GNOME indicator: the coach reports it and offers "Restart sharing".
+- Screen sharing can be stopped from the GNOME indicator: the coach reports it and offers "Restart sharing", which
+  reopens the GNOME picker (since 2026-11-12: resuming the remembered window failed with "target not found" once
+  the sharing had been stopped). Only the app's start resumes the remembered window without asking.
 - A third-party `gsettings` (Linuxbrew) may not write to the GNOME settings: the script explicitly calls
   `/usr/bin/gsettings`.
 

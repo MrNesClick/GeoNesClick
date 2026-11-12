@@ -628,7 +628,7 @@ export const requestCapture = () => request("/capture");
 export const requestFreeze = () => request("/marks/freeze");
 /** Removes a mark whose reading is wrong: the conclusion is recomputed without it. */
 export const removeMark = (id: string, n: number) => request("/marks/remove", { id, n });
-export const restartSharing = () => request("/capture/restart");
+/** "Restart sharing" and "Change window": the GNOME picker opens (the remembered window is forgotten). */
 export const reselectWindow = () => request("/capture/reselect");
 /** "Where was it?": real country, and answered country (empty if you no longer know) or a simple "found?". */
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null, link = "") =>
