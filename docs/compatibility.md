@@ -13,7 +13,9 @@
 
 ## Reported systems
 
-Only Ubuntu is tested by the maintainer. Every other line comes from a
+Each release also installs the engine on Ubuntu 24.04 and 26.04, Debian 13, Fedora 45, Arch and openSUSE Tumbleweed
+(fresh containers, without a desktop: the system components under the installer's names, the engine, a StreetCLIP
+analysis). The whole app, desktop included, is only tested by the maintainer on Ubuntu. Every other line comes from a
 [system report](https://github.com/MrNesClick/GeoNesClick/issues/new?template=system-report.yml): please send yours,
 even when everything works.
 

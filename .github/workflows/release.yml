@@ -95,6 +95,13 @@ jobs:
           scripts/build-appimage.sh
           df -h /  # after the Rust build and the bundling: the real minimum of free space
 
+      # The engine bundle just built, installed as the AppImage's installer does on six systems (Docker containers):
+      # system components under the installer's package names, install-engine.sh, then a StreetCLIP analysis.
+      - name: Engine installation on six systems
+        run: |
+          python3 scripts/test-install.py --remove-images
+          df -h /
+
       - name: Release
         env:
           GH_TOKEN: ${{ github.token }}  # this repository's token on the runner, valid for this job only

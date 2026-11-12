@@ -102,5 +102,11 @@ the Rust side simulated by Tauri's mocks and the engine replayed from `app/e2e/f
 by the real engine (`app/e2e/make_fixtures.py`, run from `engine/`); `tests/test_e2e_fixtures.py` fails when they no
 longer match the engine's answers.
 
+`scripts/test-install.py` installs the engine in fresh Docker containers of Ubuntu 24.04 and 26.04, Debian 13,
+Fedora 45, Arch and openSUSE Tumbleweed, as the installer does: the system components under the installer's package
+names (read from `setup.rs`), then `install-engine.sh`, then a StreetCLIP analysis (`scripts/install-smoke.py`). It
+needs an engine bundle (`scripts/build-appimage.sh --engine-only`) and about 2 GB; the release workflow runs it on
+the bundle it has just built.
+
 Before each commit: the tests, then a code review and a security review. The benchmarks are described in
 [benchmarks.md](benchmarks.md).
