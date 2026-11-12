@@ -4,7 +4,8 @@
 //! ~/.local/share/geonesclick/engine/, AFTER the assistant has shown EVERYTHING that will be downloaded
 //! (engine-bundle/downloads.json) and obtained your consent. The work itself is done by
 //! engine-bundle/install-engine.sh (testable without a UI); this module checks the system, runs that script, relays
-//! its progress to the UI, installs the GNOME shortcuts and removes the engine on request ("Erase everything").
+//! its progress to the UI and removes the engine on request ("Erase everything"). The GNOME shortcuts and the
+//! applications-menu entry are in integration.rs.
 //! In development (no engine-bundle), none of this: the engine comes from engine/.venv.
 
 use std::collections::VecDeque;
@@ -458,46 +459,6 @@ fn store_key(key: &str) -> bool {
         let _ = writeln!(stdin, "{}", key.trim());
     }
     child.wait().map(|s| s.success()).unwrap_or(false)
-}
-
-const MEDIA_KEYS: &str = "org.gnome.settings-daemon.plugins.media-keys";
-const KEY_ROOT: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings";
-
-fn gsettings(args: &[&str]) -> Result<String, String> {
-    let out = host_command("/usr/bin/gsettings").args(args).output().map_err(|e| format!("gsettings: {e}"))?;
-    if !out.status.success() {
-        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).trim().to_string())
-}
-
-/// GNOME shortcuts: Super+Shift+G (capture) and Super+Shift+Z (marks), pointing to the installed engine's trigger.
-#[tauri::command]
-pub fn setup_shortcuts(app: AppHandle) -> Result<(), String> {
-    let python = if bundle_dir(&app).is_some() {
-        venv_python()
-    } else {
-        return Err("in development, use scripts/install.sh --setup-shortcut".into());
-    };
-    let current = gsettings(&["get", MEDIA_KEYS, "custom-keybindings"])?;
-    let mut keys: Vec<String> = current.split('\'').skip(1).step_by(2).map(str::to_string).collect();
-    // Names shown in GNOME's keyboard settings, in the language chosen at installation.
-    for (id, name, action, binding) in [
-        ("geonesclick", i18n::tr("setup.shortcut.capture", &[]), "capture", "<Super><Shift>g"),
-        ("geonesclick-mark", i18n::tr("setup.shortcut.mark", &[]), "mark", "<Super><Shift>z"),
-    ] {
-        let path = format!("{KEY_ROOT}/{id}/");
-        if !keys.contains(&path) {
-            keys.push(path.clone());
-        }
-        let schema = format!("{MEDIA_KEYS}.custom-keybinding:{path}");
-        gsettings(&["set", &schema, "name", &name])?;
-        gsettings(&["set", &schema, "command", &format!("{} -m geonesclick.trigger {action}", python.display())])?;
-        gsettings(&["set", &schema, "binding", binding])?;
-    }
-    let list = format!("[{}]", keys.iter().map(|k| format!("'{k}'")).collect::<Vec<_>>().join(", "));
-    gsettings(&["set", MEDIA_KEYS, "custom-keybindings", &list])?;
-    Ok(())
 }
 
 /// "Erase everything" with the engine box ticked: removes ~/.local/share/geonesclick/engine (AppImage only; never the

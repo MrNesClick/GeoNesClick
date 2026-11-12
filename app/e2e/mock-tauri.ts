@@ -14,7 +14,7 @@ declare global {
 }
 
 // Commands that need no answer from the test (their result is not used).
-const SILENT = new Set(["set_language", "restart_engine", "setup_shortcuts", "setup_apply"]);
+const SILENT = new Set(["set_language", "restart_engine", "setup_apply", "set_shortcuts", "set_menu_entry", "remove_integration"]);
 
 window.__GNC_CALLS__ = [];
 window.__GNC_EMIT__ = emit;

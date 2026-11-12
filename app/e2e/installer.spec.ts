@@ -1,7 +1,7 @@
 // First-launch installer, System step: the missing components, installed from here or named for the system.
 import { expect, test } from "@playwright/test";
 import en from "../../engine/src/geonesclick/locales/en.json" with { type: "json" };
-import { fixture, tauri, tauriCalls } from "./fake";
+import { fixture, tauri, tauriArgs, tauriCalls } from "./fake";
 
 const CHECKS = ["portal", "portal_gnome", "gst_typelib", "gst_convert", "gst_pipewire", "gobject", "cairo"];
 
@@ -54,4 +54,20 @@ test("with an unknown package manager, neither a command nor a button: Debian's 
   await expect(page.getByText(en["setup.system.missing_unknown"])).toBeVisible();
   await expect(page.getByText(/^sudo /)).toHaveCount(0);
   await expect(page.getByRole("button", { name: en["setup.system.install"], exact: true })).toHaveCount(0);
+});
+
+test("the menu entry is added only when ticked; the shortcuts are ticked by default", async ({ page }) => {
+  // Engine installed earlier, window closed before the end: the installer opens on the options.
+  await tauri(page, { setup_status: { ...status("apt"), engine_ready: true } });
+  await page.goto("/e2e/harness.html");
+  const menu = page.getByRole("checkbox", { name: en["setup.menu"] });
+  await expect(menu).not.toBeChecked();
+  await expect(page.getByRole("checkbox", { name: en["setup.shortcuts"] })).toBeChecked();
+  await page.getByRole("checkbox", { name: en["setup.no_key"] }).check();
+  await menu.check();
+  await page.getByRole("button", { name: en["setup.next"], exact: true }).click();
+  await page.getByRole("button", { name: en["setup.launch"], exact: true }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
+  expect(await tauriArgs(page, "set_shortcuts")).toEqual([{ on: true }]);
+  expect(await tauriArgs(page, "set_menu_entry")).toEqual([{ on: true }]);
 });

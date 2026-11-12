@@ -164,8 +164,8 @@ async function clear(item: Item) {
             {{ t("storage.cancel") }}
           </button>
         </div>
-        <p v-if="eraseError" class="text-[0.85rem] text-alerte" role="alert">{{ eraseError }}</p>
       </form>
+      <p v-if="eraseError" class="mt-2 text-[0.85rem] text-alerte" role="alert">{{ eraseError }}</p>
     </div>
   </div>
 </template>

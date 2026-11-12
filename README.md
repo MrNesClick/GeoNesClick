@@ -46,7 +46,9 @@ The interface is in English and French (chosen on first launch, changeable in th
    `~/.cache/huggingface/`; nothing else goes into the system. The download goes through GitHub, PyPI, Hugging Face
    and, without an NVIDIA card, PyTorch: if one of them does not answer, the assistant names it. Retry later: what
    is already downloaded is kept.
-4. Choose your options, enter your API key if you have one, and you are ready.
+4. Choose your options, enter your API key if you have one, and you are ready. One option, off by default, adds
+   GeoNesClick to the applications menu, with its own icon in the dock; it can be changed in Settings › GNOME
+   integration, like the keyboard shortcuts.
 
 To update, download the new AppImage and open it: the assistant updates the engine.
 

@@ -7,6 +7,13 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- GeoNesClick can be added to the applications menu, which also gives it its own icon in the dock instead of a
+  generic one: an option of the installer, off by default. The entry follows the AppImage when it is opened from
+  another place, and "Erase everything" removes it.
+- A "GNOME integration" group in the Settings turns the keyboard shortcuts and the menu entry on or off at any time.
+
 ### Fixed
 
 - The "Marks" group of the Settings shows a one-line summary, like the other groups.

@@ -15,9 +15,8 @@ from __future__ import annotations
 import os
 import re
 import shutil
-import subprocess
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -134,14 +133,10 @@ def touch(path: Path) -> None:
 
 # --- "Erase everything" (right to erasure, GDPR) -------------------------------------------------------------
 # Everything about you goes: API key, settings, your metas, captures and logs, test set, Plonk It guides and
-# translations, places index, GNOME shortcuts (the UI erases its own state). Separately, on request: the
-# downloaded models (nothing personal). Always KNOWN files: in a folder set by hand, only the
-# app's files go, never the folder.
+# translations, places index; the UI erases its own state, and Tauri the GNOME shortcuts and menu entry. Separately,
+# on request: the downloaded models (nothing personal). Always KNOWN files: in a folder set by hand, only the app's
+# files go, never the folder.
 MODEL_ID = re.compile(r"[\w.\-]+/[\w.\-]+")  # "geolocal/StreetCLIP": never a ".." or an extra "/"
-SHORTCUT_PATHS = ("/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/",
-                  "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick-mark/")
-MEDIA_KEYS = "org.gnome.settings-daemon.plugins.media-keys"
-
 
 def account_files(config_dir: Path, settings: Path, metas: Path) -> list[Path]:
     """API key, settings, your metas, screen-sharing permission (known files only)."""
@@ -212,26 +207,6 @@ def erase_plan(groups: dict[str, list[Path]], models: list[Path], engine: Path |
         out.append({"id": "engine", "label": t("storage.group.engine"), "files": 1, "size": dir_size(engine),
                     "precious": False, "optional": True})
     return out
-
-
-def _gsettings(args: list[str]) -> str:
-    """The system's gsettings (replaced in the tests: they never touch your shortcuts)."""
-    return subprocess.run(["/usr/bin/gsettings", *args], capture_output=True, text=True, timeout=10,
-                          check=False).stdout.strip()
-
-
-def remove_shortcuts(run: Callable[[list[str]], str] | None = None) -> int:
-    """Removes the app's GNOME shortcuts. Returns the number removed."""
-    run = run or _gsettings
-    current = run(["get", MEDIA_KEYS, "custom-keybindings"])
-    keys = re.findall(r"'([^']+)'", current)
-    kept = [k for k in keys if k not in SHORTCUT_PATHS]
-    if len(kept) == len(keys):
-        return 0
-    run(["set", MEDIA_KEYS, "custom-keybindings", str(kept)])
-    for path in SHORTCUT_PATHS:
-        run(["reset-recursively", f"{MEDIA_KEYS}.custom-keybinding:{path}"])
-    return len(keys) - len(kept)
 
 
 def erase(groups: dict[str, list[Path]], models: list[Path], with_models: bool, empty_dirs: Iterable[Path]) -> int:

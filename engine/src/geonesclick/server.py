@@ -28,7 +28,6 @@ from __future__ import annotations
 import asyncio
 import os
 import sqlite3
-import subprocess
 import time
 from collections import OrderedDict
 from contextlib import asynccontextmanager, suppress
@@ -354,13 +353,9 @@ class Engine(MarksMixin, LocksMixin):
         self.recent.clear()
         groups, models, folders = self._erase_targets()
         freed = await asyncio.to_thread(storage.erase, groups, models, with_models, folders)
-        try:
-            shortcuts = await asyncio.to_thread(storage.remove_shortcuts)
-        except (OSError, subprocess.SubprocessError):  # no GNOME: nothing to remove
-            shortcuts = 0
         self.erased = True
         await self.broadcast(self.state())
-        return {"ok": True, "freed": freed, "shortcuts": shortcuts}
+        return {"ok": True, "freed": freed}
 
     async def clear_storage(self, what: str) -> dict[str, Any]:
         """Empties a storage item; only known files are deleted, never a folder."""

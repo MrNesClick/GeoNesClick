@@ -70,17 +70,6 @@ def no_real_key_file(monkeypatch, tmp_path_factory):
 
 
 @pytest.fixture(autouse=True)
-def no_real_shortcuts(monkeypatch):
-    """No test reads or modifies your GNOME shortcuts."""
-    from geonesclick import storage
-
-    def blocked(args):
-        raise AssertionError(f"gsettings forbidden during the tests: {args}")
-
-    monkeypatch.setattr(storage, "_gsettings", blocked)
-
-
-@pytest.fixture(autouse=True)
 def english_after_each_test():
     """A test that starts an engine in French must not leave the next ones in French (the language is global)."""
     yield

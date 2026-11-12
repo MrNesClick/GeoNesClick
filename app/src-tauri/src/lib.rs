@@ -7,6 +7,7 @@
 //! simply connects to the existing one.
 
 mod i18n;
+mod integration;
 mod setup;
 
 use std::os::unix::process::CommandExt;
@@ -106,9 +107,13 @@ pub fn run() {
             setup::setup_system_install,
             setup::setup_install,
             setup::setup_apply,
-            setup::setup_shortcuts
+            integration::integration_status,
+            integration::set_shortcuts,
+            integration::set_menu_entry,
+            integration::remove_integration
         ])
         .setup(|app| {
+            integration::refresh_menu_entry();
             let child = spawn_engine(app.handle());
             app.manage(Engine(Mutex::new(child)));
             Ok(())

@@ -11,6 +11,7 @@ import { fileOnlyLabel, GROUPS, groupTitle, optionLabel } from "../settingsSchem
 import { t } from "../i18n";
 import Section from "./Section.vue";
 import SettingField from "./SettingField.vue";
+import IntegrationSection from "./IntegrationSection.vue";
 import StoragePanel from "./StoragePanel.vue";
 
 const s = ref<Settings | null>(null);
@@ -239,6 +240,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
           </div>
         </div>
       </Section>
+      <IntegrationSection />
     </div>
   </section>
 </template>

@@ -22,12 +22,17 @@ country, confusions, notifications, capture copies (sections `[coach]`, `[vision
 otherwise).
 
 **Everything is configurable**, also from the app's **Settings** tab, arranged in collapsible sections (General,
-Analysis, Clues, Map, Capture, Marks, What is certain, Test set, Storage, Engine), each with its one-line summary;
+Analysis, Clues, Map, Capture, Marks, What is certain, Test set, Storage, Engine, GNOME integration), each with its
+one-line summary;
 the fine-grained settings are in an "Advanced" part. Each change applies and is saved right away (a checkbox, a menu,
 or a field when leaving it); a refused value is flagged in place and the screen goes back to the value in effect. The
 screen only writes to `config.toml` the values you change, keeping your comments and their order. Candidate
 countries: untick a country to rule it out, or add one (English name and ISO code). Three settings only take effect
-at the next start (StreetCLIP enabled, its device, and what GNOME offers to share): the screen says so.
+at the next start (StreetCLIP enabled, its device, and what GNOME offers to share): the screen says so. The GNOME
+integration section is not stored in `config.toml`: it shows and changes what is in place in GNOME, the keyboard
+shortcuts and the applications-menu entry (`~/.local/share/applications/fr.mrnesclick.geonesclick.desktop` and its
+icon in `~/.local/share/icons/hicolor/`, which give the app its own icon in the dock). Both are offered with the
+AppImage only; the entry points to the AppImage and follows it when it is opened from another place.
 
 **The only exception is security**: these settings can only be changed in the file, then by restarting the app.
 The screen shows them read-only with their reason:

@@ -1,10 +1,12 @@
 // The coach window, with the Rust side and the engine simulated (an installed engine: no installer).
 import { expect, test } from "@playwright/test";
 import en from "../../engine/src/geonesclick/locales/en.json" with { type: "json" };
-import { fakeEngine, fixture, tauri, tauriCalls } from "./fake";
+import { fakeEngine, fixture, tauri, tauriArgs, tauriCalls } from "./fake";
+
+const INTEGRATION = { appimage: true, shortcuts: true, menu: true };
 
 test.beforeEach(async ({ page }) => {
-  await tauri(page, { setup_status: { bundled: false, needed: false }, erase_engine: null });
+  await tauri(page, { setup_status: { bundled: false, needed: false }, erase_engine: null, integration_status: INTEGRATION });
 });
 
 const round = () => fixture<object[]>("round-sweden.json");
@@ -51,6 +53,9 @@ test("Erase everything with the engine box uninstalls, then only offers to close
   engine.get["/storage/erase"] = { groups: [...plan.groups, {
     id: "engine", label: en["storage.group.engine"], files: 1, size: 1_100_000_000, precious: false, optional: true,
   }] };
+  // Asked when the Settings open, then again after the uninstall, which removed the shortcuts and the menu entry.
+  await tauri(page, { setup_status: { bundled: false, needed: false }, erase_engine: null,
+                      integration_status: { sequence: [INTEGRATION, { ...INTEGRATION, shortcuts: false, menu: false }] } });
   await page.goto("/e2e/harness.html");
   await page.getByRole("button", { name: en["app.tab.settings"], exact: true }).click();
   await page.getByRole("button", { name: en["group.storage"] }).click();
@@ -59,8 +64,33 @@ test("Erase everything with the engine box uninstalls, then only offers to close
   await page.locator("form").getByRole("textbox").fill(en["storage.confirm_word"]);
   await page.getByRole("button", { name: en["storage.erase_all"], exact: true }).click();
   await expect(page.getByText(en["storage.uninstalled"])).toBeVisible();
+  const integration = page.getByRole("button", { name: en["group.integration"] });
+  await expect(integration).toContainText(`${en["settings.sum.shortcuts_off"]} · ${en["settings.sum.menu_off"]}`);
+  await integration.click();
+  await expect(page.getByRole("checkbox", { name: en["setup.menu"] })).toBeDisabled();
   expect(engine.posts).toContainEqual({ path: "/storage/erase", body: { confirm: "ERASE", models: false } });
-  expect(await tauriCalls(page)).toContain("erase_engine");
+  // The GNOME shortcuts and the menu entry go before the engine.
+  expect((await tauriCalls(page)).filter((c) => c === "remove_integration" || c === "erase_engine"))
+    .toEqual(["remove_integration", "erase_engine"]);
   await page.getByRole("button", { name: en["storage.close"], exact: true }).click();
   await expect.poll(() => tauriCalls(page)).toContain("plugin:window|close");
+});
+
+test("the GNOME integration group shows what is in place and adds the menu entry", async ({ page }) => {
+  await fakeEngine(page);
+  await tauri(page, {
+    setup_status: { bundled: false, needed: false },
+    integration_status: { sequence: [{ appimage: true, shortcuts: true, menu: false }, { appimage: true, shortcuts: true, menu: true }] },
+  });
+  await page.goto("/e2e/harness.html");
+  await page.getByRole("button", { name: en["app.tab.settings"], exact: true }).click();
+  const group = page.getByRole("button", { name: en["group.integration"] });
+  await expect(group).toContainText(`${en["settings.sum.shortcuts_on"]} · ${en["settings.sum.menu_off"]}`);
+  await group.click();
+  const menu = page.getByRole("checkbox", { name: en["setup.menu"] });
+  await expect(menu).not.toBeChecked();
+  await menu.check();
+  await expect(menu).toBeChecked();
+  await expect(group).toContainText(en["settings.sum.menu_on"]);
+  expect(await tauriArgs(page, "set_menu_entry")).toEqual([{ on: true }]);
 });

@@ -123,23 +123,15 @@ def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
             touch(d / "places" / "detail-FR-v4.sqlite")]
     kept = [touch(d / "shots" / "notes.txt"), touch(hub / "models--other--Model" / "w.bin")]
     ours = touch(hub / "models--geolocal--StreetCLIP" / "w.bin")
-    calls = []
-
-    def gsettings(args):
-        calls.append(args)
-        return "['/a/', '/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/geonesclick/']"
-
-    monkeypatch.setattr(storage, "_gsettings", gsettings)
     client = TestClient(create_app(load_config(settings), settings), base_url="http://127.0.0.1:47615")
     origin = {"Origin": "http://localhost:1420"}
     plan = {g["id"]: g for g in client.get("/storage/erase").json()["groups"]}
     assert plan["dataset"]["precious"] and plan["dataset"]["files"] == 3 and plan["models"]["optional"]
     assert client.post("/storage/erase", json={"confirm": "oui"}, headers=origin).status_code == 422
     res = client.post("/storage/erase", json={"confirm": "ERASE"}, headers=origin).json()
-    assert res["ok"] and res["shortcuts"] == 1
+    assert res["ok"]
     assert not any(p.exists() for p in gone) and apikey.read("NVAPI") is None
     assert all(p.exists() for p in kept) and ours.exists()  # models: only on request
-    assert ["set", storage.MEDIA_KEYS, "custom-keybindings", "['/a/']"] in calls
     assert client.get("/health").json()["erased"] is True
     client.post("/storage/erase", json={"confirm": "ERASE", "models": True}, headers=origin)
     assert not ours.exists() and kept[1].exists()  # other software's models stay

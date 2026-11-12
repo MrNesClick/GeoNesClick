@@ -49,7 +49,9 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
    les modèles d'IA dans `~/.cache/huggingface/` ; rien d'autre n'entre dans le système. Le téléchargement passe par
    GitHub, PyPI, Hugging Face et, sans carte NVIDIA, PyTorch : si l'un d'eux ne répond pas, l'assistant le nomme.
    Réessaie plus tard : ce qui est déjà téléchargé est gardé.
-4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt.
+4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt. Une option, désactivée par défaut, ajoute
+   GeoNesClick au menu des applications, avec sa propre icône dans le dock ; elle se change dans Réglages ›
+   Intégration GNOME, comme les raccourcis clavier.
 
 Pour mettre à jour, télécharge la nouvelle AppImage et ouvre-la : l'assistant met le moteur à jour.
 

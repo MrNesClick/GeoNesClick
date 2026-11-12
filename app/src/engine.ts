@@ -663,13 +663,16 @@ export async function eraseEverything(models: boolean, removeEngine: boolean): P
   }
   try {
     const { invoke } = await import("@tauri-apps/api/core");
+    // The GNOME shortcuts and the menu entry go too, whatever was chosen; a failure is told, the rest goes on.
+    const left = await invoke("remove_integration").then(() => null, (e) => t("engine.integration_left", { error: String(e) }));
     if (removeEngine) {
       // Uninstall: Tauri stops the engine then removes its installation; the app then only offers to close.
       await invoke("erase_engine");
       engine.uninstalled = true;
-      return null;
+      return left;
     }
     await invoke("restart_engine");
+    if (left) return left; // shown before the restart of the UI, which would hide it
   } catch (e) {
     return removeEngine ? String(e) : t("engine.erased_restart");
   }

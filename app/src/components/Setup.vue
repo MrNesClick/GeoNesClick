@@ -175,6 +175,8 @@ const keyError = computed(() => {
 // Without a key, going on must be a conscious choice: text and signs are not read.
 const noKey = ref(false);
 const shortcuts = ref(true);
+// Off unless chosen: the entry is written outside the app's folders (~/.local/share/applications).
+const menu = ref(false);
 const helpLevel = ref(4);
 // Choices survive a closed window (the API key never: it is a secret); forgotten once the installation is done.
 const SAVED = "geonesclick.setup";
@@ -184,6 +186,7 @@ function restoreChoices() {
     if (!saved) return;
     Object.assign(chosen.value, saved.chosen ?? {});
     if (typeof saved.shortcuts === "boolean") shortcuts.value = saved.shortcuts;
+    if (typeof saved.menu === "boolean") menu.value = saved.menu;
     if (typeof saved.helpLevel === "number") helpLevel.value = saved.helpLevel;
     if (typeof saved.noKey === "boolean") noKey.value = saved.noKey;
     if (saved.variant === "cuda" || saved.variant === "cpu") variant.value = saved.variant;
@@ -193,7 +196,7 @@ function restoreChoices() {
   }
 }
 watch(
-  () => ({ chosen: chosen.value, shortcuts: shortcuts.value, helpLevel: helpLevel.value, noKey: noKey.value, variant: variant.value,
+  () => ({ chosen: chosen.value, shortcuts: shortcuts.value, menu: menu.value, helpLevel: helpLevel.value, noKey: noKey.value, variant: variant.value,
            language: i18n.lang }),
   (state) => {
     try {
@@ -225,9 +228,14 @@ async function finish() {
   finishError.value = "";
   try {
     await invoke("setup_apply", { choices: choices.value, apiKey: key.value.trim() || null });
+    const failed: string[] = [];
     if (shortcuts.value) {
-      await invoke("setup_shortcuts").catch((e) => (finishError.value = t("setup.shortcuts_failed", { error: String(e) })));
+      await invoke("set_shortcuts", { on: true }).catch((e) => failed.push(t("setup.shortcuts_failed", { error: String(e) })));
     }
+    if (menu.value) {
+      await invoke("set_menu_entry", { on: true }).catch((e) => failed.push(t("setup.menu_failed", { error: String(e) })));
+    }
+    finishError.value = failed.join(" ");
     await invoke("restart_engine");
     try {
       localStorage.removeItem(SAVED);
@@ -406,6 +414,13 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
             <span>
               <span class="text-papier">{{ t("setup.shortcuts") }}</span><span class="text-courbe">{{ t("setup.recommended") }}</span>
               <span class="block text-[1rem] text-courbe">{{ t("setup.shortcuts.detail") }}</span>
+            </span>
+          </label>
+          <label class="flex items-start gap-3 text-[1.05rem]">
+            <input v-model="menu" type="checkbox" :class="check" />
+            <span>
+              <span class="text-papier">{{ t("setup.menu") }}</span>
+              <span class="block text-[1rem] text-courbe">{{ t("setup.menu.detail") }}</span>
             </span>
           </label>
         </fieldset>

@@ -21,6 +21,11 @@ export async function tauriCalls(page: Page): Promise<string[]> {
   return page.evaluate(() => window.__GNC_CALLS__.map((c) => c.cmd));
 }
 
+/** The arguments of each call of a Rust command, in order. */
+export async function tauriArgs(page: Page, cmd: string): Promise<unknown[]> {
+  return page.evaluate((name) => window.__GNC_CALLS__.filter((c) => c.cmd === name).map((c) => c.args), cmd);
+}
+
 export interface FakeEngine {
   /** false: the engine does not answer yet (starting): connections refused. */
   up: boolean;

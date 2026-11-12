@@ -38,7 +38,7 @@ flowchart LR
 
 | From → to | Channel | What | Guard |
 |---|---|---|---|
-| Interface → Rust | Tauri commands (`invoke`) | installer (`setup_status`, `setup_system_install`, `setup_install`, `setup_apply`, `setup_shortcuts`), `set_language`, `restart_engine` | only the commands registered in `lib.rs`; window permissions in `app/src-tauri/capabilities/` |
+| Interface → Rust | Tauri commands (`invoke`) | installer (`setup_status`, `setup_system_install`, `setup_install`, `setup_apply`), GNOME integration (`integration_status`, `set_shortcuts`, `set_menu_entry`, `remove_integration`), `set_language`, `restart_engine`, `erase_engine` | only the commands registered in `lib.rs`; window permissions in `app/src-tauri/capabilities/` |
 | Rust → interface | Tauri events | installation progress (`setup-progress`) | — |
 | Rust → engine | child process | `python -m geonesclick`, stopped with SIGTERM when the app closes (and by the kernel if the app dies) | the engine's environment is cleaned of the AppImage's variables (`host_command` in `setup.rs`) |
 | Interface → engine | HTTP, `http://127.0.0.1:47615` | settings, marks, locks, storage, "Where was it?" | the engine listens on `127.0.0.1` only and refuses any other `Origin` |
@@ -101,7 +101,7 @@ sequenceDiagram
   R-->>UI: setup-progress events
   UI->>R: setup_apply (your choices, API key)
   R->>R: python -m geonesclick.settings, then the key
-  UI->>R: setup_shortcuts, restart_engine
+  UI->>R: set_shortcuts, set_menu_entry (if chosen), restart_engine
 ```
 
 The AppImage stays light (~100 MB): it carries `uv`, the engine as a wheel, PyGObject and pycairo compiled for it,
@@ -127,7 +127,8 @@ engine matches the AppImage's version; if not, the installer comes back to updat
 ```
 app/                        Tauri shell and interface
   src-tauri/src/lib.rs      windows, engine process, Tauri commands
-  src-tauri/src/setup.rs    first-launch installer: system checks, install, shortcuts, removal
+  src-tauri/src/setup.rs    first-launch installer: system checks, install, engine removal
+  src-tauri/src/integration.rs  GNOME shortcuts and applications-menu entry (installer, Settings, erasure)
   src-tauri/src/i18n.rs     texts of the Rust side, from the shared catalogs
   src-tauri/capabilities/   what each window may do
   src/main.ts               chooses between the installer, the coach and the marks window
