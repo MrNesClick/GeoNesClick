@@ -79,7 +79,7 @@ async function clear(item: Item) {
 
 <template>
   <div class="space-y-3">
-    <p class="text-[0.85rem] text-courbe">
+    <p v-if="!engine.uninstalled" class="text-[0.85rem] text-courbe">
       {{ t("storage.summary", { total: size(total), growing: size(growing), max: t("unit.mb", { n: num(props.maxMb) }) }) }}
     </p>
     <p v-if="!items && !engine.uninstalled" class="text-courbe">{{ t("storage.measuring") }}</p>

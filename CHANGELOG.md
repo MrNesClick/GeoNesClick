@@ -10,6 +10,8 @@ its release notes.
 ### Fixed
 
 - The "Marks" group of the Settings shows a one-line summary, like the other groups.
+- After uninstalling from "Erase everything", no empty `geonesclick` folder is left in `~/.local/share`, and the
+  storage summary no longer shows the size measured before.
 
 ## [0.2.5] - 2026-11-12
 

@@ -510,6 +510,9 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
     if home.ends_with("geonesclick/engine") && home.is_dir() {
         std::fs::remove_dir_all(&home).map_err(|e| e.to_string())?;
     }
+    // The engine was the last thing in ~/.local/share/geonesclick (the engine erased the rest): the folder goes if
+    // it is empty, never with something in it.
+    let _ = std::fs::remove_dir(data_dir());
     Ok(())
 }
 
