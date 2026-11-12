@@ -8,7 +8,7 @@
 //   start (it never downloads a declined option). Everything stays editable in the Settings.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { num } from "../engine";
-import { i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
+import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
 
 // Language: English by default, chosen on the first screen (decided with the user on 2026-11-12), written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
@@ -30,11 +30,8 @@ interface Status {
 const emit = defineEmits<{ done: [] }>();
 const status = ref<Status | null>(null);
 const step = ref<"system" | "components" | "options" | "install">("system");
-const STEPS = [
-  { id: "system", label: "Système" }, { id: "components", label: "Composants" },
-  { id: "options", label: "Options" }, { id: "install", label: "Installation" },
-] as const;
-const stepIndex = computed(() => STEPS.findIndex((s) => s.id === step.value));
+const STEPS = ["system", "components", "options", "install"] as const;
+const stepIndex = computed(() => STEPS.indexOf(step.value));
 const variant = ref<"cuda" | "cpu">("cpu");
 const showPackages = ref(false);
 let invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
@@ -63,22 +60,21 @@ const packagesMb = computed(() => {
 });
 const sizeOf = (d: Download) => (d.id === "packages" ? packagesMb.value : d.size_mb);
 const requiredMb = computed(() => required.value.filter((d) => d.id !== "pytorch-cpu").reduce((n, d) => n + sizeOf(d), 0));
-const mb = (n: number) => (n >= 1000 ? `${num(n / 1000)} Go` : n >= 1 ? `${Math.round(n)} Mo` : n ? "< 1 Mo" : "—");
-const WHEN: Record<Download["when"], string> = {
-  installation: "une fois, maintenant", option: "une fois, si l'option est activée", demande: "au fil de l'usage, si utile",
-  continu: "à chaque usage",
+const mb = (n: number) => (n >= 1000 ? t("unit.gb", { n: num(n / 1000) }) : n >= 1 ? t("unit.mb", { n: Math.round(n) }) : n ? t("setup.size.less_mb") : "—");
+/** A text of a download (downloads.toml) in the UI's language: download.<id>.<field>, else the file's own text. */
+const dl = (d: Download, field: "what" | "why" | "license" | "sends") => {
+  const key = `download.${d.id}.${field}`;
+  return hasKey(key) ? t(key) : d[field] ?? "";
 };
-// Short names for the summary; the full text (why, sources, licence) stays under "Détails".
-const SHORT: Record<string, string> = {
-  python: "Python 3.12", packages: "Bibliothèques Python (PyTorch, Transformers…)", streetclip: "Modèle d'IA StreetCLIP",
-  geonames: "Noms de lieux GeoNames", villages: "Villages GeoNames", plonkit: "Guides Plonk It",
-  plonk: "Zones probables PLONK",
+// Short names for the summary; the full text (why, sources, licence) stays under the details.
+const short = (d: Download) => {
+  const key = `setup.short.${d.id}`;
+  return hasKey(key) ? t(key) : dl(d, "what");
 };
-// What leaves the machine, in plain words (the full text from downloads.toml stays under the details).
-const SENT: Record<string, string> = {
-  nvidia: "Analyse en ligne (NVIDIA) : les captures d'écran et les zones marquées sont envoyées à NVIDIA pour être "
-    + "analysées, uniquement si une clé API est fournie.",
-  tiles: "Fond de carte (OpenStreetMap) : le serveur de cartes reçoit l'adresse IP et les zones affichées.",
+// What leaves the machine, in plain words (the full text stays under the details).
+const sent = (d: Download) => {
+  const key = `setup.sent.${d.id}`;
+  return hasKey(key) ? t(key) : t("setup.sent.fallback", { what: dl(d, "what"), sends: dl(d, "sends") });
 };
 const optional = computed(() => all.value.filter((x) => x.when === "option" || x.when === "demande"));
 const continuous = computed(() => all.value.filter((x) => x.when === "continu"));
@@ -92,15 +88,11 @@ const installDone = ref<boolean | null>(null); // null: running; true / false: f
 const failure = ref(""); // likely cause of a failure (site down, disk full), from setup.rs; empty: see the log
 const installing = ref(false);
 // Phases announced by install-engine.sh ("PHASE <name>"), in order.
-const PHASES = [
-  { id: "python", label: "Python 3.12" }, { id: "paquets", label: "Bibliothèques Python" },
-  { id: "moteur", label: "Moteur GeoNesClick" }, { id: "modele", label: "Modèle d'IA StreetCLIP" },
-  { id: "finition", label: "Finalisation" },
-];
+const PHASES = ["python", "paquets", "moteur", "modele", "finition"] as const;
 // The log follows its last line, like a terminal.
 const logBox = ref<HTMLElement | null>(null);
 watch(lines, () => nextTick(() => logBox.value && (logBox.value.scrollTop = logBox.value.scrollHeight)));
-const phaseIndex = computed(() => (installDone.value === true ? PHASES.length : PHASES.findIndex((p) => p.id === phase.value)));
+const phaseIndex = computed(() => (installDone.value === true ? PHASES.length : PHASES.findIndex((p) => p === phase.value)));
 let unlisten: (() => void) | null = null;
 async function startInstall() {
   const { listen } = await import("@tauri-apps/api/event");
@@ -129,20 +121,13 @@ async function startInstall() {
 onBeforeUnmount(() => unlisten?.());
 
 // --- options: Accept / Skip, recommendation pre-ticked ---------------------------------------------
-interface Option { id: string; label: string; detail: string; recommended: boolean; settings: Record<string, Record<string, unknown>> }
+// Label and detail: setup.option.<id> and setup.option.<id>.detail in the catalogs.
+interface Option { id: "places" | "plonkit" | "map" | "plonk"; recommended: boolean; settings: Record<string, Record<string, unknown>> }
 const OPTIONS: Option[] = [
-  { id: "places", label: "Noms de lieux (GeoNames)", recommended: true,
-    detail: "Reconnaît les villes lues sur les panneaux et leur région ; puis, à la demande, les villages du pays en tête.",
-    settings: { rules: { places: true, detail: true } } },
-  { id: "plonkit", label: "Guides Plonk It", recommended: true,
-    detail: "Astuces par pays proches de la vue capturée, traduites par l'IA si une clé API est fournie.",
-    settings: { plonkit: { enabled: true } } },
-  { id: "map", label: "Carte (fond OpenStreetMap)", recommended: true,
-    detail: "Onglet Carte : pays, lieux lus, position estimée. Le serveur de cartes reçoit l'adresse IP et les zones affichées.",
-    settings: { map: { enabled: true } } },
-  { id: "plonk", label: "Zones probables sur la carte (PLONK)", recommended: false,
-    detail: "Calculées en local, environ 120 Mo de mémoire en plus (celle de la carte NVIDIA, sinon la mémoire vive). Indicatives, pas une preuve.",
-    settings: { plonk: { enabled: true } } },
+  { id: "places", recommended: true, settings: { rules: { places: true, detail: true } } },
+  { id: "plonkit", recommended: true, settings: { plonkit: { enabled: true } } },
+  { id: "map", recommended: true, settings: { map: { enabled: true } } },
+  { id: "plonk", recommended: false, settings: { plonk: { enabled: true } } },
 ];
 const OFF: Record<string, Record<string, Record<string, unknown>>> = {
   places: { rules: { places: false, detail: false } }, plonkit: { plonkit: { enabled: false } },
@@ -154,8 +139,8 @@ const key = ref("");
 const keyError = computed(() => {
   const k = key.value.trim();
   if (!k) return "";
-  if (!k.startsWith("nvapi-")) return "Une clé NVIDIA commence par « nvapi- ».";
-  if (/\s/.test(k) || k.length < 20) return "Clé incomplète : la copier en entier depuis build.nvidia.com.";
+  if (!k.startsWith("nvapi-")) return t("settings.key_prefix");
+  if (/\s/.test(k) || k.length < 20) return t("setup.key.incomplete");
   return "";
 });
 // Without a key, going on must be a conscious choice: text and signs are not read.
@@ -191,12 +176,7 @@ watch(
   { deep: true },
 );
 const optionsValid = computed(() => !keyError.value && (key.value.trim() !== "" || noKey.value));
-const LEVELS = [
-  { value: 1, label: "Regarder", hint: "où regarder, sans nommer de pays" },
-  { value: 2, label: "Indices", hint: "plus ce que voit l'IA" },
-  { value: 3, label: "Pays", hint: "plus les pays probables, la carte, les astuces" },
-  { value: 4, label: "Réponse", hint: "plus la synthèse : pays, région, preuve" },
-];
+const LEVELS = [1, 2, 3, 4] as const;
 const choices = computed(() => {
   const out: Record<string, Record<string, unknown>> = { coach: { help_level: helpLevel.value, language: i18n.lang } };
   for (const o of OPTIONS) {
@@ -217,7 +197,7 @@ async function finish() {
   try {
     await invoke("setup_apply", { choices: choices.value, apiKey: key.value.trim() || null });
     if (shortcuts.value) {
-      await invoke("setup_shortcuts").catch((e) => (finishError.value = `Raccourcis non installés : ${e}`));
+      await invoke("setup_shortcuts").catch((e) => (finishError.value = t("setup.shortcuts_failed", { error: String(e) })));
     }
     await invoke("restart_engine");
     try {
@@ -246,7 +226,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
   <main class="flex h-screen flex-col bg-encre text-[1.05rem]">
     <header class="border-b border-courbe-fonce px-6 pt-5 pb-4">
       <div class="flex items-baseline justify-between gap-4">
-        <h1 class="text-[1.7rem] font-bold text-papier">Installation de GeoNesClick</h1>
+        <h1 class="text-[1.7rem] font-bold text-papier">{{ t("setup.title") }}</h1>
         <div class="flex items-baseline gap-4">
           <!-- Each language in its own name: whoever does not read the current one still finds theirs. -->
           <label class="flex items-baseline gap-2 text-[1rem] text-courbe">
@@ -256,32 +236,32 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
               <option v-for="l in LANGS" :key="l" :value="l" :lang="l">{{ LANGUAGE_NAMES[l] }}</option>
             </select>
           </label>
-          <span v-if="status?.version" class="text-[1rem] text-courbe">version {{ status.version }}</span>
+          <span v-if="status?.version" class="text-[1rem] text-courbe">{{ t("setup.version", { version: status.version }) }}</span>
         </div>
       </div>
       <p v-if="status?.installed && status.installed !== status.version" class="mt-1 text-[1.05rem] text-courbe">
-        Mise à jour du moteur : {{ status.installed }} → {{ status.version }}.
+        {{ t("setup.update", { from: status.installed, to: status.version ?? "" }) }}
       </p>
-      <ol class="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[1rem]" aria-label="Étapes">
-        <li v-for="(s, i) in STEPS" :key="s.id" class="flex items-center gap-2"
+      <ol class="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[1rem]" :aria-label="t('setup.steps_aria')">
+        <li v-for="(s, i) in STEPS" :key="s" class="flex items-center gap-2"
             :aria-current="i === stepIndex ? 'step' : undefined">
           <span class="grid h-6 w-6 place-items-center rounded-full text-[0.85rem] font-bold"
                 :class="i < stepIndex ? 'bg-foret text-encre' : i === stepIndex ? 'bg-papier text-encre' : 'border border-courbe-fonce text-courbe'">
             {{ i < stepIndex ? "✓" : i + 1 }}
           </span>
-          <span :class="i === stepIndex ? 'font-bold text-papier' : 'text-courbe'">{{ s.label }}</span>
+          <span :class="i === stepIndex ? 'font-bold text-papier' : 'text-courbe'">{{ t(`setup.step.${s}`) }}</span>
           <span v-if="i < STEPS.length - 1" class="mx-1 h-px w-6 bg-courbe-fonce" aria-hidden="true" />
         </li>
       </ol>
     </header>
 
     <div class="flex-1 overflow-y-auto px-6 py-5">
-      <p v-if="!status" class="text-courbe">Vérification du système…</p>
+      <p v-if="!status" class="text-courbe">{{ t("setup.checking") }}</p>
 
       <!-- 1. System -->
       <section v-else-if="step === 'system'" class="space-y-4" aria-labelledby="etape-systeme">
-        <h2 id="etape-systeme" class="text-[1.15rem] font-bold text-papier">Composants système</h2>
-        <p class="text-[1.05rem] text-courbe">La capture d'écran utilise des composants de GNOME, normalement déjà présents.</p>
+        <h2 id="etape-systeme" class="text-[1.15rem] font-bold text-papier">{{ t("setup.system.title") }}</h2>
+        <p class="text-[1.05rem] text-courbe">{{ t("setup.system.intro") }}</p>
         <ul :class="box" class="space-y-1">
           <li v-for="c in status.checks" :key="c.label" class="flex gap-2">
             <span :class="c.ok ? 'text-foret' : 'text-alerte'">{{ c.ok ? "✓" : "✗" }}</span>
@@ -290,7 +270,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
           </li>
         </ul>
         <div v-if="missing.length" class="space-y-2">
-          <p class="text-papier">Composants manquants. Les installer avec la commande suivante, puis revérifier :</p>
+          <p class="text-papier">{{ t("setup.system.missing") }}</p>
           <code class="block rounded bg-relief px-3 py-2 text-papier select-all">{{ aptCommand }}</code>
         </div>
       </section>
@@ -299,36 +279,36 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       <section v-else-if="step === 'components'" class="space-y-6" aria-labelledby="etape-composants">
         <div>
           <div class="flex items-baseline justify-between">
-            <h2 id="etape-composants" class="text-[1.15rem] font-bold text-papier">Composants requis</h2>
+            <h2 id="etape-composants" class="text-[1.15rem] font-bold text-papier">{{ t("setup.required.title") }}</h2>
             <span class="tabular-nums font-bold text-papier">{{ mb(requiredMb) }}</span>
           </div>
           <ul class="mt-2 text-[1.05rem]">
             <li v-for="d in required.filter((x) => x.id !== 'pytorch-cpu')" :key="d.id"
                 class="flex justify-between gap-2 border-t border-courbe-fonce/50 py-1">
-              <span class="text-papier">{{ SHORT[d.id] ?? d.what }}</span>
+              <span class="text-papier">{{ short(d) }}</span>
               <span class="tabular-nums text-courbe">{{ mb(sizeOf(d)) }}</span>
             </li>
           </ul>
           <label v-if="status.gpu" class="mt-2 flex items-center gap-3 text-[1.05rem] text-papier">
             <input type="checkbox" :class="check" :checked="variant === 'cpu'" @change="variant = variant === 'cpu' ? 'cuda' : 'cpu'" />
-            Utiliser la version processeur (plus légère, sans accélération GPU)
+            {{ t("setup.use_cpu") }}
           </label>
-          <p v-else class="mt-2 text-[1rem] text-courbe">Aucune carte NVIDIA détectée : version processeur.</p>
-          <p class="mt-1 text-[1rem] text-courbe">Moteur dans ~/.local/share/geonesclick, modèles d'IA dans ~/.cache/huggingface : rien n'est modifié dans le système.</p>
+          <p v-else class="mt-2 text-[1rem] text-courbe">{{ t("setup.no_nvidia") }}</p>
+          <p class="mt-1 text-[1rem] text-courbe">{{ t("setup.where") }}</p>
           <details class="mt-3">
-            <summary :class="disclosure">Sources, licences et liste des paquets</summary>
+            <summary :class="disclosure">{{ t("setup.sources") }}</summary>
             <table class="mt-2 w-full text-[1rem]">
               <tbody>
                 <tr v-for="d in all" :key="d.id" class="border-t border-courbe-fonce/50 align-top">
-                  <td class="py-1 pr-2 text-papier">{{ d.what }}<span class="block text-courbe">{{ d.why }}</span></td>
-                  <td class="py-1 pr-2 text-courbe">{{ d.hosts.join(", ") }}<span class="block">{{ d.license }} · {{ WHEN[d.when] }}</span></td>
-                  <td class="py-1 text-right tabular-nums text-papier">{{ d.id === "pytorch-cpu" ? "inclus" : mb(sizeOf(d)) }}</td>
+                  <td class="py-1 pr-2 text-papier">{{ dl(d, "what") }}<span class="block text-courbe">{{ dl(d, "why") }}</span></td>
+                  <td class="py-1 pr-2 text-courbe">{{ d.hosts.join(", ") }}<span class="block">{{ dl(d, "license") }} · {{ t(`setup.when.${d.when}`) }}</span></td>
+                  <td class="py-1 text-right tabular-nums text-papier">{{ d.id === "pytorch-cpu" ? t("setup.included") : mb(sizeOf(d)) }}</td>
                 </tr>
               </tbody>
             </table>
             <button type="button" class="mt-2 text-courbe underline underline-offset-2 hover:text-papier"
                     @click="showPackages = !showPackages">
-              {{ showPackages ? "Masquer" : "Afficher" }} les {{ packages.length }} paquets Python
+              {{ t(showPackages ? "setup.hide_packages" : "setup.show_packages", { n: packages.length }) }}
             </button>
             <table v-if="showPackages" class="mt-1 w-full text-[0.95rem]">
               <tbody>
@@ -343,28 +323,28 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         </div>
 
         <div>
-          <h2 class="text-[1.15rem] font-bold text-papier">Composants optionnels</h2>
+          <h2 class="text-[1.15rem] font-bold text-papier">{{ t("setup.optional.title") }}</h2>
           <p class="mt-1 text-[1.05rem] text-courbe">
-            <template v-for="(d, i) in optional" :key="d.id">{{ i ? " · " : "" }}{{ SHORT[d.id] ?? d.what }} ({{ mb(d.size_mb) }})</template>
+            <template v-for="(d, i) in optional" :key="d.id">{{ i ? " · " : "" }}{{ short(d) }} ({{ mb(d.size_mb) }})</template>
           </p>
-          <p class="text-[1rem] text-courbe">À choisir à l'étape suivante.</p>
+          <p class="text-[1rem] text-courbe">{{ t("setup.optional.next") }}</p>
         </div>
 
         <div>
-          <h2 class="text-[1.15rem] font-bold text-papier">Données envoyées sur Internet</h2>
+          <h2 class="text-[1.15rem] font-bold text-papier">{{ t("setup.sent.title") }}</h2>
           <ul class="mt-1 list-disc space-y-1 pl-5 text-[1.05rem] text-papier">
-            <li v-for="d in continuous" :key="d.id">{{ SENT[d.id] ?? `${d.what} : ${d.sends}` }}</li>
+            <li v-for="d in continuous" :key="d.id">{{ sent(d) }}</li>
           </ul>
         </div>
       </section>
 
       <!-- 3. Options, chosen while the required components download -->
       <section v-else-if="step === 'options'" class="space-y-6" aria-labelledby="etape-options">
-        <h2 id="etape-options" class="text-[1.15rem] font-bold text-papier">Options</h2>
-        <p class="-mt-3 text-[1rem] text-courbe">Le téléchargement continue pendant ce choix. Tout reste modifiable dans les Réglages.</p>
+        <h2 id="etape-options" class="text-[1.15rem] font-bold text-papier">{{ t("setup.options.title") }}</h2>
+        <p class="-mt-3 text-[1rem] text-courbe">{{ t("setup.options.intro") }}</p>
 
         <div class="space-y-1">
-          <label for="cle" class="block text-[1.15rem] font-bold text-papier">Clé API NVIDIA <span class="text-[1rem] text-courbe">(recommandée)</span></label>
+          <label for="cle" class="block text-[1.15rem] font-bold text-papier">{{ t("setup.key.label") }} <span class="text-[1rem] text-courbe">{{ t("setup.key.recommended") }}</span></label>
           <input id="cle" v-model="key" type="password" autocomplete="off" spellcheck="false" placeholder="nvapi-…"
                  :aria-invalid="!!keyError" aria-describedby="cle-aide"
                  class="w-full rounded-md border bg-relief px-3 py-2.5 text-papier"
@@ -372,43 +352,41 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
           <p v-if="keyError" class="text-[1rem] text-alerte" role="alert">{{ keyError }}</p>
           <label v-if="!key.trim()" class="flex items-start gap-3 text-[1.05rem]">
             <input v-model="noKey" type="checkbox" :class="check" />
-            <span class="text-papier">Continuer sans clé
-              <span class="block text-[1rem] text-courbe">Pas de lecture du texte, des panneaux ni de traduction. La clé
-                pourra être ajoutée plus tard dans les Réglages.</span>
+            <span class="text-papier">{{ t("setup.no_key") }}
+              <span class="block text-[1rem] text-courbe">{{ t("setup.no_key.detail") }}</span>
             </span>
           </label>
           <p id="cle-aide" class="text-[1rem] text-courbe">
-            Gratuite sur build.nvidia.com. Nécessaire pour la lecture du texte et des panneaux. Stockée dans un fichier
-            lisible par l'utilisateur seul.
+            {{ t("setup.key.help") }}
           </p>
         </div>
 
         <fieldset class="space-y-2">
-          <legend class="mb-2 text-[1.15rem] font-bold text-papier">Composants</legend>
+          <legend class="mb-2 text-[1.15rem] font-bold text-papier">{{ t("setup.components") }}</legend>
           <label v-for="o in OPTIONS" :key="o.id" class="flex items-start gap-3 text-[1.05rem]">
             <input v-model="chosen[o.id]" type="checkbox" :class="check" />
             <span>
-              <span class="text-papier">{{ o.label }}</span>
-              <span v-if="o.recommended" class="text-courbe"> (recommandé)</span>
-              <span class="block text-[1rem] text-courbe">{{ o.detail }}</span>
+              <span class="text-papier">{{ t(`setup.option.${o.id}`) }}</span>
+              <span v-if="o.recommended" class="text-courbe">{{ t("setup.recommended") }}</span>
+              <span class="block text-[1rem] text-courbe">{{ t(`setup.option.${o.id}.detail`) }}</span>
             </span>
           </label>
           <label class="flex items-start gap-3 text-[1.05rem]">
             <input v-model="shortcuts" type="checkbox" :class="check" />
             <span>
-              <span class="text-papier">Raccourcis clavier GNOME</span><span class="text-courbe"> (recommandé)</span>
-              <span class="block text-[1rem] text-courbe">Super+Maj+G pour capturer, Super+Maj+Z pour marquer.</span>
+              <span class="text-papier">{{ t("setup.shortcuts") }}</span><span class="text-courbe">{{ t("setup.recommended") }}</span>
+              <span class="block text-[1rem] text-courbe">{{ t("setup.shortcuts.detail") }}</span>
             </span>
           </label>
         </fieldset>
 
         <fieldset class="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2">
-          <legend class="mb-2 text-[1.15rem] font-bold text-papier">Niveau d'aide par défaut</legend>
-          <label v-for="l in LEVELS" :key="l.value" class="flex items-start gap-3 text-[1.05rem]">
-            <input v-model="helpLevel" type="radio" :class="check" name="niveau" :value="l.value" />
+          <legend class="mb-2 text-[1.15rem] font-bold text-papier">{{ t("setup.default_level") }}</legend>
+          <label v-for="l in LEVELS" :key="l" class="flex items-start gap-3 text-[1.05rem]">
+            <input v-model="helpLevel" type="radio" :class="check" name="niveau" :value="l" />
             <span>
-              <span class="text-papier">{{ l.value }}. {{ l.label }}</span>
-              <span class="block text-[1rem] text-courbe">{{ l.hint[0].toUpperCase() + l.hint.slice(1) }}</span>
+              <span class="text-papier">{{ l }}. {{ t(`level.${l}`) }}</span>
+              <span class="block text-[1rem] text-courbe">{{ t(`level.${l}.hint`) }}</span>
             </span>
           </label>
         </fieldset>
@@ -416,9 +394,9 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
 
       <!-- 4. Installation: progress, then the first start -->
       <section v-else class="space-y-4" aria-labelledby="etape-installation">
-        <h2 id="etape-installation" class="text-[1.15rem] font-bold text-papier">Installation</h2>
+        <h2 id="etape-installation" class="text-[1.15rem] font-bold text-papier">{{ t("setup.install.title") }}</h2>
         <ol role="status" aria-live="polite" class="space-y-2">
-          <li v-for="(p, i) in PHASES" :key="p.id" class="flex items-center gap-3">
+          <li v-for="(p, i) in PHASES" :key="p" class="flex items-center gap-3">
             <span class="grid h-6 w-6 place-items-center rounded-full text-[0.85rem] font-bold"
                   :class="i < phaseIndex ? 'bg-foret text-encre'
                     : i === phaseIndex && installDone === false ? 'bg-alerte text-encre'
@@ -426,22 +404,22 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
                     : 'border border-courbe-fonce'">
               {{ i < phaseIndex ? "✓" : i === phaseIndex && installDone === false ? "!" : "" }}
             </span>
-            <span :class="i <= phaseIndex ? 'text-papier' : 'text-courbe'">{{ p.label }}</span>
+            <span :class="i <= phaseIndex ? 'text-papier' : 'text-courbe'">{{ t(`setup.phase.${p}`) }}</span>
           </li>
         </ol>
-        <p v-if="installDone === true" class="font-bold text-foret">Installation terminée.</p>
+        <p v-if="installDone === true" class="font-bold text-foret">{{ t("setup.install.done") }}</p>
         <div v-else-if="installDone === false" role="alert">
-          <p class="font-bold text-alerte">L'installation a échoué.</p>
+          <p class="font-bold text-alerte">{{ t("setup.install.failed") }}</p>
           <p v-if="failure" class="mt-1 text-[1.05rem] text-papier">{{ failure }}</p>
         </div>
         <details v-if="lines.length" :open="installDone === false">
-          <summary :class="disclosure">Journal d'installation</summary>
+          <summary :class="disclosure">{{ t("setup.install.log") }}</summary>
           <div ref="logBox" class="mt-2 max-h-48 overflow-auto rounded-md border border-courbe-fonce bg-relief px-3 py-2">
             <p v-for="(l, i) in lines" :key="i" class="whitespace-pre font-mono text-[0.95rem] leading-relaxed text-courbe">{{ l }}</p>
           </div>
         </details>
         <p v-if="installDone === true" class="text-[1.05rem] text-courbe">
-          Au démarrage, GNOME demandera quelle fenêtre partager : sélectionner celle du navigateur de jeu.
+          {{ t("setup.install.share") }}
         </p>
         <p v-if="finishError" class="text-[1.05rem] text-alerte" role="alert">{{ finishError }}</p>
       </section>
@@ -449,27 +427,27 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
 
     <footer v-if="status" class="flex items-center justify-end gap-2 border-t border-courbe-fonce px-6 py-3">
       <p v-if="step === 'components' && !installing" class="mr-auto text-[1rem] text-courbe">
-        Le téléchargement des composants requis ({{ mb(requiredMb) }}) démarre à l'étape suivante.
+        {{ t("setup.footer.download_next", { size: mb(requiredMb) }) }}
       </p>
       <template v-if="step === 'system'">
-        <button v-if="missing.length" type="button" :class="secondary" @click="step = 'components'">Ignorer</button>
-        <button v-if="missing.length" type="button" :class="primary" @click="load">Revérifier</button>
-        <button v-else type="button" :class="primary" @click="step = 'components'">Suivant</button>
+        <button v-if="missing.length" type="button" :class="secondary" @click="step = 'components'">{{ t("setup.skip") }}</button>
+        <button v-if="missing.length" type="button" :class="primary" @click="load">{{ t("setup.recheck") }}</button>
+        <button v-else type="button" :class="primary" @click="step = 'components'">{{ t("setup.next") }}</button>
       </template>
       <template v-else-if="step === 'components'">
-        <button type="button" :class="secondary" @click="step = 'system'">Retour</button>
-        <button type="button" :class="primary" @click="installing ? (step = 'options') : startInstall()">Suivant</button>
+        <button type="button" :class="secondary" @click="step = 'system'">{{ t("setup.back") }}</button>
+        <button type="button" :class="primary" @click="installing ? (step = 'options') : startInstall()">{{ t("setup.next") }}</button>
       </template>
       <template v-else-if="step === 'options'">
-        <button type="button" :class="secondary" @click="step = 'components'">Retour</button>
+        <button type="button" :class="secondary" @click="step = 'components'">{{ t("setup.back") }}</button>
         <button type="button" :class="primary" :disabled="!optionsValid" @click="step = 'install'"
-                :title="optionsValid ? '' : 'Saisir une clé API valide, ou cocher « Continuer sans clé ».'">Suivant</button>
+                :title="optionsValid ? '' : t('setup.options_invalid')">{{ t("setup.next") }}</button>
       </template>
       <template v-else>
-        <button type="button" :class="secondary" @click="step = 'options'">Retour</button>
-        <button v-if="installDone === false" type="button" :class="primary" @click="startInstall">Réessayer</button>
+        <button type="button" :class="secondary" @click="step = 'options'">{{ t("setup.back") }}</button>
+        <button v-if="installDone === false" type="button" :class="primary" @click="startInstall">{{ t("setup.retry") }}</button>
         <button v-else type="button" :class="primary" :disabled="installDone !== true || finishing" @click="finish">
-          {{ finishing ? "Démarrage…" : "Lancer GeoNesClick" }}
+          {{ t(finishing ? "setup.starting" : "setup.launch") }}
         </button>
       </template>
     </footer>

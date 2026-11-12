@@ -1,7 +1,7 @@
 // Connection to the Python engine: WebSocket for pushed results, HTTP for commands.
 import { reactive } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { setLanguage } from "./i18n";
+import { setLanguage, t } from "./i18n";
 
 export const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
 export const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
@@ -217,8 +217,8 @@ export function proofOf(a: Analysis): Conclusion | null {
 
 /** Label of a proof according to its source and its confirmation. */
 export function proofLabel(c: Conclusion): string {
-  if (c.source === "marks") return c.confirmed ? "Certain : lu dans tes marques" : "Très probable : lu dans tes marques";
-  return c.certainty === "forte" ? "Très probable : lu par l'IA, à confirmer" : "Probable : lu par l'IA, à confirmer";
+  if (c.source === "marks") return t(c.confirmed ? "proof.marks_certain" : "proof.marks_likely");
+  return t(c.certainty === "forte" ? "proof.ai_strong" : "proof.ai_medium");
 }
 
 /** CERTAIN proof: strong, confirmed by a local rule, and the "a proof read settles it" setting on. */
@@ -366,7 +366,7 @@ export interface Analysis {
 
 export const engine = reactive({
   connected: false,
-  capture: { alive: false, starting: true, message: "connexion au moteur…" },
+  capture: { alive: false, starting: true, message: t("engine.connecting") },
   streetclip: { ready: false, message: "" },
   /** key: where the API key comes from and its last 4 characters (never the key), null if missing. */
   vision: { enabled: false, ready: false, model: "", key: null as { source: string; end: string } | null },
@@ -514,7 +514,7 @@ function handle(msg: Message) {
         if (msg.error) cur.translationError = msg.error;
         if (cur.translationLeft === 0 || all.every((tip) => tip.translated)) {
           cur.translation = all.every((tip) => tip.translated) ? "done"
-            : `certaines astuces sont restées en anglais (${cur.translationError ?? "pas de réponse"})`;
+            : t("engine.tips_left_in_english", { reason: cur.translationError ?? t("engine.no_answer") });
         }
       }
       break;
@@ -598,11 +598,11 @@ async function request(path: string, body?: unknown): Promise<Response | null> {
     });
     if (!res.ok) {
       const detail = await res.json().then((j) => j.detail ?? j.error).catch(() => null);
-      engine.error = typeof detail === "string" ? `Refusé par le moteur : ${detail}.` : `Le moteur a répondu ${res.status}.`;
+      engine.error = typeof detail === "string" ? t("engine.refused", { detail }) : t("engine.status", { status: res.status });
     }
     return res;
   } catch {
-    engine.error = "Le moteur ne répond pas.";
+    engine.error = t("engine.no_reply");
     return null;
   } finally {
     engine.busy = false;
@@ -636,9 +636,9 @@ export async function previewTruth(link: string): Promise<
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ link }),
     });
     const body = await res.json().catch(() => ({}));
-    return res.ok ? body : { error: typeof body.detail === "string" ? body.detail : `refusé (${res.status})` };
+    return res.ok ? body : { error: typeof body.detail === "string" ? body.detail : t("engine.refused_status", { status: res.status }) };
   } catch {
-    return { error: "le moteur ne répond pas" };
+    return { error: t("engine.no_reply") };
   }
 }
 export const refreshPlonkit = () => request("/plonkit/refresh");
@@ -648,7 +648,7 @@ export const erasePlan = () => getJSON<{ groups: EraseGroup[] }>("/storage/erase
 /** Erases everything about you, then restarts the engine (Tauri) and the UI, which start again from scratch. */
 export async function eraseEverything(models: boolean): Promise<string | null> {
   const res = await request("/storage/erase", { confirm: "EFFACER", models });
-  if (!res?.ok) return engine.error ?? "Effacement impossible.";
+  if (!res?.ok) return engine.error ?? t("engine.erase_failed");
   try {
     localStorage.clear(); // the UI state (open sections…) goes too
   } catch {
@@ -658,7 +658,7 @@ export async function eraseEverything(models: boolean): Promise<string | null> {
     const { invoke } = await import("@tauri-apps/api/core");
     await invoke("restart_engine");
   } catch {
-    return "Données effacées. Relance l'application pour repartir de zéro.";
+    return t("engine.erased_restart");
   }
   window.location.reload();
   return null;
@@ -666,7 +666,7 @@ export async function eraseEverything(models: boolean): Promise<string | null> {
 /** NVIDIA API key: written by the engine to a file readable by you only; empty = forget it. */
 export async function saveApiKey(key: string): Promise<string | null> {
   const res = await request("/settings/api-key", { key });
-  return res?.ok ? null : engine.error ?? "Enregistrement impossible.";
+  return res?.ok ? null : engine.error ?? t("engine.save_failed");
 }
 /** Locks a country, a region or a city for the capture (or accepts the suggested city). */
 export const setLock = (id: string, lock: Pick<Lock, "level" | "country"> & Partial<Lock>) =>
@@ -699,28 +699,19 @@ export async function setHelpLevel(level: number) {
   await saveSettings({ coach: { help_level: level } });
 }
 
-/** Labels of the metas categories (same keys as metas.py). */
-export const CATEGORY_LABELS: Record<string, string> = {
-  langue: "Langue et alphabet",
-  conduite: "Sens de circulation",
-  marquage: "Marquage au sol",
-  poteaux: "Poteaux",
-  bornes: "Bornes et délinéateurs",
-  plaques: "Plaques d'immatriculation",
-  panneaux: "Panneaux",
-  domaine: "Noms de domaine",
-  voiture: "Voiture et caméra Google",
-  vegetation: "Végétation et sol",
-  architecture: "Architecture",
-  autre: "Autres indices",
-};
+/** The metas categories (same keys as metas.py, internal and in French), in display order. */
+export const CATEGORIES = ["langue", "conduite", "marquage", "poteaux", "bornes", "plaques", "panneaux", "domaine",
+                           "voiture", "vegetation", "architecture", "autre"] as const;
+/** A category's label in the UI's language; an unknown category is shown as is. */
+const isCategory = (c: string): c is (typeof CATEGORIES)[number] => (CATEGORIES as readonly string[]).includes(c);
+export const categoryLabel = (c: string) => (isCategory(c) ? t(`category.${c}`) : c);
 /** Opens a Plonk It page in the browser (only these addresses are allowed by Tauri). */
 export async function openPlonkit(url: string) {
   if (!url.startsWith("https://www.plonkit.net/")) return;
   try {
     await openUrl(url);
   } catch {
-    engine.error = "Impossible d'ouvrir le navigateur.";
+    engine.error = t("engine.no_browser");
   }
 }
 
@@ -751,7 +742,7 @@ export async function openAttribution() {
   try {
     await openUrl(url);
   } catch {
-    engine.error = "Impossible d'ouvrir le navigateur.";
+    engine.error = t("engine.no_browser");
   }
 }
 
@@ -776,10 +767,10 @@ export async function saveSetting(section: string, key: string, value: unknown):
       body: JSON.stringify({ [section]: { [key]: value } }),
     });
     const body = await res.json().catch(() => ({}));
-    if (!res.ok) return { error: typeof body.detail === "string" ? body.detail : `Refusé (${res.status}).`, restart: false };
+    if (!res.ok) return { error: typeof body.detail === "string" ? body.detail : t("engine.refused_status", { status: res.status }), restart: false };
     return { error: null, restart: Array.isArray(body.restart) && body.restart.length > 0 };
   } catch {
-    return { error: "Le moteur ne répond pas.", restart: false };
+    return { error: t("engine.no_reply"), restart: false };
   }
 }
 
@@ -798,7 +789,7 @@ export async function saveSettings(settings: Settings): Promise<string | null> {
     engine.error = null;
     return null;
   }
-  return engine.error ?? "Enregistrement impossible.";
+  return engine.error ?? t("engine.save_failed");
 }
 
 /** Model test: separate call, so as not to block the capture during these few seconds. */
@@ -810,8 +801,8 @@ export async function testModel(model: string): Promise<{ ok: boolean; seconds?:
       body: JSON.stringify({ model }),
     });
     if (res.ok) return await res.json();
-    return { ok: false, error: res.status === 422 ? "Identifiant de modèle invalide." : `Le moteur a répondu ${res.status}.` };
+    return { ok: false, error: res.status === 422 ? t("engine.invalid_model") : t("engine.status", { status: res.status }) };
   } catch {
-    return { ok: false, error: "Le moteur ne répond pas." };
+    return { ok: false, error: t("engine.no_reply") };
   }
 }

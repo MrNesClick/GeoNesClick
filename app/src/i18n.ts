@@ -14,12 +14,26 @@ const CATALOGS: Record<string, Record<string, string>> = Object.fromEntries(
 export type Lang = string;
 export const LANGS: Lang[] = Object.keys(CATALOGS).sort((a, b) => (a === "en" ? -1 : b === "en" ? 1 : a.localeCompare(b)));
 
-/** Language of the UI: coach.language when it has a catalog, English otherwise (es, de… translate the tips only). */
-export const i18n = reactive({ lang: "en" as Lang });
 export const uiLanguage = (lang: unknown): Lang => (LANGS.includes(lang as Lang) ? (lang as Lang) : "en");
+// The last language, remembered in this browser: the coach shows in it before the engine's state arrives.
+const REMEMBERED = "geonesclick.lang";
+function remembered(): Lang {
+  try {
+    return uiLanguage(localStorage.getItem(REMEMBERED));
+  } catch {
+    return "en"; // storage unavailable
+  }
+}
+/** Language of the UI: coach.language when it has a catalog, English otherwise (es, de… translate the tips only). */
+export const i18n = reactive({ lang: remembered() });
 export function setLanguage(lang: unknown) {
   i18n.lang = uiLanguage(lang);
   document.documentElement.lang = i18n.lang;
+  try {
+    localStorage.setItem(REMEMBERED, i18n.lang);
+  } catch {
+    /* storage unavailable: English until the engine's state */
+  }
   // The installer's own texts (errors, failure causes, GNOME shortcut names) follow too (src-tauri/src/i18n.rs).
   import("@tauri-apps/api/core")
     .then(({ invoke }) => invoke("set_language", { lang: i18n.lang }))
@@ -30,10 +44,20 @@ type Params = Record<string, string | number>;
 const fill = (text: string, params?: Params) =>
   params ? text.replace(/\{(\w+)\}/g, (all, name: string) => (name in params ? String(params[name]) : all)) : text;
 
+/** Is this a catalog key (keys built at run time, e.g. from a setting's name)? */
+export const hasKey = (key: string): key is Key => key in en;
+
 /** The text of a key in the UI's language (or in `lang`, e.g. each language's own name in the picker). */
 export function t(key: Key, params?: Params, lang: Lang = i18n.lang): string {
   const texts: Record<string, string> = CATALOGS[lang];
-  return fill(texts[key] ?? en[key], params);
+  return fill(texts[key] ?? (en as Record<string, string>)[key] ?? key, params); // unknown key: shown as is
+}
+
+/** A value from the model's answer ("forte", "élevée"…: fixed French words of the prompt) in the UI's language:
+ * the key `${prefix}.${value}` if the catalog has it, the value as is otherwise. */
+export function valueLabel(prefix: string, value: string): string {
+  const key = `${prefix}.${value.trim().toLowerCase()}`;
+  return hasKey(key) ? t(key) : value;
 }
 
 /** Plural text: the key ".one" or ".other" (Intl.PluralRules, same as plural_one in i18n.py), with {n}. */
@@ -45,6 +69,10 @@ export function tn(key: PluralKey, n: number, params?: Params): string {
 
 /** Number in the UI's language: "13.2" in English, "13,2" in French. */
 export const num = (n: number, digits = 1) => n.toLocaleString(i18n.lang, { maximumFractionDigits: digits });
+/** Share (0 to 1) as a whole percentage: "22%" in English, "22 %" in French. */
+export const pct = (p: number) => p.toLocaleString(i18n.lang, { style: "percent", maximumFractionDigits: 0 });
+/** Quoted text: “…” in English, « … » in French. */
+export const quote = (text: string) => t("quote", { text });
 /** Country name in the UI's language (Intl, no table to maintain). */
 const regionNames: Partial<Record<Lang, Intl.DisplayNames>> = {};
 export function countryName(code: string): string {

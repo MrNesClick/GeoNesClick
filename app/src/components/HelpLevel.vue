@@ -1,18 +1,16 @@
 <script setup lang="ts">
 // Help level selector, always visible: changes what is displayed right away, and saves it.
+import { computed } from "vue";
 import { engine, setHelpLevel } from "../engine";
+import { t } from "../i18n";
 
-const LEVELS = [
-  { value: 1, label: "Regarder", hint: "Où regarder, sans nommer de pays" },
-  { value: 2, label: "Indices", hint: "Plus ce que voit l'IA, dont le texte lu" },
-  { value: 3, label: "Pays", hint: "Plus les pays probables, leurs indices et les astuces Plonk It" },
-  { value: 4, label: "Réponse", hint: "Plus la synthèse : pays, région si un texte la nomme, et la preuve" },
-];
+const LEVELS = computed(() => ([1, 2, 3, 4] as const).map((value) => (
+  { value, label: t(`level.${value}`), hint: t(`level.${value}.hint`) })));
 </script>
 
 <template>
   <fieldset class="mt-3">
-    <legend class="sr-only">Niveau d'aide</legend>
+    <legend class="sr-only">{{ t("level.legend") }}</legend>
     <div class="grid grid-cols-4 gap-1 rounded-md border border-courbe-fonce p-1">
       <label
         v-for="lvl in LEVELS"

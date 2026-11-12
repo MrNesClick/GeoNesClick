@@ -3,7 +3,7 @@
 // road sign, shop sign…). Created hidden at startup (tauri.conf.json) to show without delay; it listens to the
 // engine and shows up on each "freeze" (Super+Shift+Z or the "Mark" button).
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { i18n } from "./i18n";
+import { i18n, setLanguage, t } from "./i18n";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ENGINE_URL, WS_URL } from "./engine";
 
@@ -38,10 +38,10 @@ async function post<T>(path: string, body: unknown): Promise<{ ok: boolean; data
       body: JSON.stringify(body),
     });
     const data = await res.json().catch(() => null);
-    const detail = typeof data?.detail === "string" ? data.detail : `le moteur a répondu ${res.status}`;
+    const detail = typeof data?.detail === "string" ? data.detail : t("overlay.engine_status", { status: res.status });
     return { ok: res.ok, data: res.ok ? (data as T) : null, detail };
   } catch {
-    return { ok: false, data: null, detail: "le moteur ne répond pas" };
+    return { ok: false, data: null, detail: t("overlay.no_reply") };
   }
 }
 
@@ -64,7 +64,7 @@ async function show(msg: { id: string; width: number; height: number; target_at:
   }
   const res = await post<{ image: string }>("/marks/frame", { id: msg.id });
   if (res.data && freezeId.value === msg.id) image.value = res.data.image;
-  else if (!res.ok) error.value = `Vue figée indisponible : ${res.detail}.`;
+  else if (!res.ok) error.value = t("overlay.frame_unavailable", { detail: res.detail });
 }
 
 async function close() {
@@ -84,7 +84,7 @@ async function submit() {
   const res = await post("/marks", { id: freezeId.value, rects: rects.value });
   sending.value = false;
   if (res.ok) await close();
-  else error.value = `Marques refusées : ${res.detail}.`;
+  else error.value = t("overlay.refused", { detail: res.detail });
 }
 
 const removeLast = () => void rects.value.pop();
@@ -140,6 +140,7 @@ function listen() {
   ws.onmessage = (event) => {
     const msg = JSON.parse(event.data);
     if (msg.type === "state") {
+      setLanguage(msg.language); // this window follows the coach's language too
       max.value = msg.marks?.max ?? max.value;
       uses.value = msg.marks?.uses ?? [];
       notYet.value = msg.marks?.not_yet ?? [];
@@ -175,8 +176,8 @@ onBeforeUnmount(() => {
       @pointercancel="drawing = null"
       @contextmenu.prevent="removeLast"
     >
-      <img v-if="image" :src="image" alt="Vue figée" class="pointer-events-none size-full" draggable="false" />
-      <p v-else-if="!error" class="absolute inset-0 grid place-items-center text-courbe">Vue figée…</p>
+      <img v-if="image" :src="image" :alt="t('overlay.alt')" class="pointer-events-none size-full" draggable="false" />
+      <p v-else-if="!error" class="absolute inset-0 grid place-items-center text-courbe">{{ t("overlay.loading") }}</p>
       <div
         v-for="(r, i) in rects"
         :key="i"
@@ -197,12 +198,12 @@ onBeforeUnmount(() => {
     >
       <p class="min-w-0">
         <template v-if="error"><span class="text-alerte" role="alert">{{ error }}</span></template>
-        <template v-else-if="full">{{ max }} marques au plus : valide ou retire la dernière.</template>
-        <template v-else>Entoure chaque indice : plaque de rue, panneau, enseigne…</template>
+        <template v-else-if="full">{{ t("overlay.full", { max }) }}</template>
+        <template v-else>{{ t("overlay.circle") }}</template>
         <span class="ml-2 text-courbe">{{ rects.length }} / {{ max }}</span>
       </p>
-      <p class="text-courbe" title="Nouvelle manche ? Annule, capture (Super+Maj+G), puis marque.">
-        Complète la manche capturée à {{ roundTime }}
+      <p class="text-courbe" :title="t('overlay.new_round')">
+        {{ t("overlay.completes", { time: roundTime }) }}
       </p>
       <div class="flex gap-2">
         <button
@@ -211,10 +212,10 @@ onBeforeUnmount(() => {
           :disabled="!rects.length"
           @click="removeLast"
         >
-          Retirer la dernière
+          {{ t("overlay.remove_last") }}
         </button>
         <button type="button" class="rounded-md border border-courbe-fonce px-3 py-1.5 text-papier hover:bg-relief" @click="close">
-          Annuler <kbd class="text-courbe">Échap</kbd>
+          {{ t("overlay.cancel") }} <kbd class="text-courbe">{{ t("key.escape") }}</kbd>
         </button>
         <button
           type="button"
@@ -222,17 +223,17 @@ onBeforeUnmount(() => {
           :disabled="!rects.length || sending"
           @click="submit"
         >
-          Lire les marques <kbd class="font-normal">Entrée</kbd>
+          {{ t("overlay.read") }} <kbd class="font-normal">{{ t("key.enter") }}</kbd>
         </button>
       </div>
       <!-- What the coach draws from a mark: to know what to circle, and what does not count yet. -->
       <dl v-if="uses.length || notYet.length" class="w-full border-t border-courbe-fonce pt-2 text-[0.85rem]">
         <div v-if="uses.length" class="flex gap-2">
-          <dt class="shrink-0 text-marque">Pris en compte</dt>
+          <dt class="shrink-0 text-marque">{{ t("overlay.counted") }}</dt>
           <dd class="text-papier">{{ uses.join(" ; ") }}.</dd>
         </div>
         <div v-if="notYet.length" class="mt-0.5 flex gap-2">
-          <dt class="shrink-0 text-courbe">Pas encore</dt>
+          <dt class="shrink-0 text-courbe">{{ t("overlay.not_yet") }}</dt>
           <dd class="text-courbe">{{ notYet.join(" ; ") }}.</dd>
         </div>
       </dl>

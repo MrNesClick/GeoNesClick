@@ -15,14 +15,15 @@ import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import Summary from "./components/Summary.vue";
 import { countryName, engine, flag, lockedCountry, requestCapture, requestFreeze, restartSharing, tipsByCountry } from "./engine";
+import { t } from "./i18n";
 import * as sum from "./summaries";
 
 const status = computed(() => {
-  if (!engine.connected) return { tone: "bg-courbe", text: "Démarrage du moteur…" };
-  if (engine.capture.starting) return { tone: "bg-courbe", text: "Choisis la fenêtre du jeu à partager…" };
+  if (!engine.connected) return { tone: "bg-courbe", text: t("app.status.starting") };
+  if (engine.capture.starting) return { tone: "bg-courbe", text: t("app.status.pick_window") };
   if (!engine.capture.alive) return { tone: "bg-alerte", text: engine.capture.message };
-  if (!engine.streetclip.ready) return { tone: "bg-courbe", text: "Chargement du modèle local…" };
-  return { tone: "bg-foret", text: engine.marks.enabled ? "Prêt. Capture : Super+Maj+G · marques : Super+Maj+Z." : "Prêt. Capture avec Super+Maj+G." };
+  if (!engine.streetclip.ready) return { tone: "bg-courbe", text: t("app.status.loading_model") };
+  return { tone: "bg-foret", text: engine.marks.enabled ? t("app.status.ready_marks") : t("app.status.ready") };
 });
 // Window views: the coach, the full-size map (level 3 and up), the settings.
 const view = ref<"coach" | "map" | "settings">("coach");
@@ -46,13 +47,12 @@ watch(view, (v) => {
 });
 // Bottom tab bar: navigation; the help levels, at the top, set how much help is given.
 const tabs = computed(() => [
-  { id: "coach" as const, label: "Coach", disabled: false, hint: "" },
+  { id: "coach" as const, label: t("app.tab.coach"), disabled: false, hint: "" },
   ...(engine.map.enabled
-    ? [{ id: "map" as const, label: "Carte", disabled: !mapAvailable.value || !engine.current,
-         hint: !mapAvailable.value ? "À partir du niveau 3 (Pays) : la carte dévoile les pays."
-           : engine.current ? "" : "Fais d'abord une capture." }]
+    ? [{ id: "map" as const, label: t("app.tab.map"), disabled: !mapAvailable.value || !engine.current,
+         hint: !mapAvailable.value ? t("app.tab.map_level") : engine.current ? "" : t("app.need_capture") }]
     : []),
-  { id: "settings" as const, label: "Réglages", disabled: false, hint: "" },
+  { id: "settings" as const, label: t("app.tab.settings"), disabled: false, hint: "" },
 ]);
 </script>
 
@@ -69,19 +69,18 @@ const tabs = computed(() => [
         :disabled="engine.busy"
         @click="restartSharing"
       >
-        Relancer le partage
+        {{ t("app.restart_sharing") }}
       </button>
       <template v-else>
         <button
           v-if="engine.marks.enabled"
           type="button"
           class="shrink-0 rounded-md border border-marque/70 px-3 py-1.5 text-[0.9rem] text-papier hover:bg-marque/10 disabled:opacity-40"
-          :title="engine.current ? 'Fige la vue en plein écran pour y entourer des indices (Super+Maj+Z).'
-            : 'Fais d\'abord une capture : les marques complètent l\'analyse de la manche.'"
+          :title="engine.current ? t('app.mark.hint') : t('app.mark.need_capture')"
           :disabled="!engine.connected || !engine.capture.alive || engine.busy || !engine.current"
           @click="requestFreeze"
         >
-          Marquer
+          {{ t("app.mark") }}
         </button>
         <button
           type="button"
@@ -89,7 +88,7 @@ const tabs = computed(() => [
           :disabled="!engine.connected || !engine.capture.alive || engine.busy"
           @click="requestCapture"
         >
-          Capturer
+          {{ t("app.capture") }}
         </button>
       </template>
     </header>
@@ -115,39 +114,38 @@ const tabs = computed(() => [
       <Transition name="arrivee" appear mode="out-in">
         <div :key="engine.current.id" class="pt-2">
           <!-- Sections in order of usefulness; each one's summary stays readable when it is collapsed. -->
-          <Section v-if="level >= 4" id="reponse" title="Réponse" tone="papier" :summary="sum.answer(engine.current)">
+          <Section v-if="level >= 4" id="reponse" :title="t('app.section.answer')" tone="papier" :summary="sum.answer(engine.current)">
             <Summary :analysis="engine.current" />
           </Section>
 
           <!-- The marks are your proof: right after the answer, at every level (they name no country). -->
-          <Section v-if="engine.current.marks.length" id="marques" title="Marques" tone="papier" :summary="sum.marks(engine.current)">
+          <Section v-if="engine.current.marks.length" id="marques" :title="t('app.section.marks')" tone="papier" :summary="sum.marks(engine.current)">
             <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
           </Section>
 
-          <Section id="capture" title="Capture" :open="false" tone="papier" :summary="sum.capture(engine.current)">
-            <img :src="engine.current.thumbnail" alt="Vue analysée" class="w-full rounded-md border border-courbe-fonce" />
+          <Section id="capture" :title="t('app.section.capture')" :open="false" tone="papier" :summary="sum.capture(engine.current)">
+            <img :src="engine.current.thumbnail" :alt="t('app.capture_alt')" class="w-full rounded-md border border-courbe-fonce" />
           </Section>
 
-          <Section v-if="level < 3" id="regarder" title="Où regarder" :summary="sum.metas(engine.current)">
+          <Section v-if="level < 3" id="regarder" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">
             <LookHere :lookfor="engine.current.lookfor" />
           </Section>
 
           <template v-else>
-            <Section id="pays" title="Pays" :summary="sum.countries(engine.current)">
+            <Section id="pays" :title="t('app.section.countries')" :summary="sum.countries(engine.current)">
               <Countries :analysis="engine.current" />
             </Section>
-            <Section id="departage" title="Ce qui les départage"
-                     :summary="lockedCountry(engine.current) ? 'pays verrouillé' : sum.metas(engine.current)">
+            <Section id="departage" :title="t('app.section.tiebreak')"
+                     :summary="lockedCountry(engine.current) ? t('app.country_locked') : sum.metas(engine.current)">
               <p v-if="lockedCountry(engine.current)" class="text-[0.9rem] text-courbe">
-                Pays verrouillé ({{ flag(lockedCountry(engine.current)!) }} {{ countryName(lockedCountry(engine.current)!) }}) :
-                plus rien à départager entre pays. Rejette le verrou si tu en doutes.
+                {{ t("app.country_locked.detail", { country: `${flag(lockedCountry(engine.current)!)} ${countryName(lockedCountry(engine.current)!)}` }) }}
               </p>
               <MetaHints v-else :lookfor="engine.current.lookfor" />
             </Section>
             <Section
               v-if="tipsByCountry(engine.current).length"
               id="astuces"
-              title="Astuces Plonk It"
+              :title="t('app.section.tips')"
               :open="false"
               :summary="sum.tips(engine.current)"
             >
@@ -155,11 +153,11 @@ const tabs = computed(() => [
             </Section>
           </template>
 
-          <Section v-if="level >= 2" id="ia" title="Ce que voit l'IA" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
+          <Section v-if="level >= 2" id="ia" :title="t('app.section.vision')" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
             <Observations :vision="engine.current.vision" />
           </Section>
 
-          <Section v-if="engine.dataset.enabled" id="manche" title="Après la manche" :open="false" :summary="sum.round(engine.current)">
+          <Section v-if="engine.dataset.enabled" id="manche" :title="t('app.section.round')" :open="false" :summary="sum.round(engine.current)">
             <LabelForm :analysis="engine.current" :countries="engine.countries" :progress="engine.progress" />
           </Section>
         </div>
@@ -167,42 +165,40 @@ const tabs = computed(() => [
     </main>
 
     <main v-else class="flex flex-1 flex-col justify-center py-10">
-      <p class="atlas text-[1.6rem] leading-snug text-papier">Une vue, quelques indices.</p>
+      <p class="atlas text-[1.6rem] leading-snug text-papier">{{ t("app.welcome.title") }}</p>
       <p class="mt-3 max-w-[34ch] text-courbe">
-        Pendant une manche, appuie sur <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Super</kbd>
-        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Maj</kbd>
-        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">G</kbd>
-        : le coach affiche tout seul l'aide du niveau choisi ci-dessus, de « Regarder » (où chercher, sans
-        rien dévoiler) à « Réponse » (le pays et la preuve).
+        {{ t("app.welcome.capture_before") }} <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">{{ t("key.super") }}</kbd>
+        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">{{ t("key.shift") }}</kbd>
+        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">G</kbd>{{ t("app.welcome.capture_after") }}
       </p>
       <p v-if="engine.marks.enabled" class="mt-3 max-w-[34ch] text-courbe">
-        Ensuite, <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Super</kbd>
-        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Maj</kbd>
+        {{ t("app.welcome.mark_before") }} <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">{{ t("key.super") }}</kbd>
+        <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">{{ t("key.shift") }}</kbd>
         <kbd class="rounded border border-courbe-fonce px-1.5 text-papier">Z</kbd>
-        fige la vue pour entourer un détail (plaque, panneau) : l'IA le lit en grand.
+        {{ t("app.welcome.mark_after") }}
       </p>
     </main>
 
     <nav
       class="sticky bottom-0 z-[1100] -mx-4 mt-6 grid border-t border-courbe-fonce bg-encre px-2 pb-[env(safe-area-inset-bottom)]"
       :style="{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }"
-      aria-label="Vues du coach"
+      :aria-label="t('app.tabs_label')"
     >
       <button
-        v-for="t in tabs"
-        :key="t.id"
+        v-for="tab in tabs"
+        :key="tab.id"
         type="button"
         class="border-t-2 py-2.5 text-[0.95rem] font-bold transition-colors disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
-        :class="view === t.id ? 'border-papier text-papier' : 'border-transparent text-courbe hover:text-papier'"
-        :aria-current="view === t.id ? 'page' : undefined"
-        :disabled="t.disabled"
-        :title="t.hint"
-        @click="view = t.id"
+        :class="view === tab.id ? 'border-papier text-papier' : 'border-transparent text-courbe hover:text-papier'"
+        :aria-current="view === tab.id ? 'page' : undefined"
+        :disabled="tab.disabled"
+        :title="tab.hint"
+        @click="view = tab.id"
       >
-        {{ t.label }}<span
-          v-if="t.id === 'map' && mapUnseen && !t.disabled"
+        {{ tab.label }}<span
+          v-if="tab.id === 'map' && mapUnseen && !tab.disabled"
           class="ml-1.5 inline-block size-2 rounded-full bg-lac align-middle"
-          aria-label="nouvelles zones"
+          :aria-label="t('app.new_zones')"
         />
       </button>
     </nav>

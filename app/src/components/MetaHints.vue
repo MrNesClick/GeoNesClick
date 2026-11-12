@@ -3,12 +3,13 @@
 // are settled here ("Right" / "Wrong").
 import type { LookFor } from "../engine";
 import { countryName, engine, flag, judgeHint } from "../engine";
+import { t } from "../i18n";
 
 defineProps<{ lookfor: LookFor[] | null }>();
 </script>
 
 <template>
-  <p v-if="!lookfor" class="text-courbe">Analyse de la vue en cours…</p>
+  <p v-if="!lookfor" class="text-courbe">{{ t("look.analysing") }}</p>
   <div v-else-if="lookfor.length" class="space-y-4">
     <div v-for="lf in lookfor" :key="lf.category">
       <h3 class="text-[0.9rem] font-bold text-foret">{{ lf.label }}</h3>
@@ -21,32 +22,32 @@ defineProps<{ lookfor: LookFor[] | null }>();
           <span class="text-papier">
             {{ h.hint }}
             <span v-if="h.source === 'mes metas'" class="text-[0.8rem] text-foret">
-              {{ h.verified ? "(ta meta, vérifiée)" : "(ta meta)" }}
+              {{ t(h.verified ? "metas.yours_verified" : "metas.yours") }}
             </span>
             <span v-else-if="!h.verified && engine.metas.judge" class="inline-flex flex-wrap items-baseline gap-x-2 text-[0.8rem] text-courbe">
-              (amorce, à vérifier)
+              {{ t("metas.seed") }}
               <button
                 type="button"
                 class="rounded px-1.5 text-foret underline underline-offset-2 hover:bg-foret/10 disabled:opacity-40"
                 :disabled="engine.busy"
-                :aria-label="`Juste : ${h.hint}`"
+                :aria-label="t('metas.right_aria', { hint: h.hint })"
                 @click="judgeHint(lf.category, h.hint, 'right')"
-              >Juste</button>
+              >{{ t("metas.right") }}</button>
               <button
                 type="button"
                 class="rounded px-1.5 text-alerte underline underline-offset-2 hover:bg-alerte/10 disabled:opacity-40"
                 :disabled="engine.busy"
-                :aria-label="`Faux : ${h.hint}`"
+                :aria-label="t('metas.wrong_aria', { hint: h.hint })"
                 @click="judgeHint(lf.category, h.hint, 'wrong')"
-              >Faux</button>
+              >{{ t("metas.wrong") }}</button>
             </span>
-            <span v-else-if="!h.verified" class="text-[0.8rem] text-courbe">(amorce, à vérifier)</span>
+            <span v-else-if="!h.verified" class="text-[0.8rem] text-courbe">{{ t("metas.seed") }}</span>
           </span>
         </li>
       </ul>
     </div>
   </div>
   <p v-else class="text-[0.9rem] text-courbe">
-    Aucune meta ne départage ces pays. Ajoute les tiennes dans ~/.config/geonesclick/mes-metas.toml.
+    {{ t("metas.none") }}
   </p>
 </template>
