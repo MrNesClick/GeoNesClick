@@ -67,7 +67,8 @@ class CoachConfig(BaseModel):
     # A proof read by the AI with strong certainty (text naming a place…) puts that country first and
     # rules out the others, instead of StreetCLIP's percentages alone.
     trust_proof: bool
-    language: Literal["fr", "en", "es", "de", "it", "pt"]  # language of the translations (the UI will follow)
+    # The coach's language: the whole UI in en and fr (i18n.UI_LANGUAGES); es, de, it, pt translate the tips only.
+    language: Literal["en", "fr", "es", "de", "it", "pt"]
     # A country is shown as the answer only if it stands out: at least leader_min, and a leader_margin lead
     # over the 2nd. Otherwise the coach talks of hesitation between the first ones, instead of a false winner.
     leader_min: float = Field(ge=0, le=1)

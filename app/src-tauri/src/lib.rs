@@ -6,6 +6,7 @@
 //! this crate). If an engine is already running (started by hand), the new one fails to open the port and the UI
 //! simply connects to the existing one.
 
+mod i18n;
 mod setup;
 
 use std::os::unix::process::CommandExt;
@@ -48,7 +49,7 @@ fn spawn_engine(app: &AppHandle) -> Option<Child> {
     match command.spawn() {
         Ok(child) => Some(child),
         Err(err) => {
-            eprintln!("[coach] moteur introuvable ({}) : {err}", python.display());
+            eprintln!("[coach] engine not found ({}): {err}", python.display());
             None
         }
     }
@@ -74,18 +75,18 @@ fn stop_engine(child: &mut Child) {
 /// starts a fresh one, which starts again from empty folders.
 #[tauri::command]
 fn restart_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
-    let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
+    let mut slot = state.0.lock().map_err(|_| i18n::tr("engine.unavailable", &[]))?;
     if let Some(mut child) = slot.take() {
         stop_engine(&mut child);
     }
     *slot = spawn_engine(&app);
-    if slot.is_some() { Ok(()) } else { Err("moteur introuvable".into()) }
+    if slot.is_some() { Ok(()) } else { Err(i18n::tr("engine.not_found", &[])) }
 }
 
 /// "Erase everything" with the engine box ticked: stops the engine, then removes its installation (AppImage only).
 #[tauri::command]
 fn erase_engine(app: AppHandle, state: tauri::State<'_, Engine>) -> Result<(), String> {
-    let mut slot = state.0.lock().map_err(|_| "moteur verrouillé".to_string())?;
+    let mut slot = state.0.lock().map_err(|_| i18n::tr("engine.unavailable", &[]))?;
     if let Some(mut child) = slot.take() {
         stop_engine(&mut child);
     }
@@ -100,6 +101,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             restart_engine,
             erase_engine,
+            i18n::set_language,
             setup::setup_status,
             setup::setup_install,
             setup::setup_apply,
@@ -117,7 +119,7 @@ pub fn run() {
             }
         })
         .build(tauri::generate_context!())
-        .expect("échec du démarrage de l'application");
+        .expect("the application failed to start");
 
     app.run(|handle, event| {
         if let RunEvent::Exit = event {

@@ -5,7 +5,7 @@
 // change them.
 import { onMounted, reactive, ref } from "vue";
 import type { FileOnly, Settings } from "../engine";
-import { engine, fr, getJSON, refreshPlonkit, reselectWindow, saveApiKey, saveSetting, testModel } from "../engine";
+import { engine, num, getJSON, refreshPlonkit, reselectWindow, saveApiKey, saveSetting, testModel } from "../engine";
 import type { Field, Group } from "../settingsSchema";
 import { FILE_ONLY_LABELS, GROUPS } from "../settingsSchema";
 import Section from "./Section.vue";
@@ -67,7 +67,7 @@ async function runTest() {
   const r = await testModel(model);
   testing.value = false;
   test.value = r.ok
-    ? { model, ok: true, text: `Accepte les images, répond en ${fr(r.seconds ?? 0)} s.` }
+    ? { model, ok: true, text: `Accepte les images, répond en ${num(r.seconds ?? 0)} s.` }
     : { model, ok: false, text: r.error ?? "Échec du test." };
 }
 

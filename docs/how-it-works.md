@@ -198,7 +198,7 @@ to (the `__PRELOADED_DATA__` block of the pages; their API only serves the begin
   tips have a category; about 8 out of 10 are right on a sample, the errors mostly involving the Google camera.
 
 - **Translation**: the guides are in English. The displayed tips are translated on demand into the coach's
-  language (`[coach] language`, `fr` by default; `en` = no translation), by the NVIDIA model, with a GeoGuessr
+  language (`[coach] language`, `en` by default = no translation), by the NVIDIA model, with a GeoGuessr
   glossary (bollard → borne, road line → marquage…). The English shows first; the translations arrive in batches of
   3 sent in parallel (~10 s per batch measured with Nemotron Super VL), then are cached: a tip already read shows
   translated immediately. "See the original" lets you compare. Can be turned off (`[plonkit] translate`); model

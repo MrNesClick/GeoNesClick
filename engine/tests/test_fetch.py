@@ -25,7 +25,7 @@ def test_a_failed_download_is_one_readable_line_naming_the_hub(monkeypatch, caps
     assert fetch.main(["plonk"]) == 1
     err = capsys.readouterr().err.strip()
     assert "\n" not in err and "Traceback" not in err
-    assert err.startswith("erreur : nicolas-dufour/PLONK_OSV_5M/config.json non téléchargé depuis https://huggingface.co/ : ")
+    assert err.startswith("error: nicolas-dufour/PLONK_OSV_5M/config.json not downloaded from https://huggingface.co/: ")
     assert expected in err
 
 

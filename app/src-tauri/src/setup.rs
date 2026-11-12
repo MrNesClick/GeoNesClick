@@ -18,6 +18,8 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::i18n;
+
 /// Variables that the AppImage launcher (AppRun, GTK hook) points into the AppImage. A program of the host
 /// system must not inherit them: with PYTHONHOME set, the installed Python cannot find its standard library
 /// ("No module named 'encodings'"); with LD_LIBRARY_PATH or GI_TYPELIB_PATH, the engine would load the
@@ -89,6 +91,7 @@ pub fn needed(app: &AppHandle) -> bool {
 
 #[derive(Serialize)]
 struct Check {
+    /// Catalog key of its name, translated by the UI (a change of language applies to the list already shown).
     label: &'static str,
     ok: bool,
     package: &'static str,
@@ -107,18 +110,18 @@ fn system_checks() -> Vec<Check> {
         .any(|d| Path::new(d).join("xdg-desktop-portal").exists());
     let portal_gnome = ["/usr/libexec", "/usr/lib"].iter().any(|d| Path::new(d).join("xdg-desktop-portal-gnome").exists());
     vec![
-        Check { label: "Portail de partage d'écran", ok: portal, package: "xdg-desktop-portal" },
-        Check { label: "Portail de partage d'écran (GNOME)", ok: portal_gnome, package: "xdg-desktop-portal-gnome" },
-        Check { label: "GStreamer (descriptions)", ok: in_lib_dirs("girepository-1.0/Gst-1.0.typelib"), package: "gir1.2-gstreamer-1.0" },
+        Check { label: "setup.check.portal", ok: portal, package: "xdg-desktop-portal" },
+        Check { label: "setup.check.portal_gnome", ok: portal_gnome, package: "xdg-desktop-portal-gnome" },
+        Check { label: "setup.check.gst_typelib", ok: in_lib_dirs("girepository-1.0/Gst-1.0.typelib"), package: "gir1.2-gstreamer-1.0" },
         Check {
-            label: "GStreamer (conversion vidéo)",
+            label: "setup.check.gst_convert",
             ok: in_lib_dirs("gstreamer-1.0/libgstapp.so")
                 && (in_lib_dirs("gstreamer-1.0/libgstvideoconvertscale.so") || in_lib_dirs("gstreamer-1.0/libgstvideoconvert.so")),
             package: "gstreamer1.0-plugins-base",
         },
-        Check { label: "GStreamer (source PipeWire)", ok: in_lib_dirs("gstreamer-1.0/libgstpipewire.so"), package: "gstreamer1.0-pipewire" },
-        Check { label: "GObject Introspection", ok: in_lib_dirs("libgirepository-2.0.so.0"), package: "libgirepository-2.0-0" },
-        Check { label: "Cairo", ok: in_lib_dirs("libcairo.so.2"), package: "libcairo2" },
+        Check { label: "setup.check.gst_pipewire", ok: in_lib_dirs("gstreamer-1.0/libgstpipewire.so"), package: "gstreamer1.0-pipewire" },
+        Check { label: "setup.check.gobject", ok: in_lib_dirs("libgirepository-2.0.so.0"), package: "libgirepository-2.0-0" },
+        Check { label: "setup.check.cairo", ok: in_lib_dirs("libcairo.so.2"), package: "libcairo2" },
     ]
 }
 
@@ -189,7 +192,7 @@ const ERROR_TAIL: usize = 40;
 const NETWORK_SIGNS: [&str; 12] = [
     "error sending request", "dns error", "request failed after", "failed to download", "failed to fetch",
     "server error", "timed out", "connection", "name or service not known", "temporary failure in name resolution",
-    "network is unreachable", "non téléchargé depuis",
+    "network is unreachable", "not downloaded from",
 ];
 
 /// The host of the first https:// URL in a line.
@@ -201,28 +204,28 @@ fn url_host(line: &str) -> Option<&str> {
     Some(&rest[..end]).filter(|h| !h.is_empty())
 }
 
-/// The download site behind a host, as the assistant names it (the hosts of downloads.json).
+/// The download site behind a host (the hosts of downloads.json), as the catalog key of its name.
 fn service(host: &str) -> Option<&'static str> {
     let is = |domain: &str| host == domain || host.ends_with(&format!(".{domain}"));
     if is("github.com") || is("githubusercontent.com") {
-        Some("GitHub (Python)")
+        Some("setup.site.github")
     } else if is("pypi.org") || is("pythonhosted.org") {
-        Some("PyPI (bibliothèques Python)")
+        Some("setup.site.pypi")
     } else if is("pytorch.org") {
-        Some("download.pytorch.org (PyTorch)")
+        Some("setup.site.pytorch")
     } else if is("huggingface.co") || is("hf.co") {
-        Some("Hugging Face (modèle StreetCLIP)")
+        Some("setup.site.huggingface")
     } else {
         None
     }
 }
 
-/// Why install-engine.sh failed, in plain words: disk full, or a download site that does not answer (named from
-/// the URL in the error, otherwise from the phase). None when the cause is something else: the log shows it.
-fn diagnose(phase: &str, variant: &str, errors: &[String]) -> Option<String> {
-    const KEPT: &str = "Ce qui est déjà téléchargé est gardé.";
+/// Why install-engine.sh failed, in plain words and in `lang`: disk full, or a download site that does not answer
+/// (named from the URL in the error, otherwise from the phase). None when the cause is something else: the log
+/// shows it.
+fn diagnose(lang: &str, phase: &str, variant: &str, errors: &[String]) -> Option<String> {
     if errors.iter().any(|l| l.contains("No space left on device") || l.contains("os error 28")) {
-        return Some(format!("Plus assez de place sur le disque : en libérer, puis réessayer. {KEPT}"));
+        return Some(i18n::t(lang, "setup.fail.disk", &[]));
     }
     let network: Vec<&String> = errors
         .iter()
@@ -236,17 +239,16 @@ fn diagnose(phase: &str, variant: &str, errors: &[String]) -> Option<String> {
     }
     let named = network.iter().rev().filter_map(|l| url_host(l)).find_map(service);
     let site = named.or(match (phase, variant) {
-        ("python", _) => Some("GitHub (Python)"),
-        ("paquets", "cpu") => Some("PyPI ou download.pytorch.org (bibliothèques Python)"),
-        ("paquets", _) => Some("PyPI (bibliothèques Python)"),
-        ("modele", _) => Some("Hugging Face (modèle StreetCLIP)"),
+        ("python", _) => Some("setup.site.github"),
+        ("paquets", "cpu") => Some("setup.site.pypi_or_pytorch"),
+        ("paquets", _) => Some("setup.site.pypi"),
+        ("modele", _) => Some("setup.site.huggingface"),
         _ => None,
     });
-    let who = site.map_or("Un site de téléchargement".to_string(), |s| format!("Le site {s}"));
-    Some(format!(
-        "{who} ne répond pas. Vérifier la connexion Internet ; si elle fonctionne, ce site est sans doute en panne : \
-         réessayer dans quelques minutes. {KEPT}"
-    ))
+    Some(match site {
+        Some(key) => i18n::t(lang, "setup.fail.site", &[("site", &i18n::t(lang, key, &[]))]),
+        None => i18n::t(lang, "setup.fail.some_site", &[]),
+    })
 }
 
 /// Runs install-engine.sh ("cuda" or "cpu" variant), after your consent to the required block. Your options are
@@ -254,9 +256,9 @@ fn diagnose(phase: &str, variant: &str, errors: &[String]) -> Option<String> {
 /// Progress arrives as "setup-progress" events: script phases and output lines.
 #[tauri::command]
 pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
-    let bundle = bundle_dir(&app).ok_or("pas d'AppImage : rien à installer")?;
+    let bundle = bundle_dir(&app).ok_or_else(|| i18n::tr("setup.error.no_bundle", &[]))?;
     if variant != "cuda" && variant != "cpu" {
-        return Err("variante inconnue".into());
+        return Err(i18n::tr("setup.error.variant", &[]));
     }
     std::fs::create_dir_all(engine_home()).map_err(|e| e.to_string())?;
 
@@ -266,7 +268,7 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("installation impossible à lancer : {e}"))?;
+        .map_err(|e| i18n::tr("setup.error.launch", &[("error", &e.to_string())]))?;
 
     // Script errors (stderr) relayed as is, like its output. The last ones of the current phase are kept to explain
     // a failure: a retry that succeeded in an earlier phase (Hugging Face's "Retrying…") must not be blamed for it.
@@ -284,7 +286,8 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
             }
         })
     });
-    let stdout = child.stdout.take().ok_or("sortie de l'installation indisponible")?;
+    let stdout = child.stdout.take().ok_or_else(|| i18n::tr("setup.error.no_output", &[]))?;
+    let lang = i18n::current(); // the failure is explained in the language of the moment
     std::thread::spawn(move || {
         let mut last_phase = String::new();
         for line in BufReader::new(stdout).lines().map_while(Result::ok) {
@@ -300,7 +303,7 @@ pub fn setup_install(app: AppHandle, variant: String) -> Result<(), String> {
             let _ = reader.join(); // its last lines hold the cause
         }
         let errors = Vec::from(std::mem::take(&mut *tail.lock().unwrap_or_else(PoisonError::into_inner)));
-        let reason = if ok { None } else { diagnose(&last_phase, &variant, &errors) };
+        let reason = if ok { None } else { diagnose(&lang, &last_phase, &variant, &errors) };
         let _ = app.emit("setup-progress", Progress { phase: None, line: None, done: true, ok, reason });
     });
     Ok(())
@@ -315,7 +318,7 @@ pub fn setup_apply(app: AppHandle, choices: Value, api_key: Option<String>) -> R
         .stdin(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("moteur introuvable : {e}"))?;
+        .map_err(|e| i18n::tr("setup.error.engine", &[("error", &e.to_string())]))?;
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(&serde_json::to_vec(&choices).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
     }
@@ -325,11 +328,11 @@ pub fn setup_apply(app: AppHandle, choices: Value, api_key: Option<String>) -> R
     }
     if let Some(key) = api_key.filter(|k| !k.trim().is_empty()) {
         if !store_key(&key) {
-            return Err("clé API refusée : une clé NVIDIA commence par « nvapi- »".into());
+            return Err(i18n::tr("setup.error.key", &[]));
         }
     }
     // Only now may the engine start: it follows these choices, never the defaults.
-    let bundle = bundle_dir(&app).ok_or("pas d'AppImage")?;
+    let bundle = bundle_dir(&app).ok_or_else(|| i18n::tr("setup.error.no_bundle", &[]))?;
     std::fs::copy(bundle.join("VERSION"), engine_home().join("VERSION")).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -354,7 +357,7 @@ const MEDIA_KEYS: &str = "org.gnome.settings-daemon.plugins.media-keys";
 const KEY_ROOT: &str = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings";
 
 fn gsettings(args: &[&str]) -> Result<String, String> {
-    let out = host_command("/usr/bin/gsettings").args(args).output().map_err(|e| format!("gsettings : {e}"))?;
+    let out = host_command("/usr/bin/gsettings").args(args).output().map_err(|e| format!("gsettings: {e}"))?;
     if !out.status.success() {
         return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
     }
@@ -367,20 +370,21 @@ pub fn setup_shortcuts(app: AppHandle) -> Result<(), String> {
     let python = if bundle_dir(&app).is_some() {
         venv_python()
     } else {
-        return Err("en développement, utilise scripts/install.sh --setup-shortcut".into());
+        return Err("in development, use scripts/install.sh --setup-shortcut".into());
     };
     let current = gsettings(&["get", MEDIA_KEYS, "custom-keybindings"])?;
     let mut keys: Vec<String> = current.split('\'').skip(1).step_by(2).map(str::to_string).collect();
+    // Names shown in GNOME's keyboard settings, in the language chosen at installation.
     for (id, name, action, binding) in [
-        ("geonesclick", "GeoNesClick – capture", "capture", "<Super><Shift>g"),
-        ("geonesclick-mark", "GeoNesClick – marques", "mark", "<Super><Shift>z"),
+        ("geonesclick", i18n::tr("setup.shortcut.capture", &[]), "capture", "<Super><Shift>g"),
+        ("geonesclick-mark", i18n::tr("setup.shortcut.mark", &[]), "mark", "<Super><Shift>z"),
     ] {
         let path = format!("{KEY_ROOT}/{id}/");
         if !keys.contains(&path) {
             keys.push(path.clone());
         }
         let schema = format!("{MEDIA_KEYS}.custom-keybinding:{path}");
-        gsettings(&["set", &schema, "name", name])?;
+        gsettings(&["set", &schema, "name", &name])?;
         gsettings(&["set", &schema, "command", &format!("{} -m geonesclick.trigger {action}", python.display())])?;
         gsettings(&["set", &schema, "binding", binding])?;
     }
@@ -393,7 +397,7 @@ pub fn setup_shortcuts(app: AppHandle) -> Result<(), String> {
 /// development engine/.venv). The engine must be stopped first (see lib.rs).
 pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
     if bundle_dir(app).is_none() {
-        return Err("en développement, le moteur (engine/.venv) n'est pas retiré".into());
+        return Err("in development, the engine (engine/.venv) is not removed".into());
     }
     let home = engine_home();
     if home.ends_with("geonesclick/engine") && home.is_dir() {
@@ -434,23 +438,30 @@ mod tests {
   Caused by: HTTP status server error (504 Gateway Timeout) for url (https://download.pytorch.org/whl/cpu/torch-2.9.1%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl)";
     const HF: &str = "'[Errno -2] Name or service not known' thrown while requesting HEAD https://huggingface.co/geolocal/StreetCLIP/resolve/abc/config.json
 Retrying in 8s [Retry 5/5].
-erreur : geolocal/StreetCLIP/config.json non téléchargé depuis https://huggingface.co/ : LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub.";
+error: geolocal/StreetCLIP/config.json not downloaded from https://huggingface.co/: LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub.";
 
     fn site(reason: Option<String>) -> String {
         let reason = reason.expect("a cause");
-        assert!(reason.ends_with("Ce qui est déjà téléchargé est gardé."), "{reason}");
+        assert!(reason.ends_with("What is already downloaded is kept."), "{reason}");
         reason
     }
 
     #[test]
     fn an_unreachable_site_is_named_from_the_url_in_the_error() {
-        assert!(site(diagnose("python", "cpu", &lines(UV_PYTHON))).starts_with("Le site GitHub (Python) ne répond pas."));
-        assert!(site(diagnose("paquets", "cuda", &lines(UV_PYPI))).starts_with("Le site PyPI (bibliothèques Python) ne répond pas."));
-        assert!(site(diagnose("paquets", "cpu", &lines(UV_PYTORCH_504))).starts_with("Le site download.pytorch.org (PyTorch)"));
-        assert!(site(diagnose("modele", "cpu", &lines(HF))).starts_with("Le site Hugging Face (modèle StreetCLIP)"));
+        let named = |phase, variant, text: &str| site(diagnose("en", phase, variant, &lines(text)));
+        assert!(named("python", "cpu", UV_PYTHON).starts_with("The site GitHub (Python) does not answer."));
+        assert!(named("paquets", "cuda", UV_PYPI).starts_with("The site PyPI (Python libraries) does not answer."));
+        assert!(named("paquets", "cpu", UV_PYTORCH_504).starts_with("The site download.pytorch.org (PyTorch)"));
+        assert!(named("modele", "cpu", HF).starts_with("The site Hugging Face (StreetCLIP model)"));
         // Several sites in the errors: the last one named is the one that made the step fail.
-        let both = lines(&format!("{UV_PYPI}\n{UV_PYTORCH_504}"));
-        assert!(site(diagnose("paquets", "cpu", &both)).starts_with("Le site download.pytorch.org (PyTorch)"));
+        assert!(named("paquets", "cpu", &format!("{UV_PYPI}\n{UV_PYTORCH_504}")).starts_with("The site download.pytorch.org"));
+    }
+
+    #[test]
+    fn the_cause_is_told_in_the_language_asked() {
+        let reason = diagnose("fr", "python", "cpu", &lines(UV_PYTHON)).expect("a cause");
+        assert!(reason.starts_with("Le site GitHub (Python) ne répond pas."), "{reason}");
+        assert!(reason.ends_with("Ce qui est déjà téléchargé est gardé."), "{reason}");
     }
 
     #[test]
@@ -458,22 +469,22 @@ erreur : geolocal/StreetCLIP/config.json non téléchargé depuis https://huggin
         // A host that is none of the installation's sites (a mirror, say): download.geonames.org stands for it,
         // because test_downloads.py forbids undeclared addresses in the code.
         let other = lines("error: Failed to fetch: `https://download.geonames.org/simple/idna/`\n  Caused by: dns error");
-        assert!(site(diagnose("paquets", "cpu", &other)).starts_with("Le site PyPI ou download.pytorch.org"));
-        assert!(site(diagnose("paquets", "cuda", &other)).starts_with("Le site PyPI (bibliothèques Python)"));
-        assert!(site(diagnose("python", "cuda", &lines("Caused by: dns error"))).starts_with("Le site GitHub (Python)"));
-        assert!(site(diagnose("moteur", "cuda", &other)).starts_with("Un site de téléchargement ne répond pas."));
+        assert!(site(diagnose("en", "paquets", "cpu", &other)).starts_with("The site PyPI or download.pytorch.org"));
+        assert!(site(diagnose("en", "paquets", "cuda", &other)).starts_with("The site PyPI (Python libraries)"));
+        assert!(site(diagnose("en", "python", "cuda", &lines("Caused by: dns error"))).starts_with("The site GitHub (Python)"));
+        assert!(site(diagnose("en", "moteur", "cuda", &other)).starts_with("A download site does not answer."));
     }
 
     #[test]
     fn a_full_disk_is_told_before_anything_else() {
         let full = lines(&format!("{UV_PYPI}\nerror: failed to write to file `/x`: No space left on device (os error 28)"));
-        assert!(site(diagnose("paquets", "cpu", &full)).starts_with("Plus assez de place sur le disque"));
+        assert!(site(diagnose("en", "paquets", "cpu", &full)).starts_with("Not enough disk space"));
     }
 
     #[test]
     fn other_failures_are_left_to_the_log() {
-        assert_eq!(diagnose("choix", "cpu", &lines("ValueError: réglage inconnu")), None);
-        assert_eq!(diagnose("python", "cpu", &[]), None);
+        assert_eq!(diagnose("en", "choix", "cpu", &lines("ValueError: unknown setting")), None);
+        assert_eq!(diagnose("en", "python", "cpu", &[]), None);
     }
 
     #[test]
@@ -481,8 +492,8 @@ erreur : geolocal/StreetCLIP/config.json non téléchargé depuis https://huggin
         assert_eq!(url_host("for url (https://pypi.org/simple/idna/)"), Some("pypi.org"));
         assert_eq!(url_host("`https://files.pythonhosted.org`"), Some("files.pythonhosted.org"));
         assert_eq!(url_host("no url here"), None);
-        assert_eq!(service("objects.githubusercontent.com"), Some("GitHub (Python)"));
-        assert_eq!(service("cas-bridge.xethub.hf.co"), Some("Hugging Face (modèle StreetCLIP)"));
+        assert_eq!(service("objects.githubusercontent.com"), Some("setup.site.github"));
+        assert_eq!(service("cas-bridge.xethub.hf.co"), Some("setup.site.huggingface"));
         assert_eq!(service("evilgithub.com"), None);
     }
 }

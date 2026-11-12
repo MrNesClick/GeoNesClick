@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from geonesclick import i18n
 from geonesclick.config import load_config
 from geonesclick.server import create_app
 from geonesclick.settings import SettingsError, current, save
@@ -68,6 +69,20 @@ def test_settings_route_applies_live(client):
     assert tomllib.loads(user.read_text())["coach"]["help_level"] == 3
 
 
+def test_the_language_is_english_by_default_and_follows_the_setting_live(client):
+    http, engine, _ = client
+    try:
+        assert engine.state()["language"] == "en" and i18n.language() == "en"
+        assert http.post("/settings", json={"coach": {"language": "fr"}}, headers=ORIGIN).status_code == 200
+        assert engine.state()["language"] == "fr" and i18n.language() == "fr"
+        # Spanish only translates the tips: the UI (and the engine's texts) stay in English.
+        assert http.post("/settings", json={"coach": {"language": "es"}}, headers=ORIGIN).status_code == 200
+        assert engine.cfg.coach.language == "es" and engine.state()["language"] == "en"
+        assert http.post("/settings", json={"coach": {"language": "xx"}}, headers=ORIGIN).status_code == 422
+    finally:
+        i18n.set_language("en")
+
+
 def test_settings_route_rejects_base_url(client):
     http, engine, _ = client
     res = http.post("/settings", json={"vision": {"base_url": "https://attaquant.example"}}, headers=ORIGIN)
@@ -99,7 +114,7 @@ def test_save_keeps_comments_and_layout(tmp_path):
 def test_save_only_writes_values_that_change(tmp_path):
     user = tmp_path / "config.toml"
     defaults = current(load_config(tmp_path / "absent.toml"))
-    save(defaults | {"coach": {"help_level": 2, "language": "fr"}}, user)
+    save(defaults | {"coach": {"help_level": 2, "language": "en"}}, user)
     written = tomllib.loads(user.read_text())
     assert written == {"coach": {"help_level": 2}}  # the rest still follows the default values
 

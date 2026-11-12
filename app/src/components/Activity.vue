@@ -3,7 +3,7 @@
 // oldest running task (a marks reading counts from its launch, not from the capture).
 // Nothing is shown once everything is done.
 import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { engine, fr } from "../engine";
+import { engine, num } from "../engine";
 
 const now = ref(Date.now());
 let ticker: ReturnType<typeof setInterval> | undefined;
@@ -25,7 +25,7 @@ const tasks = computed(() => {
   return out;
 });
 const elapsed = computed(() =>
-  tasks.value.length ? fr((now.value - Math.min(...tasks.value.map((t) => t.since))) / 1000) : "0");
+  tasks.value.length ? num((now.value - Math.min(...tasks.value.map((t) => t.since))) / 1000) : "0");
 
 watch(
   () => tasks.value.length > 0,

@@ -2,6 +2,7 @@
 // One setting of the Settings screen, rendered according to its type (settingsSchema.ts). It saves nothing itself:
 // it emits the new value ("save") or an input error ("invalid"), and the screen handles it.
 import { computed, reactive } from "vue";
+import { i18n } from "../i18n";
 import type { Settings } from "../engine";
 import { CATEGORY_LABELS, countryName, flag } from "../engine";
 import type { Field } from "../settingsSchema";
@@ -69,7 +70,7 @@ function saveCategory(c: string, raw: string) {
 const countries = computed(() =>
   Object.entries((props.settings.streetclip?.countries ?? {}) as Record<string, string>)
     .map(([name, code]) => ({ name, code }))
-    .sort((a, b) => countryName(a.code).localeCompare(countryName(b.code), "fr")),
+    .sort((a, b) => countryName(a.code).localeCompare(countryName(b.code), i18n.lang)),
 );
 const excluded = computed(() => (props.settings.streetclip?.exclude_countries ?? []) as string[]);
 const toggle = (code: string, keep: boolean) =>

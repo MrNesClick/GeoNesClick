@@ -34,7 +34,8 @@ help_level = 4
 # Proof read with strong certainty (e.g. a "Provincia de Albacete" sign): this country goes first,
 # "certain", and the others are ruled out; false = keep StreetCLIP's percentages only.
 trust_proof = true
-language = "fr"          # language of the translations: fr, en, es, de, it, pt (the UI will follow)
+# The coach's language: en, fr (the whole UI); es, de, it, pt translate the Plonk It tips only (UI in English).
+language = "en"
 # Without proof read, a country is given as the answer only if it stands out: a probability of at least leader_min
 # AND a leader_margin lead over the 2nd. Otherwise: "Hesitation" between the first ones (e.g. 22 %, 21 %, 16 %).
 leader_min = 0.40

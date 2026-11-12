@@ -1,6 +1,7 @@
 // One-line summaries of the coach sections: readable even when the section is collapsed.
 import type { Analysis } from "./engine";
-import { certainProof, circled, clearLeader, contenders, countryName, flag, fr, proofOf, tipsByCountry, viable } from "./engine";
+import { i18n } from "./i18n";
+import { certainProof, circled, clearLeader, contenders, countryName, flag, num, proofOf, tipsByCountry, viable } from "./engine";
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 const EMPTY = /^(non visible|aucun|indéterminé)?\.?$/i;
@@ -19,7 +20,7 @@ export function answer(a: Analysis): string {
 }
 
 export function capture(a: Analysis): string {
-  return `${new Date(a.at).toLocaleTimeString("fr-FR")} · ${a.captureMs} ms`;
+  return `${new Date(a.at).toLocaleTimeString(i18n.lang)} · ${a.captureMs} ms`;
 }
 
 export function countries(a: Analysis): string {
@@ -54,7 +55,7 @@ export function vision(a: Analysis): string {
   if (v.status === "error") return "indisponible";
   const text = v.fiche.panneaux_et_texte;
   const hasText = typeof text === "string" ? !EMPTY.test(text.trim()) : Array.isArray(text) && text.length > 0;
-  return `${hasText ? "texte lu · " : "pas de texte · "}${fr(v.seconds)} s`;
+  return `${hasText ? "texte lu · " : "pas de texte · "}${num(v.seconds)} s`;
 }
 
 export function round(a: Analysis): string {

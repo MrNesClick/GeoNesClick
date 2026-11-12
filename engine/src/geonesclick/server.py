@@ -62,7 +62,7 @@ from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
 from .paths import SOCKET_PATH
 from .plonk import PlonkCloud, summarise
-from . import apikey, paths, storage
+from . import apikey, i18n, paths, storage
 from .streetclip import StreetClip
 from .vision import VisionClient, VisionError
 
@@ -113,6 +113,7 @@ class JudgeRequest(BaseModel):
 class Engine(MarksMixin, LocksMixin):
     def __init__(self, cfg: Config, settings_path: Path = USER_CONFIG) -> None:
         self.cfg = cfg
+        i18n.set_language(cfg.coach.language)
         self.settings_path = settings_path  # file written by the Settings screen
         self.clients: set[WebSocket] = set()
         self.loop: asyncio.AbstractEventLoop | None = None
@@ -175,6 +176,7 @@ class Engine(MarksMixin, LocksMixin):
             except SettingsError as exc:
                 raise HTTPException(422, str(exc)) from exc
             old, self.cfg = self.cfg, new
+            i18n.set_language(new.coach.language)
             self.notifier.enabled, self.notifier.sound = new.capture.notify, new.capture.sound
             self.vision = VisionClient(new.vision)
             if new.marks.parallel != old.marks.parallel:  # the readings in progress keep the old one
@@ -229,6 +231,7 @@ class Engine(MarksMixin, LocksMixin):
                 "key": apikey.hint(self.cfg.vision.api_key_env),  # where the key comes from, last 4 characters
             },
             "help_level": self.cfg.coach.help_level,
+            "language": i18n.language(),  # the UI's language (en when coach.language has no catalog)
             "trust_proof": self.cfg.coach.trust_proof,
             "leader": {"min": self.cfg.coach.leader_min, "margin": self.cfg.coach.leader_margin},
             "metas": {

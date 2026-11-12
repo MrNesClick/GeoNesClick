@@ -35,6 +35,16 @@ The engine uses a **Python 3.12 managed by uv**, in a virtual environment **isol
 GStreamer bindings (PyGObject) are compiled from PyPI at installation, hence the `libgirepository-2.0-dev` and
 `libcairo2-dev` packages. Only the GStreamer description files (`gir1.2-*`) come from the system.
 
+## Translations
+
+Everything the player sees comes from one catalog per language, `engine/src/geonesclick/locales/<lang>.json`, read
+by the three layers: the engine (`geonesclick/i18n.py`), the UI (`app/src/i18n.ts`) and the installer
+(`app/src-tauri/src/i18n.rs`, compiled in). Flat keys, `{name}` placeholders, plurals as `<key>.one` / `<key>.other`;
+a missing key or language falls back to English. The language is `[coach] language` (`en` by default), chosen on the
+installer's first screen and in the Settings. `en.json` is the reference; `tests/test_i18n.py` checks that every
+catalog has the same keys and placeholders, and that every key used in the code exists. To add a language, add its
+file: the three layers find it (a language outside es, de, it, pt also goes into `[coach] language` in `config.py`).
+
 ## Build the AppImage
 
 ```bash

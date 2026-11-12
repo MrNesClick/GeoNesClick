@@ -2,8 +2,9 @@
 // After the round: "Where was it?". Grows the test set and tracks your progress: missed countries, and
 // above all your confusions (real country taken for another) with the metas that tell them apart.
 import { computed, ref, watch } from "vue";
+import { i18n } from "../i18n";
 import type { Analysis, Progress } from "../engine";
-import { countryName, engine, flag, fr, labelCapture, previewTruth } from "../engine";
+import { countryName, engine, flag, num, labelCapture, previewTruth } from "../engine";
 
 const props = defineProps<{ analysis: Analysis; countries: string[]; progress: Progress | null }>();
 
@@ -42,10 +43,10 @@ watch(link, (value) => {
   }, 300);
 });
 const coords = (lat: number, lon: number) =>
-  `${fr(Math.abs(lat))}° ${lat >= 0 ? "N" : "S"}, ${fr(Math.abs(lon))}° ${lon >= 0 ? "E" : "O"}`;
+  `${num(Math.abs(lat))}° ${lat >= 0 ? "N" : "S"}, ${num(Math.abs(lon))}° ${lon >= 0 ? "E" : "O"}`;
 
 const sorted = computed(() =>
-  [...props.countries].sort((a, b) => countryName(a).localeCompare(countryName(b), "fr")),
+  [...props.countries].sort((a, b) => countryName(a).localeCompare(countryName(b), i18n.lang)),
 );
 
 // Countries to work on: those where you missed at least one round, most missed first.

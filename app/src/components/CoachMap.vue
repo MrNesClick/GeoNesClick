@@ -8,7 +8,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { Analysis, Lock, Zone } from "../engine";
-import { certainProof, circled, countryName, countryOutlines, engine, flag, fr, headCountry, openAttribution, visibleZones } from "../engine";
+import { certainProof, circled, countryName, countryOutlines, engine, flag, num, headCountry, openAttribution, visibleZones } from "../engine";
 
 const props = defineProps<{ analysis: Analysis; level: number }>();
 
@@ -163,7 +163,7 @@ function drawLocation() {
     L.circle([loc.lat, loc.lon], {
       radius: loc.radius_km * 1000, color: COLORS.marque, weight: 2, fillColor: COLORS.marque, fillOpacity: 0.18,
       interactive: false,
-    }).bindTooltip(`Ici, à ${fr(loc.radius_km)} km près`, { permanent: true, direction: "top", className: "ggc-zone" })
+    }).bindTooltip(`Ici, à ${num(loc.radius_km)} km près`, { permanent: true, direction: "top", className: "ggc-zone" })
       .addTo(placeLayer);
   } else if (loc.kind === "rough") {
     L.circle([loc.lat, loc.lon], {
@@ -178,7 +178,7 @@ function drawLocation() {
   for (const p of loc.places) {
     L.circleMarker([p.lat, p.lon], { radius: 4, color: COLORS.encre, weight: 1.5, fillColor: COLORS.marque, fillOpacity: 1 })
       // Text read by the AI: as a text node, never as HTML (Leaflet inserts a string as HTML).
-      .bindTooltip(textNode(`${circled(p.n)} ${p.name}${p.km ? ` · ${fr(p.km)} km` : ""}`),
+      .bindTooltip(textNode(`${circled(p.n)} ${p.name}${p.km ? ` · ${num(p.km)} km` : ""}`),
                    { permanent: true, direction: "right", className: "ggc-zone ggc-place" })
       .addTo(placeLayer);
   }
@@ -281,20 +281,20 @@ onBeforeUnmount(() => {
       </h2>
       <p v-if="location.kind === 'rough'" class="border-l-2 border-alerte/70 pl-3 text-[0.9rem] text-papier">
         Distances incohérentes entre elles : vérifie
-        {{ location.doubtful.map((d) => `${circled(d.n)} ${d.name} ${fr(d.km)} km`).join(", ") }}. Un chiffre mal lu
-        donnerait une fausse précision ; sûr malgré tout : la vue est à moins de {{ fr(location.radius_km) }} km de
+        {{ location.doubtful.map((d) => `${circled(d.n)} ${d.name} ${num(d.km)} km`).join(", ") }}. Un chiffre mal lu
+        donnerait une fausse précision ; sûr malgré tout : la vue est à moins de {{ num(location.radius_km) }} km de
         {{ nearestRead?.name ?? "ce lieu" }}.
       </p>
       <p v-if="location.kind === 'point'" class="text-papier">
-        {{ coords(location.lat, location.lon) }} <span class="text-courbe">· à {{ fr(location.radius_km) }} km près</span>
+        {{ coords(location.lat, location.lon) }} <span class="text-courbe">· à {{ num(location.radius_km) }} km près</span>
       </p>
       <p v-else-if="location.kind === 'ring'" class="text-papier">
-        À environ {{ fr(location.radius_km) }} km à vol d'oiseau de {{ location.places.find((p) => p.km)?.name }}
+        À environ {{ num(location.radius_km) }} km à vol d'oiseau de {{ location.places.find((p) => p.km)?.name }}
         <span class="text-courbe">(un seul lieu avec sa distance : la vue est quelque part sur ce cercle)</span>
       </p>
       <p class="mt-1 text-[0.85rem] text-courbe">
         <template v-if="distances.length">
-          Distances lues : {{ distances.map((p) => `${circled(p.n)} ${p.name} ${fr(p.km!)} km`).join(", ") }}. Ce sont des
+          Distances lues : {{ distances.map((p) => `${circled(p.n)} ${p.name} ${num(p.km!)} km`).join(", ") }}. Ce sont des
           distances par la route : le coach les convertit à vol d'oiseau (détour ×1,15 à ×1,45), d'où la marge.
         </template>
         <template v-else>

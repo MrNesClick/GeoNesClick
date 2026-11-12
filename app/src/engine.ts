@@ -1,6 +1,7 @@
 // Connection to the Python engine: WebSocket for pushed results, HTTP for commands.
 import { reactive } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { setLanguage } from "./i18n";
 
 export const ENGINE_URL: string = import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:47615";
 export const WS_URL = ENGINE_URL.replace(/^http/, "ws") + "/ws";
@@ -411,6 +412,8 @@ type Message =
       countries: string[];
       erased: boolean;
       help_level: number;
+      /** UI language: coach.language when it has a catalog, en otherwise. */
+      language: string;
       trust_proof: boolean;
       leader: { min: number; margin: number };
     }
@@ -459,6 +462,7 @@ function handle(msg: Message) {
       engine.countries = msg.countries;
       engine.erased = msg.erased ?? false;
       engine.helpLevel = msg.help_level;
+      setLanguage(msg.language); // a change in the Settings applies right away
       engine.trustProof = msg.trust_proof;
       engine.leader = msg.leader;
       break;
@@ -751,13 +755,10 @@ export async function openAttribution() {
   }
 }
 
-// --- Countries: French names and flags ------------------------------------------------------------
-const regionNames = new Intl.DisplayNames(["fr"], { type: "region" });
-export const countryName = (code: string) => regionNames.of(code) ?? code;
+// --- Countries: names (in the UI's language) and flags ----------------------------------------------
+export { countryName, num } from "./i18n";
 /** Comparison form of a name: lower case, without accents ("Égypte" ~ "egy"). */
 export const normalise = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().trim();
-/** Number in French format: "13,2". */
-export const fr = (n: number) => n.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
 export const flag = (code: string) =>
   String.fromCodePoint(...[...code.toUpperCase()].map((c) => 0x1f1a5 + c.charCodeAt(0)));
 

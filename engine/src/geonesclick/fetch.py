@@ -44,7 +44,8 @@ class FetchError(Exception):
         from huggingface_hub import constants
 
         reason = " ".join(f"{type(cause).__name__}: {cause}".split())  # one line, whatever the library wrote
-        super().__init__(f"erreur : {file} non téléchargé depuis {constants.ENDPOINT}/ : {reason}")
+        # Log line, in English like uv's around it; the assistant names the site from it (setup.rs, diagnose).
+        super().__init__(f"error: {file} not downloaded from {constants.ENDPOINT}/: {reason}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -55,8 +56,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         fetch(argv[0])
     except FetchError as e:
-        # One readable line instead of a traceback: the assistant names the site from it (setup.rs, diagnose).
-        print(e, file=sys.stderr)
+        print(e, file=sys.stderr)  # one readable line instead of a traceback
         return 1
     return 0
 

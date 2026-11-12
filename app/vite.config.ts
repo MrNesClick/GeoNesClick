@@ -1,4 +1,4 @@
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import vue from "@vitejs/plugin-vue";
 import tailwindcss from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
@@ -28,6 +28,10 @@ export default defineConfig(() => ({
     watch: {
       // 3. tell Vite to ignore watching `src-tauri`
       ignored: ["**/src-tauri/**"],
+    },
+    // 4. the translations live in the engine package (shared with Python and Rust): the dev server may serve them
+    fs: {
+      allow: [searchForWorkspaceRoot(process.cwd()), "../engine/src/geonesclick/locales"],
     },
   },
 }));

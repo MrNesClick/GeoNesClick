@@ -38,7 +38,8 @@ def engine(tmp_path):
     (data / "raw" / "norway.json").write_text(json.dumps(guide("norway", "NO", ["Poles.", "A yellow centre line."])))
     (data / "raw" / "sweden.json").write_text(json.dumps(guide("sweden", "SE", ["White lines."])))
     user = tmp_path / "config.toml"
-    user.write_text(f'[capture]\nnotify = false\n\n[plonkit]\ndata_dir = "{data}"\n')
+    # French coach: the tips (in English) are translated, which these tests check.
+    user.write_text(f'[capture]\nnotify = false\n\n[coach]\nlanguage = "fr"\n\n[plonkit]\ndata_dir = "{data}"\n')
     app = create_app(load_config(user))
     eng = app.state.engine
     eng.streetclip = FakeClip()

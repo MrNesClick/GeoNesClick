@@ -4,7 +4,7 @@
 // The test set, your metas and your config are not listed: they are never emptied.
 import { computed, onMounted, ref } from "vue";
 import type { EraseGroup } from "../engine";
-import { clearStorage, engine, erasePlan, eraseEverything, fr, getJSON } from "../engine";
+import { clearStorage, engine, erasePlan, eraseEverything, num, getJSON } from "../engine";
 
 interface Item {
   id: string;
@@ -25,8 +25,8 @@ const KIND: Record<Item["kind"], string> = {
   cache: "cache limité", socle: "socle, vidé à la main seulement", historique: "historique",
 };
 const size = (bytes: number) =>
-  bytes >= 1024 ** 3 ? `${fr(bytes / 1024 ** 3)} Go` : bytes >= 1024 ** 2 ? `${fr(bytes / 1024 ** 2)} Mo`
-    : `${fr(bytes / 1024)} Ko`;
+  bytes >= 1024 ** 3 ? `${num(bytes / 1024 ** 3)} Go` : bytes >= 1024 ** 2 ? `${num(bytes / 1024 ** 2)} Mo`
+    : `${num(bytes / 1024)} Ko`;
 const total = computed(() => (items.value ?? []).reduce((n, i) => n + i.size, 0));
 const growing = computed(() => (items.value ?? []).filter((i) => i.kind === "cache").reduce((n, i) => n + i.size, 0));
 
@@ -71,7 +71,7 @@ async function clear(item: Item) {
 <template>
   <div class="space-y-3">
     <p class="text-[0.85rem] text-courbe">
-      Sur le disque : {{ size(total) }}. Caches qui grossissent : {{ size(growing) }} sur {{ fr(props.maxMb) }} Mo au plus
+      Sur le disque : {{ size(total) }}. Caches qui grossissent : {{ size(growing) }} sur {{ num(props.maxMb) }} Mo au plus
       (les moins récemment utilisés partent d'abord). « Vider » ne touche jamais ton jeu de test, tes metas ni ta config ;
       « Tout effacer », plus bas, oui.
     </p>

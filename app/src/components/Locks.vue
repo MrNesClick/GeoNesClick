@@ -9,6 +9,7 @@
 //   below that: "the coach is sure of it (hidden at this help level)".
 // - Independent opinions that contradict the chosen country are flagged: that is what reveals a mistake.
 import { computed, nextTick, ref, watch } from "vue";
+import { i18n } from "../i18n";
 import type { Analysis, Lock, PlaceFound } from "../engine";
 import { circled, conclusionOf, countryName, engine, flag, normalise, rejectLock, removeMark, searchPlaces, setLock } from "../engine";
 
@@ -57,7 +58,7 @@ const countries = computed(() => {
   return engine.countries
     .map((code) => ({ code, name: countryName(code), p: pctOf(code) }))
     .filter((c) => match(c.name))
-    .sort((a, b) => (b.p ?? -1) - (a.p ?? -1) || a.name.localeCompare(b.name, "fr"));
+    .sort((a, b) => (b.p ?? -1) - (a.p ?? -1) || a.name.localeCompare(b.name, i18n.lang));
 });
 // Without a click, from level 3: the 3 most likely countries, ready to be chosen.
 const quick = computed(() => (level.value >= 3 && active.value !== "country"

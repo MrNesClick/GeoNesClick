@@ -7,14 +7,21 @@
 // - the big downloads run while you choose your options; these are written BEFORE the engine's first
 //   start (it never downloads a declined option). Everything stays editable in the Settings.
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
-import { fr } from "../engine";
+import { num } from "../engine";
+import { i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
+
+// Language: English by default, chosen on the first screen (decided with the user on 2026-11-12), written to
+// coach.language with the other choices; each catalog names its own language ("Français", "English").
+const LANGUAGE_NAMES = Object.fromEntries(LANGS.map((l) => [l, t("language.name", undefined, l)])) as Record<Lang, string>;
+const chooseLanguage = (lang: string) => setLanguage(uiLanguage(lang));
 
 interface Download {
   id: string; what: string; hosts: string[]; size_mb: number; license: string; why: string;
   when: "installation" | "option" | "demande" | "continu"; required: boolean; option?: string; sends?: string;
 }
 interface Package { name: string; version: string; size: number; license: string; note?: string }
-interface Check { label: string; ok: boolean; package: string }
+/** label: catalog key of its name (setup.rs, system_checks). */
+interface Check { label: Key; ok: boolean; package: string }
 interface Status {
   bundled: boolean; needed: boolean; version: string | null; installed: string | null; engine_ready: boolean; gpu: boolean;
   checks: Check[]; downloads: { download: Download[] }; packages_cuda: Package[]; packages_cpu: Package[];
@@ -56,7 +63,7 @@ const packagesMb = computed(() => {
 });
 const sizeOf = (d: Download) => (d.id === "packages" ? packagesMb.value : d.size_mb);
 const requiredMb = computed(() => required.value.filter((d) => d.id !== "pytorch-cpu").reduce((n, d) => n + sizeOf(d), 0));
-const mb = (n: number) => (n >= 1000 ? `${fr(n / 1000)} Go` : n >= 1 ? `${Math.round(n)} Mo` : n ? "< 1 Mo" : "—");
+const mb = (n: number) => (n >= 1000 ? `${num(n / 1000)} Go` : n >= 1 ? `${Math.round(n)} Mo` : n ? "< 1 Mo" : "—");
 const WHEN: Record<Download["when"], string> = {
   installation: "une fois, maintenant", option: "une fois, si l'option est activée", demande: "au fil de l'usage, si utile",
   continu: "à chaque usage",
@@ -166,12 +173,14 @@ function restoreChoices() {
     if (typeof saved.helpLevel === "number") helpLevel.value = saved.helpLevel;
     if (typeof saved.noKey === "boolean") noKey.value = saved.noKey;
     if (saved.variant === "cuda" || saved.variant === "cpu") variant.value = saved.variant;
+    if (typeof saved.language === "string") chooseLanguage(saved.language);
   } catch {
     /* storage unavailable or damaged: the recommended choices stay */
   }
 }
 watch(
-  () => ({ chosen: chosen.value, shortcuts: shortcuts.value, helpLevel: helpLevel.value, noKey: noKey.value, variant: variant.value }),
+  () => ({ chosen: chosen.value, shortcuts: shortcuts.value, helpLevel: helpLevel.value, noKey: noKey.value, variant: variant.value,
+           language: i18n.lang }),
   (state) => {
     try {
       localStorage.setItem(SAVED, JSON.stringify(state));
@@ -189,7 +198,7 @@ const LEVELS = [
   { value: 4, label: "Réponse", hint: "plus la synthèse : pays, région, preuve" },
 ];
 const choices = computed(() => {
-  const out: Record<string, Record<string, unknown>> = { coach: { help_level: helpLevel.value } };
+  const out: Record<string, Record<string, unknown>> = { coach: { help_level: helpLevel.value, language: i18n.lang } };
   for (const o of OPTIONS) {
     for (const [section, values] of Object.entries(chosen.value[o.id] ? o.settings : OFF[o.id])) {
       out[section] = { ...(out[section] ?? {}), ...values };
@@ -238,7 +247,17 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
     <header class="border-b border-courbe-fonce px-6 pt-5 pb-4">
       <div class="flex items-baseline justify-between gap-4">
         <h1 class="text-[1.7rem] font-bold text-papier">Installation de GeoNesClick</h1>
-        <span v-if="status?.version" class="text-[1rem] text-courbe">version {{ status.version }}</span>
+        <div class="flex items-baseline gap-4">
+          <!-- Each language in its own name: whoever does not read the current one still finds theirs. -->
+          <label class="flex items-baseline gap-2 text-[1rem] text-courbe">
+            <span>{{ t("language.label") }}</span>
+            <select :value="i18n.lang" class="rounded-md border border-courbe-fonce bg-relief px-2 py-1 text-papier"
+                    @change="chooseLanguage(($event.target as HTMLSelectElement).value)">
+              <option v-for="l in LANGS" :key="l" :value="l" :lang="l">{{ LANGUAGE_NAMES[l] }}</option>
+            </select>
+          </label>
+          <span v-if="status?.version" class="text-[1rem] text-courbe">version {{ status.version }}</span>
+        </div>
       </div>
       <p v-if="status?.installed && status.installed !== status.version" class="mt-1 text-[1.05rem] text-courbe">
         Mise à jour du moteur : {{ status.installed }} → {{ status.version }}.
@@ -266,7 +285,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <ul :class="box" class="space-y-1">
           <li v-for="c in status.checks" :key="c.label" class="flex gap-2">
             <span :class="c.ok ? 'text-foret' : 'text-alerte'">{{ c.ok ? "✓" : "✗" }}</span>
-            <span class="flex-1 text-papier">{{ c.label }}</span>
+            <span class="flex-1 text-papier">{{ t(c.label) }}</span>
             <code v-if="!c.ok" class="text-courbe">{{ c.package }}</code>
           </li>
         </ul>

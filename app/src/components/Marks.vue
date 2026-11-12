@@ -2,7 +2,7 @@
 // Marks: each clue circled on the frozen view, with its crop and what the AI read there word for word.
 // They are pieces of evidence: the coach's conclusions will cite them by number.
 import type { Evidence, Mark, Verdict } from "../engine";
-import { engine, flag, fr, removeMark, setLock } from "../engine";
+import { engine, flag, num, removeMark, setLock } from "../engine";
 
 const props = defineProps<{ marks: Mark[]; analysisId: string; verdict: Verdict | null }>();
 
@@ -88,7 +88,7 @@ const KIND: Record<Evidence["kind"], string> = {
             </li>
           </ul>
           <p v-if="m.scale >= 2.5" class="text-[0.85rem] text-courbe">
-            Petite à l'origine (agrandie ×{{ fr(m.scale) }}) : l'agrandissement n'invente pas les détails. Si un texte
+            Petite à l'origine (agrandie ×{{ num(m.scale) }}) : l'agrandissement n'invente pas les détails. Si un texte
             manque, zoome dessus dans le jeu puis marque-le de près.
           </p>
           <p class="text-[0.85rem] text-courbe">
@@ -100,7 +100,7 @@ const KIND: Record<Evidence["kind"], string> = {
             >
               Retirer
             </button>
-            {{ [m.object, m.script && m.script !== "aucun" ? `alphabet ${m.script}` : "", m.scale > 1 ? `agrandie ×${fr(m.scale)}` : "", m.seconds !== undefined ? `${fr(m.seconds)} s` : ""].filter(Boolean).join(" · ") }}
+            {{ [m.object, m.script && m.script !== "aucun" ? `alphabet ${m.script}` : "", m.scale > 1 ? `agrandie ×${num(m.scale)}` : "", m.seconds !== undefined ? `${num(m.seconds)} s` : ""].filter(Boolean).join(" · ") }}
           </p>
         </template>
       </div>

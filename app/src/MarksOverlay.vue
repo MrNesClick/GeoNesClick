@@ -3,6 +3,7 @@
 // road sign, shop sign…). Created hidden at startup (tauri.conf.json) to show without delay; it listens to the
 // engine and shows up on each "freeze" (Super+Shift+Z or the "Mark" button).
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { i18n } from "./i18n";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { ENGINE_URL, WS_URL } from "./engine";
 
@@ -26,7 +27,7 @@ const error = ref<string | null>(null);
 const stage = ref<HTMLElement | null>(null);
 
 const firstNumber = computed(() => existing.value + 1);
-const roundTime = computed(() => (targetAt.value ? new Date(targetAt.value).toLocaleTimeString("fr-FR") : ""));
+const roundTime = computed(() => (targetAt.value ? new Date(targetAt.value).toLocaleTimeString(i18n.lang) : ""));
 const full = computed(() => rects.value.length >= max.value);
 
 async function post<T>(path: string, body: unknown): Promise<{ ok: boolean; data: T | null; detail: string }> {
