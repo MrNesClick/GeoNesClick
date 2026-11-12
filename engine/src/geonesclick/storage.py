@@ -22,6 +22,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .i18n import t
 from .places import ARCHIVE, DB_NAME, OLD_DBS, REGIONS
 
 VILLAGES = "detail-*.sqlite"
@@ -33,7 +34,7 @@ CAPTURE_FILES = ("capture-*.png", "capture-*.json", "mark-*.png")
 class Item:
     id: str
     label: str
-    kind: str  # "cache" (grows, limited), "socle" (base, emptied by hand only), "historique" (history)
+    kind: str  # "cache" (grows, limited), "base" (emptied by hand only), "history"
     size: int  # bytes
     detail: str  # what it contains, in plain words
     effect: str  # what "Empty" costs
@@ -78,18 +79,15 @@ def inventory(places_dir: Path, plonkit_dir: Path, capture_dir: Path) -> list[di
     captures = capture_files(capture_dir)
     shots = sum(1 for f in captures if f.name.startswith("capture-") and f.suffix == ".png")
     items = [
-        Item("villages", "Villages des pays rencontrés", "cache", size_of(villages),
-             ", ".join(countries) if countries else "aucun pays pour l'instant",
-             "Retéléchargés quand le pays revient en tête (France : 7,3 Mo)."),
-        Item("lieux", "Répertoire des lieux (GeoNames)", "socle", size_of(base_place_files(places_dir)),
-             "localités de plus de 1 000 habitants, toutes langues",
-             "Noms de lieux indisponibles jusqu'au prochain démarrage, qui le retélécharge (~11 Mo) ; vide aussi "
-             "les villages."),
-        Item("plonkit", "Guides Plonk It", "socle", size_of(plonkit_files(plonkit_dir)),
-             "guides, vecteurs, classement et traductions", "Recollectés au prochain démarrage (~3 min), mais "
-             "les traductions d'avance sont à refaire : des heures d'appels à l'API.", confirm=True),
-        Item("captures", "Captures et journaux de débogage", "historique", size_of(captures),
-             f"{shots} captures, découpes des marques, journaux", "Perdues ; le jeu de test n'est pas touché."),
+        Item("villages", t("storage.item.villages"), "cache", size_of(villages),
+             ", ".join(countries) if countries else t("storage.item.villages.detail_none"),
+             t("storage.item.villages.effect")),
+        Item("places", t("storage.item.places"), "base", size_of(base_place_files(places_dir)),
+             t("storage.item.places.detail"), t("storage.item.places.effect")),
+        Item("plonkit", t("storage.item.plonkit"), "base", size_of(plonkit_files(plonkit_dir)),
+             t("storage.item.plonkit.detail"), t("storage.item.plonkit.effect"), confirm=True),
+        Item("captures", t("storage.item.captures"), "history", size_of(captures),
+             t("storage.item.captures.detail", n=shots), t("storage.item.captures.effect")),
     ]
     return [asdict(i) for i in items]
 
@@ -172,12 +170,10 @@ def dir_size(path: Path) -> int:
 
 
 def erase_plan(groups: dict[str, list[Path]], models: list[Path]) -> list[dict[str, Any]]:
-    labels = {"compte": "Clé API, réglages, tes metas", "captures": "Captures et journaux",
-              "jeu": "Jeu de test (manches, images, banc)", "plonkit": "Guides Plonk It et traductions",
-              "lieux": "Lieux GeoNames et villages"}
-    out = [{"id": key, "label": labels[key], "files": len(files), "size": size_of(files), "precious": key == "jeu",
+    out = [{"id": key, "label": t(f"storage.group.{key}"), "files": len(files), "size": size_of(files),
+            "precious": key == "dataset",
             "optional": False} for key, files in groups.items()]
-    out.append({"id": "modeles", "label": "Modèles téléchargés (StreetCLIP, PLONK)", "files": len(models),
+    out.append({"id": "models", "label": t("storage.group.models"), "files": len(models),
                 "size": sum(dir_size(m) for m in models), "precious": False, "optional": True})
     return out
 

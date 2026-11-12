@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import HTTPException
 from PIL import Image
 
+from .i18n import t
 from . import storage
 from .capture import data_url, new_id, save_png
 from .evidence import Evidence, Verdict, as_dict, from_dict, text_evidence, verdict
@@ -81,11 +82,11 @@ class MarksMixin:
         The marks complete the current round: a capture is needed first (it opens the round).
         """
         if not self.cfg.marks.enabled:
-            return {"ok": False, "error": "marques désactivées dans les réglages"}
+            return {"ok": False, "error": t("marks.off")}
         target = self.last_id if self.last_id in self.recent else None
         if target is None:
-            error = "fais d'abord une capture : les marques complètent l'analyse d'une manche"
-            await asyncio.to_thread(self.notifier.send, "Aucune analyse à compléter", error, error=True)
+            error = t("marks.capture_first")
+            await asyncio.to_thread(self.notifier.send, t("marks.nothing_to_complete"), error, error=True)
             await self.broadcast({"type": "error", "message": error[0].upper() + error[1:] + "."})
             return {"ok": False, "error": error}
         frame, error = await self._grab()
@@ -105,7 +106,7 @@ class MarksMixin:
     def frozen_image(self, req: FrameRequest) -> dict[str, Any]:
         frozen = self.frozen.get(req.id)
         if frozen is None:
-            raise HTTPException(404, "vue figée trop ancienne ou inconnue")
+            raise HTTPException(404, t("marks.frozen_unknown"))
         frame = frozen[0]
         return {"image": data_url(frame, side=max(frame.size), quality=90), "width": frame.width,
                 "height": frame.height}
@@ -114,18 +115,18 @@ class MarksMixin:
         """Crops each mark from the frozen view, enlarges it if needed and has it transcribed."""
         mc = self.cfg.marks
         if not mc.enabled:
-            raise HTTPException(409, "marques désactivées dans les réglages")
+            raise HTTPException(409, t("marks.off"))
         if len(req.rects) > mc.max_marks:
-            raise HTTPException(422, f"au plus {mc.max_marks} marques par vue figée")
+            raise HTTPException(422, t("marks.too_many_frozen", n=mc.max_marks))
         frozen = self.frozen.get(req.id)
         if frozen is None:
-            raise HTTPException(404, "vue figée trop ancienne ou inconnue")
+            raise HTTPException(404, t("marks.frozen_unknown"))
         frame, target = frozen
         entry = self.recent.get(target)
         if entry is None:
-            raise HTTPException(409, "l'analyse de cette manche est trop ancienne : refais une capture")
+            raise HTTPException(409, t("marks.analysis_too_old"))
         if len(entry["marks"]) + len(req.rects) > MAX_PER_ANALYSIS:
-            raise HTTPException(422, f"au plus {MAX_PER_ANALYSIS} marques par manche")
+            raise HTTPException(422, t("marks.too_many_round", n=MAX_PER_ANALYSIS))
         del self.frozen[req.id]  # a frozen view is only used once
         numbers = []
         for rect in req.rects:
@@ -151,7 +152,7 @@ class MarksMixin:
         mc, n = self.cfg.marks, mark["n"]
         message: dict[str, Any] = {"type": "mark", "id": capture_id, "n": n}
         if not self.cfg.vision.enabled:
-            mark.update(status="error", error="modèle de vision désactivé")
+            mark.update(status="error", error=t("marks.vision_off"))
         else:
             async with self.mark_slots:
                 try:
@@ -185,7 +186,7 @@ class MarksMixin:
         for e in found:
             kept = [c for c in e.countries if c in known]
             if e.countries and not kept:
-                e.note = f"hors de tes pays candidats ({', '.join(e.countries[:4])})"
+                e.note = t("marks.outside_candidates", list=", ".join(e.countries[:4]))
             e.countries = kept
         return found
 
@@ -210,11 +211,11 @@ class MarksMixin:
         """The player removes a mark (wrong reading): it no longer counts, the others keep their number."""
         entry = self.recent.get(req.id)
         if entry is None:
-            raise HTTPException(404, "analyse trop ancienne ou inconnue")
+            raise HTTPException(404, t("marks.analysis_unknown"))
         before = len(entry["marks"])
         entry["marks"] = [m for m in entry["marks"] if m["n"] != req.n]
         if len(entry["marks"]) == before:
-            raise HTTPException(404, "marque inconnue")
+            raise HTTPException(404, t("marks.unknown"))
         await self._log_marks(req.id)
         await self.broadcast({"type": "mark_removed", "id": req.id, "n": req.n})
         await self._verdict(req.id)
@@ -243,7 +244,7 @@ class MarksMixin:
                 old.unlink(missing_ok=True)
         try:
             if not path.exists():
-                self.places_message = "téléchargement du répertoire GeoNames (~11 Mo)…"
+                self.places_message = t("places.downloading")
                 await self.broadcast(self.state())
                 await asyncio.to_thread(build_places, rc.places_url, rc.places_path, regions_url=rc.regions_url)
             places = await asyncio.to_thread(Places, path)
@@ -252,14 +253,14 @@ class MarksMixin:
             self.places = places
             self.places_message = self._places_summary()
         except (PlacesError, OSError, sqlite3.Error) as exc:  # offline, disk…: the other rules remain
-            self.places, self.places_message = None, f"indisponible : {exc}"[:300]
+            self.places, self.places_message = None, t("srv.unavailable", error=exc)[:300]
         await self.broadcast(self.state())
 
     def _places_summary(self) -> str:
         if self.places is None:
             return self.places_message
         details = ", ".join(sorted(self.places.details))
-        return f"{self.places.count} noms de lieux (GeoNames, CC BY 4.0)" + (f" ; villages : {details}" if details else "")
+        return t("places.summary", n=self.places.count, villages=t("places.summary_villages", list=details) if details else "")
 
     def ensure_detail(self, country: str) -> None:
         """Full directory of the leading country (villages), once: then the marks are re-read with it."""
@@ -276,7 +277,7 @@ class MarksMixin:
         rc, places = self.cfg.rules, self.places
         if places is None:
             return
-        self.places_message = f"{self._places_summary()} ; téléchargement des villages ({country})…"
+        self.places_message = t("places.downloading_villages", summary=self._places_summary(), country=country)
         await self.broadcast(self.state())
         try:
             path = await asyncio.to_thread(
@@ -285,7 +286,7 @@ class MarksMixin:
             await asyncio.to_thread(places.add_detail, country, path)
         except (PlacesError, OSError, sqlite3.Error) as exc:
             self.detail_failed.add(country)
-            self.places_message = f"{self._places_summary()} ; villages ({country}) indisponibles : {exc}"[:300]
+            self.places_message = t("places.villages_unavailable", summary=self._places_summary(), country=country, error=exc)[:300]
             await self.broadcast(self.state())
             return
         await self.evict_caches(keep={country})

@@ -195,7 +195,7 @@ def test_evidence_outside_the_lock_stays_visible_but_does_not_count(index):
     laas = next(e for e in found if e.kind == "lieu")
     assert laas.countries == ["FR"] and [p[3] for p in laas.points] == ["Laas"]  # the one in Gers (Occitanie)
     hard_sign = next(e for e in found if e.kind == "lettres")
-    assert hard_sign.countries == [] and "verrouillé" in hard_sign.note
+    assert hard_sign.countries == [] and "locked" in hard_sign.note
     alphabet = next(e for e in found if e.kind == "alphabet")
     assert "BG" in alphabet.countries  # visible contradiction, not an empty alphabet
 
@@ -206,7 +206,7 @@ def test_rejected_country_and_region_are_removed(index):
     [laas] = [e for e in restrict(index.match(["LAAS"]), (None, None, set(), {"FR.75"})) if e.kind == "lieu"]
     assert [p[4] for p in laas.points] == ["FR.76"]
     [orthez] = [e for e in restrict(index.match(["ORTHEZ"]), (None, None, {"FR"}, set())) if e.kind == "lieu"]
-    assert orthez.countries == [] and "rejeté" in orthez.note
+    assert orthez.countries == [] and "rejected" in orthez.note
 
 
 # --- in the engine: a round in Béarn ------------------------------------------------------------------

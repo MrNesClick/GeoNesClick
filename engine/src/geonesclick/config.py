@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, PrivateAttr, field_validator, model_validator
 
+from .i18n import t
 from .metas import CATEGORIES
 from .paths import CONFIG_DIR, DATA_DIR  # a single place for the app's folders
 from .plonkit import DATA_DIR as PLONKIT_DATA_DIR
@@ -22,10 +23,10 @@ Rect = list[float]
 def _check_rect(rect: Rect, name: str) -> Rect:
     """Rectangle as fractions [left, top, right, bottom], with 0 ≤ left < right ≤ 1 (same for the height)."""
     if len(rect) != 4:
-        raise ValueError(f"{name} : 4 valeurs attendues [gauche, haut, droite, bas], {len(rect)} reçues")
+        raise ValueError(t("config.rect_count", name=name, count=len(rect)))
     left, top, right, bottom = rect
     if not (0 <= left < right <= 1 and 0 <= top < bottom <= 1):
-        raise ValueError(f"{name} : fractions entre 0 et 1 attendues, avec gauche < droite et haut < bas")
+        raise ValueError(t("config.rect_fractions", name=name))
     return rect
 
 
@@ -103,14 +104,14 @@ class MetasConfig(BaseModel):
     @classmethod
     def _known_categories(cls, value: dict) -> dict:
         if unknown := set(value) - set(CATEGORIES):
-            raise ValueError(f"catégories inconnues : {', '.join(sorted(unknown))}")
+            raise ValueError(t("config.unknown_categories", list=", ".join(sorted(unknown))))
         return value
 
     @field_validator("category_weights")
     @classmethod
     def _positive_weights(cls, value: dict[str, float]) -> dict[str, float]:
         if any(w < 0 for w in value.values()):
-            raise ValueError("un poids doit être positif ou nul")
+            raise ValueError(t("config.negative_weight"))
         return value
 
     @property
@@ -138,7 +139,7 @@ class PlonkitConfig(BaseModel):
     @classmethod
     def _known_categories(cls, value: dict) -> dict:
         if unknown := set(value) - set(CATEGORIES):
-            raise ValueError(f"catégories inconnues : {', '.join(sorted(unknown))}")
+            raise ValueError(t("config.unknown_categories", list=", ".join(sorted(unknown))))
         return value
 
     @property
@@ -162,7 +163,7 @@ class StreetClipConfig(BaseModel):
     def _placeholder(cls, v: str) -> str:
         # Passed to str.format: a single {} brace and no other (no named field, no giant width).
         if v.count("{}") != 1 or "{" in v.replace("{}", "") or "}" in v.replace("{}", ""):
-            raise ValueError("le prompt doit contenir une fois {} (le nom du pays) et aucune autre accolade")
+            raise ValueError(t("config.clip_prompt"))
         return v
 
     @field_validator("countries")

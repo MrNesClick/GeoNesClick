@@ -18,7 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     cmd = args[0] if args else "capture"
     if cmd not in COMMANDS:
-        print(f"Commande inconnue : {cmd} (attendu : {', '.join(COMMANDS)})", file=sys.stderr)
+        print(f"Unknown command: {cmd} (expected: {', '.join(COMMANDS)})", file=sys.stderr)
         return 2
     try:
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
@@ -28,11 +28,15 @@ def main(argv: list[str] | None = None) -> int:
             print(s.recv(4096).decode().strip())
         return 0
     except (FileNotFoundError, ConnectionRefusedError):
-        from .notify import Notifier  # late import: avoids loading GLib when all is well
+        from .config import load_config  # late imports: avoid loading GLib and the config when all is well
+        from .i18n import set_language, t
+        from .notify import Notifier
 
-        Notifier(enabled=True, sound=True).send(
-            "Coach non lancé", "Ouvre l'application GeoNesClick avant de capturer.", error=True
-        )
+        try:
+            set_language(load_config().coach.language)
+        except Exception:  # an unreadable config must not hide the notification: English then
+            pass
+        Notifier(enabled=True, sound=True).send(t("trigger.not_running.title"), t("trigger.not_running.body"), error=True)
         print("The coach is not running.", file=sys.stderr)
         return 1
 

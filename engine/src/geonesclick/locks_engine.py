@@ -16,6 +16,7 @@ from typing import Any, Literal
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
 
+from .i18n import t
 from .evidence import Evidence, Verdict, as_dict
 from .locate import haversine
 from .locks import NO_SCOPE, Lock, Locks, Scope
@@ -64,26 +65,26 @@ class LocksMixin:
 
     def _entry(self, capture_id: str) -> dict[str, Any]:
         if not self.cfg.locks.enabled:
-            raise HTTPException(409, "verrous désactivés dans les réglages")
+            raise HTTPException(409, t("locks.off"))
         entry = self.recent.get(capture_id)
         if entry is None:
-            raise HTTPException(404, "capture trop ancienne ou inconnue")
+            raise HTTPException(404, t("locks.capture_unknown"))
         return entry
 
     # --- player -----------------------------------------------------------------------------------
     async def set_lock(self, req: LockRequest) -> dict[str, Any]:
         entry = self._entry(req.id)
         if req.country not in set(self.cfg.streetclip.countries.values()):
-            raise HTTPException(422, "pays inconnu")
+            raise HTTPException(422, t("locks.unknown_country"))
         region_name = ""
         if req.level == "country":
             lock = Lock("country", req.country)
         else:
             if self.places is None:
-                raise HTTPException(409, "répertoire des lieux indisponible : verrouille le pays seulement")
+                raise HTTPException(409, t("locks.places_unavailable_country"))
             if req.level == "region":
                 if not req.region.startswith(f"{req.country}."):
-                    raise HTTPException(422, "région inconnue pour ce pays")
+                    raise HTTPException(422, t("locks.unknown_region"))
                 lock = Lock("region", req.country, region=req.region,
                             name=await asyncio.to_thread(self.places.region_name, req.region))
             else:
@@ -97,28 +98,28 @@ class LocksMixin:
     def _known_city(self, req: LockRequest) -> Lock:
         """The city must exist in the index (name, country, coordinates): its values are used, not the ones received."""
         if req.lat is None or req.lon is None or not req.name.strip():
-            raise HTTPException(422, "ville incomplète")
+            raise HTTPException(422, t("locks.incomplete_city"))
         for country, _, name, lat, lon, region in self.places.lookup(req.name):
             if (country == req.country and abs(lat - req.lat) < SAME_PLACE_DEG
                     and abs(lon - req.lon) < SAME_PLACE_DEG and (not req.region or region == req.region)):
                 return Lock("city", country, region=region, name=name, lat=lat, lon=lon)
-        raise HTTPException(422, "ville inconnue du répertoire des lieux")
+        raise HTTPException(422, t("locks.unknown_city"))
 
     async def reject_lock(self, req: RejectRequest) -> dict[str, Any]:
         entry = self._entry(req.id)
         try:
             self.locks_of(entry).reject(req.level)
         except KeyError as exc:
-            raise HTTPException(404, "rien à rejeter à ce niveau") from exc
+            raise HTTPException(404, t("locks.nothing_to_reject")) from exc
         await self._locks_changed(req.id)
         return {"ok": True}
 
     async def search_places(self, req: PlaceSearchRequest) -> dict[str, Any]:
         """Banner's "+" field: regions of the country, or cities of the country (and region), in the LOCAL index."""
         if not self.cfg.locks.enabled:
-            raise HTTPException(409, "verrous désactivés dans les réglages")
+            raise HTTPException(409, t("locks.off"))
         if self.places is None:
-            raise HTTPException(409, "répertoire des lieux indisponible")
+            raise HTTPException(409, t("locks.places_missing"))
         if req.level == "region":
             return {"results": await asyncio.to_thread(self.places.regions, req.country, req.q)}
         return {"results": await asyncio.to_thread(self.places.search, req.q, req.country, req.region)}
@@ -170,7 +171,7 @@ class LocksMixin:
             if len(codes) == 1:  # all the places around the point: the same region
                 code = codes.pop()
                 region = Lock("region", target, region=code, name=places.region_name(code),
-                              why="position estimée d'après tes marques")
+                              why=t("locks.why.position"))
         # Regions of the places read (namesake kept in the country): offered in one click, especially when they diverge
         # ("Oker" in Lower Saxony, "Retz" → Rötz in Bavaria, 2026-11-07).
         read: dict[str, tuple[int, list[Any]]] = {}
@@ -194,7 +195,7 @@ class LocksMixin:
             if len(items) >= 2 and spread <= lc.region_places_km:
                 cited_marks = " ".join(f"{n}" for n in read_regions[0]["marks"])
                 region = Lock("region", target, region=read_regions[0]["code"], name=read_regions[0]["name"],
-                              why=f"lieux lus dans la même région (marques {cited_marks})")
+                              why=t("locks.why.same_region", marks=cited_marks))
         proposal = None
         if lc.propose_city:
             # A place read WITHOUT a distance (entry sign, shop sign): we are probably there; with a distance, no.
@@ -204,13 +205,13 @@ class LocksMixin:
                     for p in e.points[:1] if p[2] == target and len(p) > 3}
             if len(bare) == 1:
                 name, code, lat, lon = bare.pop()
-                proposal = Lock("city", target, region=code, name=name, lat=lat, lon=lon, why="lu sans distance")
+                proposal = Lock("city", target, region=code, name=name, lat=lat, lon=lon, why=t("locks.why.no_distance"))
             elif not bare and places and point:
                 near = places.around(point["lat"], point["lon"], max(2.0, point["radius_km"]), target)
                 if near:
                     _, name, code, lat, lon = near[0]
                     proposal = Lock("city", target, region=code, name=name, lat=lat, lon=lon,
-                                    why="le plus proche de la position estimée")
+                                    why=t("locks.why.closest"))
         return country, region, proposal, read_regions
 
     # --- broadcast --------------------------------------------------------------------------------

@@ -23,6 +23,7 @@ gi.require_version("Gst", "1.0")
 from gi.repository import Gio, GLib, Gst  # noqa: E402
 from PIL import Image  # noqa: E402
 
+from .i18n import t
 from .config import CONFIG_DIR  # noqa: E402
 
 PORTAL_BUS = "org.freedesktop.portal.Desktop"
@@ -71,7 +72,7 @@ class _Portal:
         finally:
             self.bus.signal_unsubscribe(sub)
         if result.get("code") != 0:
-            raise CaptureError(f"partage refusé ou annulé ({method}, code {result.get('code')})")
+            raise CaptureError(t("capture.refused", method=method, code=result.get("code")))
         return result["results"]
 
     def open(self, source_types: int) -> tuple[int, int]:
@@ -187,13 +188,13 @@ class CaptureService:
             bus.add_signal_watch()
             bus.connect("message::error", self._on_error)
             self._pipeline.set_state(Gst.State.PLAYING)
-            self._set_alive(True, "partage d'écran actif")
+            self._set_alive(True, t("capture.active"))
             self._loop.run()
         except Exception as exc:  # portal refused, PipeWire missing…
-            self._set_alive(False, f"capture indisponible : {exc}")
+            self._set_alive(False, t("capture.unavailable", error=exc))
         finally:
             if self._alive:
-                self._set_alive(False, "partage d'écran arrêté")
+                self._set_alive(False, t("capture.stopped"))
             ctx.pop_thread_default()
 
     def _set_alive(self, alive: bool, message: str, interrupted: bool = False) -> None:
@@ -211,21 +212,21 @@ class CaptureService:
 
     def _on_error(self, _bus, msg) -> None:
         err, _dbg = msg.parse_error()
-        self._set_alive(False, f"partage d'écran interrompu ({err.message})", interrupted=True)
+        self._set_alive(False, t("capture.interrupted", error=err.message), interrupted=True)
 
     def grab(self) -> Image.Image:
         with self._lock:
             sample, alive = self._latest, self._alive
         if not alive:
-            raise CaptureError("partage d'écran inactif : relance-le depuis le coach")
+            raise CaptureError(t("capture.inactive"))
         if sample is None:
-            raise CaptureError("aucune image reçue pour l'instant")
+            raise CaptureError(t("capture.no_image"))
         caps = sample.get_caps().get_structure(0)
         width, height = caps.get_value("width"), caps.get_value("height")
         buf = sample.get_buffer()
         ok, info = buf.map(Gst.MapFlags.READ)
         if not ok:
-            raise CaptureError("lecture du tampon vidéo impossible")
+            raise CaptureError(t("capture.buffer"))
         try:
             stride = len(info.data) // height
             img = Image.frombuffer("RGBA", (width, height), bytes(info.data), "raw", "RGBA", stride, 1)

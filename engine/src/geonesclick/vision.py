@@ -11,6 +11,7 @@ from typing import Any
 from openai import AsyncOpenAI
 from PIL import Image
 
+from .i18n import t
 from .config import VisionConfig, read_secret
 
 
@@ -44,7 +45,7 @@ class VisionClient:
     async def ask(self, img: Image.Image, prompt: str, model: str, max_tokens: int) -> tuple[dict[str, Any], float]:
         """One image, one instruction: returns the JSON object of the answer and the duration of the call."""
         if not self.client:
-            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
+            raise VisionError(t("vision.no_key"))
         t0 = time.perf_counter()
         try:
             resp = await self.client.chat.completions.create(
@@ -61,23 +62,23 @@ class VisionClient:
                 extra_body={"chat_template_kwargs": {"enable_thinking": self.cfg.thinking}},
             )
         except Exception as exc:  # timeout, 429, model unavailable…
-            raise VisionError(f"{type(exc).__name__} : {exc}") from exc
+            raise VisionError(f"{type(exc).__name__}: {exc}") from exc
         return parse_fiche(resp.choices[0].message.content or ""), time.perf_counter() - t0
 
     async def list_models(self) -> list[str]:
         """Identifiers of the available models (the API's public list)."""
         if not self.client:
-            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
+            raise VisionError(t("vision.no_key"))
         try:
             page = await self.client.models.list()
         except Exception as exc:
-            raise VisionError(f"{type(exc).__name__} : {exc}") from exc
+            raise VisionError(f"{type(exc).__name__}: {exc}") from exc
         return sorted(m.id for m in page.data)
 
     async def probe(self, model: str) -> float:
         """Sends a small image to the model: checks that it accepts images and measures its latency."""
         if not self.client:
-            raise VisionError("clé API absente : saisis-la dans Réglages › Analyse")
+            raise VisionError(t("vision.no_key"))
         img = Image.new("RGB", (96, 64), (90, 140, 200))  # plain sky: minimal test
         t0 = time.perf_counter()
         try:
@@ -87,14 +88,14 @@ class VisionClient:
                 messages=[{
                     "role": "user",
                     "content": [
-                        {"type": "text", "text": "De quelle couleur est cette image ? Un mot."},
+                        {"type": "text", "text": "What colour is this image? One word."},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self._encode(img)}"}},
                     ],
                 }],
                 extra_body={"chat_template_kwargs": {"enable_thinking": False}},
             )
         except Exception as exc:
-            raise VisionError(f"{type(exc).__name__} : {exc}") from exc
+            raise VisionError(f"{type(exc).__name__}: {exc}") from exc
         return time.perf_counter() - t0
 
 
@@ -102,9 +103,9 @@ def parse_fiche(text: str) -> dict[str, Any]:
     """Extracts the JSON object from the answer, even when surrounded by text or a Markdown code block."""
     start, end = text.find("{"), text.rfind("}")
     if start == -1 or end < start:
-        raise VisionError("réponse du modèle illisible (pas de JSON)")
+        raise VisionError(t("vision.no_json"))
     try:
         # A valid JSON that starts with "{" and ends with "}" is necessarily an object.
         return json.loads(text[start:end + 1])
     except ValueError as exc:
-        raise VisionError("réponse du modèle illisible (JSON invalide)") from exc
+        raise VisionError(t("vision.bad_json")) from exc

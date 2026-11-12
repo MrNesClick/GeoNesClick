@@ -31,6 +31,6 @@ def test_parse_fiche_ignores_surrounding_text():
 
 @pytest.mark.parametrize("text", ["", "pas de json ici", "{ cassé", "} à l'envers {"])
 def test_parse_fiche_rejects_unreadable(text):
-    with pytest.raises(VisionError, match="illisible"):
+    with pytest.raises(VisionError, match="unreadable"):
         parse_fiche(text)
 

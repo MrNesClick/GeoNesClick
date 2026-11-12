@@ -58,8 +58,8 @@ def migrate_repo_data(project_root: Path) -> list[str]:
     if captures.is_dir() and not captures.is_symlink() and not (target / "captures").exists():
         target.mkdir(parents=True, exist_ok=True)
         shutil.move(str(captures), target / "captures")
-        done.append(f"{captures} → {target / 'captures'} (déplacées)")
+        done.append(f"{captures} → {target / 'captures'} (moved)")
     if (dataset / "labels.toml").is_file() and not dataset.is_symlink() and not (target / "dataset").exists():
         shutil.copytree(dataset, target / "dataset", symlinks=False)
-        done.append(f"{dataset} → {target / 'dataset'} (copié ; l'exemplaire du dépôt reste)")
+        done.append(f"{dataset} → {target / 'dataset'} (copied; the repository's copy stays)")
     return done

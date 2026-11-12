@@ -13,6 +13,7 @@ from typing import Any
 from PIL import Image
 from pydantic import BaseModel, Field, field_validator
 
+from .i18n import t
 from .config import Rect, _check_rect
 
 MAX_PER_ANALYSIS = 20  # numbering ① to ⑳, across all frozen images
@@ -29,16 +30,11 @@ class DeleteRequest(BaseModel):
 
 def uses(scripts: bool, letters: bool, places: bool) -> tuple[list[str], list[str]]:
     """What the coach draws from a mark, and what it does not draw (yet), according to the active rules."""
-    on = ["le texte, lu mot pour mot : panneaux, plaques de rue, enseignes, plaques d'immatriculation"]
+    on = [t("marks.uses.text")]
     off = []
-    for active, text in (
-        (scripts, "l'alphabet, qui écarte les pays qui ne l'écrivent pas"),
-        (letters, "les lettres et mots de rue propres à une langue (ъ, ő, ș, « utca »…)"),
-        (places, "les noms de lieux (GeoNames, villages du pays en tête compris) : un lieu seul n'est qu'un indice, "
-                 "il faut une autre preuve ; les noms de rue (Via…, Rue…) ne comptent pas"),
-    ):
-        (on if active else off).append(text + ("" if active else " (désactivé dans les réglages)"))
-    off.append("poteaux, bornes, marquage au sol, végétation : décrits par l'IA, pas encore interprétés")
+    for active, key in ((scripts, "marks.uses.scripts"), (letters, "marks.uses.letters"), (places, "marks.uses.places")):
+        (on if active else off).append(t(key) + ("" if active else t("marks.uses.off_suffix")))
+    off.append(t("marks.uses.not_yet"))
     return on, off
 
 

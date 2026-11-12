@@ -12,6 +12,7 @@ import os
 import re
 from pathlib import Path
 
+from .i18n import t
 from . import paths
 
 NAME = re.compile(r"[A-Z][A-Z0-9_]{0,63}")  # name of the variable ("NVAPI"): also used as the file name
@@ -24,7 +25,7 @@ class ApiKeyError(ValueError):
 
 def key_file(name: str) -> Path:
     if not NAME.fullmatch(name):
-        raise ApiKeyError(f"nom de clé invalide : {name!r}")
+        raise ApiKeyError(t("apikey.bad_name", name=repr(name)))
     return paths.CONFIG_DIR / f"{name.lower()}.key"
 
 
@@ -55,9 +56,9 @@ def read(name: str) -> str | None:
 def save(name: str, value: str) -> None:
     value = value.strip()
     if not VALUE.fullmatch(value):
-        raise ApiKeyError("clé invalide : 8 à 300 caractères, sans espace")
+        raise ApiKeyError(t("apikey.bad_key"))
     if name == "NVAPI" and not value.startswith("nvapi-"):
-        raise ApiKeyError("clé NVIDIA invalide : elle commence par « nvapi- »")
+        raise ApiKeyError(t("apikey.bad_nvidia"))
     _write_private(key_file(name), value + "\n")
 
 
@@ -70,7 +71,7 @@ def hint(name: str) -> dict[str, str] | None:
     value = read(name)
     if not value:
         return None
-    return {"source": "variable d'environnement" if os.environ.get(name) else "fichier", "end": value[-4:]}
+    return {"source": "env" if os.environ.get(name) else "file", "end": value[-4:]}  # shown via settings.key_source.*
 
 
 def migrate_env(name: str, env_file: Path) -> bool:

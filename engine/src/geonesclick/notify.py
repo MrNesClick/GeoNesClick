@@ -23,7 +23,7 @@ class Notifier:
             try:
                 self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
             except GLib.Error as exc:  # no graphical session (SSH, CI): notifications are skipped, retried next time
-                print(f"[notification] pas de bus de session : {exc.message}")
+                print(f"[notification] no session bus: {exc.message}")
         return self._bus
 
     def send(self, summary: str, body: str = "", image: Path | None = None, error: bool = False) -> None:
@@ -51,4 +51,4 @@ class Notifier:
                 )
                 self._last_id = reply.unpack()[0]
             except GLib.Error as exc:  # a failed notification must never block the capture
-                print(f"[notification] échec : {exc.message}")
+                print(f"[notification] failed: {exc.message}")

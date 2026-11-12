@@ -175,7 +175,7 @@ def test_country_outlines_endpoint(cfg):
 def test_state_exposes_map_settings(cfg):
     state = create_app(cfg).state.engine.state()
     assert state["map"]["tile_url"].startswith("https://tile.openstreetmap.org/")
-    assert state["plonk"] == {"enabled": True, "ready": False, "message": "en attente de StreetCLIP"}
+    assert state["plonk"] == {"enabled": True, "ready": False, "message": "waiting for StreetCLIP"}
 
 
 def test_turning_plonk_off_frees_it(cfg, tmp_path):
@@ -184,7 +184,7 @@ def test_turning_plonk_off_frees_it(cfg, tmp_path):
     engine.plonk = tiny_cloud(cfg)
     client = TestClient(app, base_url="http://127.0.0.1:47615")
     assert client.post("/settings", json={"plonk": {"enabled": False}}, headers=ORIGIN).status_code == 200
-    assert engine.plonk is None and engine.state()["plonk"]["message"] == "désactivé"
+    assert engine.plonk is None and engine.state()["plonk"]["message"] == "off"
 
 
 # --- Configuration ------------------------------------------------------------------------------------

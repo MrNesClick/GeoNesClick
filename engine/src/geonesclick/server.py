@@ -98,7 +98,7 @@ class EraseRequest(BaseModel):
 
 
 class ClearRequest(BaseModel):
-    id: Literal["villages", "lieux", "plonkit", "captures"]
+    id: Literal["villages", "places", "plonkit", "captures"]
 
 
 class JudgeRequest(BaseModel):
@@ -119,10 +119,10 @@ class Engine(MarksMixin, LocksMixin):
         self.loop: asyncio.AbstractEventLoop | None = None
         self.notifier = Notifier(cfg.capture.notify, cfg.capture.sound)
         self.capture = CaptureService(on_state=self._on_capture_state, source=cfg.capture.source)
-        self.capture_message = "démarrage du partage d'écran…"
+        self.capture_message = i18n.t("srv.sharing_starting")
         self.capture_starting = True  # GNOME picker possibly open: neither active nor cut off
         self.streetclip: StreetClip | None = None
-        self.streetclip_message = "chargement du modèle…"
+        self.streetclip_message = i18n.t("srv.model_loading")
         self.vision = VisionClient(cfg.vision)
         self.gpu_lock = asyncio.Lock()
         self.dataset = Dataset(cfg.dataset.path) if cfg.dataset.enabled else None
@@ -132,7 +132,7 @@ class Engine(MarksMixin, LocksMixin):
         self.frozen: OrderedDict[str, tuple[Image.Image, str]] = OrderedDict()
         self.mark_slots = asyncio.Semaphore(cfg.marks.parallel)
         self.metas = []
-        self.metas_message = "désactivées"
+        self.metas_message, self.metas_error = i18n.t("srv.off_f"), False
         self.load_metas()
         self.settings_lock = asyncio.Lock()
         # References to the level 2 tasks: without them, asyncio may free them midway.
@@ -147,26 +147,26 @@ class Engine(MarksMixin, LocksMixin):
         self.plonkit_summary = ""  # "4060 astuces, 84 pays": base of the ahead-of-time translation messages
         self.pretranslate_task: asyncio.Task | None = None
         self.plonk: PlonkCloud | None = None  # map cloud (PLONK), loaded after StreetCLIP
-        self.plonk_message = "désactivé" if not cfg.plonk.enabled else "en attente de StreetCLIP"
+        self.plonk_message = i18n.t("srv.off") if not cfg.plonk.enabled else i18n.t("srv.waiting_clip")
         self.plonk_task: asyncio.Task | None = None
         self.borders: Borders | None = None  # Natural Earth borders: countries of the points, map outlines
         self.places: Places | None = None  # GeoNames place names (local rules of the marks)
-        self.places_message = "désactivé" if not cfg.rules.places else "en attente"
+        self.places_message = i18n.t("srv.off") if not cfg.rules.places else i18n.t("srv.waiting")
         self.places_task: asyncio.Task | None = None
         self.detail_tasks: dict[str, asyncio.Task] = {}  # full directory of a country, being downloaded
         self.detail_failed: set[str] = set()  # countries whose detail failed: no new attempt before a restart
         self.erased = False  # "Erase everything" done: nothing in memory is valid any more, restart expected
 
     def load_metas(self) -> None:
-        self.metas, self.metas_message = [], "désactivées"
+        self.metas, self.metas_message, self.metas_error = [], i18n.t("srv.off_f"), False
         if self.cfg.metas.enabled:
             try:
                 self.metas = load_metas(
                     self.cfg.metas.user_path, self.cfg.metas.include_seed, self.cfg.streetclip.countries.values()
                 )
-                self.metas_message = f"{len(self.metas)} metas chargées"
+                self.metas_message = i18n.t("srv.metas_loaded", n=len(self.metas))
             except (MetaError, ValueError) as exc:  # invalid "mes metas" file: reported without blocking
-                self.metas_message = f"metas indisponibles : {exc}"
+                self.metas_message, self.metas_error = i18n.t("srv.metas_unavailable", error=exc), True
 
     async def apply_settings(self, changes: dict[str, dict[str, Any]]) -> dict[str, Any]:
         """Saves the settings then applies them on the fly (all the exposed settings allow it)."""
@@ -196,7 +196,7 @@ class Engine(MarksMixin, LocksMixin):
             if new.plonk.enabled and self.plonk is None:
                 self.schedule_plonk()
             elif not new.plonk.enabled:
-                self.plonk, self.plonk_message = None, "désactivé"  # frees the video memory
+                self.plonk, self.plonk_message = None, i18n.t("srv.off")  # frees the video memory
             if new.plonkit.enabled and self.plonkit_status == "off":
                 self.plonkit_status = "absent"
                 self.schedule_plonkit(check=self.plonkit_due())
@@ -235,7 +235,8 @@ class Engine(MarksMixin, LocksMixin):
             "trust_proof": self.cfg.coach.trust_proof,
             "leader": {"min": self.cfg.coach.leader_min, "margin": self.cfg.coach.leader_margin},
             "metas": {
-                "count": len(self.metas), "message": self.metas_message, "judge": self.cfg.metas.judge_buttons,
+                "count": len(self.metas), "message": self.metas_message, "error": self.metas_error,
+                "judge": self.cfg.metas.judge_buttons,
             },
             "dataset": {"enabled": self.dataset is not None, "ask_guessed": self.cfg.dataset.ask_guessed},
             "plonkit": {
@@ -272,7 +273,7 @@ class Engine(MarksMixin, LocksMixin):
         self.capture_message = message
         self.capture_starting = False
         if interrupted:
-            self.notifier.send("Partage d'écran interrompu", "Relance-le depuis la fenêtre du coach.", error=True)
+            self.notifier.send(i18n.t("srv.sharing_stopped"), i18n.t("srv.sharing_restart"), error=True)
         if self.loop:
             asyncio.run_coroutine_threadsafe(self.broadcast(self.state()), self.loop)
 
@@ -283,11 +284,11 @@ class Engine(MarksMixin, LocksMixin):
         if self.cfg.streetclip.enabled:
             try:
                 self.streetclip = await asyncio.to_thread(StreetClip, self.cfg.streetclip)
-                self.streetclip_message = f"prêt ({self.streetclip.device})"
+                self.streetclip_message = i18n.t("srv.ready_on", device=self.streetclip.device)
             except Exception as exc:
-                self.streetclip_message = f"indisponible : {exc}"
+                self.streetclip_message = i18n.t("srv.unavailable", error=exc)
         else:
-            self.streetclip_message = "désactivé"
+            self.streetclip_message = i18n.t("srv.off")
         await self.broadcast(self.state())
         if self.cfg.plonk.enabled:
             self.schedule_plonk()
@@ -321,11 +322,11 @@ class Engine(MarksMixin, LocksMixin):
     def _erase_targets(self) -> tuple[dict[str, list[Path]], list[Path], list[Path]]:
         cfg, rc = self.cfg, self.cfg.rules
         groups = {
-            "compte": storage.account_files(paths.CONFIG_DIR, self.settings_path, cfg.metas.user_path),
+            "account": storage.account_files(paths.CONFIG_DIR, self.settings_path, cfg.metas.user_path),
             "captures": storage.capture_files(cfg.capture.path),
-            "jeu": storage.dataset_files(cfg.dataset.path),
+            "dataset": storage.dataset_files(cfg.dataset.path),
             "plonkit": storage.plonkit_files(cfg.plonkit.path),
-            "lieux": storage.village_files(rc.places_path) + storage.base_place_files(rc.places_path),
+            "places": storage.village_files(rc.places_path) + storage.base_place_files(rc.places_path),
         }
         models = storage.model_dirs(paths.hf_hub_cache(), [cfg.streetclip.model, cfg.plonk.model])
         # Folders removed if they are empty afterwards (an unknown file keeps them).
@@ -362,15 +363,15 @@ class Engine(MarksMixin, LocksMixin):
     async def clear_storage(self, what: str) -> dict[str, Any]:
         """Empties a storage item; only known files are deleted, never a folder."""
         rc = self.cfg.rules
-        if what in ("villages", "lieux") and self.places:
+        if what in ("villages", "places") and self.places:
             for country in list(self.places.details):
                 self.places.remove_detail(country)
         files = storage.village_files(rc.places_path)
-        if what == "lieux":
+        if what == "places":
             if self.places:
                 self.places.close()
             self.places = None
-            self.places_message = "vidé : retéléchargé au prochain démarrage"
+            self.places_message = i18n.t("srv.places_cleared")
             files += storage.base_place_files(rc.places_path)
         elif what == "plonkit":
             for task in (self.plonkit_task, self.pretranslate_task):
@@ -380,7 +381,7 @@ class Engine(MarksMixin, LocksMixin):
                 self.plonkit_index.close()
             self.plonkit_index, self.plonkit_base = None, ([], None)
             if self.cfg.plonkit.enabled:
-                self.plonkit_status, self.plonkit_message = "absent", "vidé : recollecté au prochain démarrage"
+                self.plonkit_status, self.plonkit_message = "absent", i18n.t("srv.plonkit_cleared")
             files = storage.plonkit_files(self.cfg.plonkit.path)
         elif what == "captures":
             files = storage.capture_files(self.cfg.capture.path)
@@ -399,7 +400,7 @@ class Engine(MarksMixin, LocksMixin):
     async def load_plonk(self) -> None:
         """Loads PLONK (and the borders) on StreetCLIP's graphics card, whose vector it reads."""
         if self.streetclip is None:
-            self.plonk_message = "StreetCLIP est nécessaire au nuage de la carte"
+            self.plonk_message = i18n.t("srv.plonk_needs_clip")
             await self.broadcast(self.state())
             return
         self.plonk_message = "chargement…"
@@ -411,11 +412,11 @@ class Engine(MarksMixin, LocksMixin):
             async with self.gpu_lock:
                 plonk = await asyncio.to_thread(PlonkCloud, cfg, device)
             if self.cfg.plonk.enabled:
-                self.plonk, self.plonk_message = plonk, f"prêt ({device})"
+                self.plonk, self.plonk_message = plonk, i18n.t("srv.ready_on", device=device)
             else:  # disabled during loading: we do not keep it
-                self.plonk_message = "désactivé"
+                self.plonk_message = i18n.t("srv.off")
         except Exception as exc:  # weights missing offline, video memory, borders file…
-            self.plonk, self.plonk_message = None, f"indisponible : {type(exc).__name__}: {exc}"[:300]
+            self.plonk, self.plonk_message = None, i18n.t("srv.unavailable", error=f"{type(exc).__name__}: {exc}")[:300]
         await self.broadcast(self.state())
 
     async def _cloud(self, capture_id: str, cls) -> None:
@@ -429,7 +430,7 @@ class Engine(MarksMixin, LocksMixin):
             countries = await asyncio.to_thread(borders.countries_of, cloud.lat, cloud.lon)
             message = {"type": "cloud", "id": capture_id, **summarise(cloud, countries, plonk.cfg)}
         except Exception as exc:  # video memory full…: the map stays at country level
-            message = {"type": "cloud", "id": capture_id, "error": f"nuage indisponible ({type(exc).__name__})"}
+            message = {"type": "cloud", "id": capture_id, "error": i18n.t("srv.cloud_unavailable", error=type(exc).__name__)}
         await self._log(capture_id, cloud={k: v for k, v in message.items() if k not in ("type", "id")})
         await self.broadcast(message)
 
@@ -461,31 +462,31 @@ class Engine(MarksMixin, LocksMixin):
         """check: check the online list and reload the modified guides; then index and vectorise."""
         pc = self.cfg.plonkit
         if self.streetclip is None:
-            await self._plonkit_status("error", "StreetCLIP est nécessaire pour comparer la vue aux astuces")
+            await self._plonkit_status("error", i18n.t("srv.plonkit_needs_clip"))
             return
         try:
             fetched = None
             if check:
-                await self._plonkit_status("busy", "mise à jour des guides Plonk It…")
+                await self._plonkit_status("busy", i18n.t("srv.plonkit_updating"))
                 countries = set(self.cfg.streetclip.countries.values())
                 stats = await asyncio.to_thread(collect, countries, pc.path, pc.delay_s, False, lambda *_: None)
                 fetched = stats["fetched"]
-            await self._plonkit_status("busy", "indexation des astuces…")
+            await self._plonkit_status("busy", i18n.t("srv.plonkit_indexing"))
             tips, matrix = await self._index_plonkit()
             self.plonkit_base = (tips, matrix)
             countries = len({t.country for t in tips})
-            done = f", {fetched} guides mis à jour" if fetched else ""
-            summary = f"{len(tips)} astuces, {countries} pays{done}"
+            done = i18n.t("srv.plonkit_fetched", n=fetched) if fetched else ""
+            summary = i18n.t("srv.plonkit_summary", tips=len(tips), countries=countries, fetched=done)
             await self._plonkit_status("ready" if tips else "absent", summary)
             self.plonkit_summary = summary
             await self._classify_plonkit(summary)
             self.schedule_pretranslate()
         except (PlonkitError, OSError, ValueError, sqlite3.Error) as exc:  # network, page changed, disk…
             # The previous database is kept if it exists: the coach carries on with the tips already known.
-            await self._plonkit_status("ready" if self.plonkit_tips else "error", f"Plonk It : {exc}")
+            await self._plonkit_status("ready" if self.plonkit_tips else "error", i18n.t("srv.plonkit_error", error=exc))
         except Exception as exc:  # background task: never leave the UI on "update running"
             await self._plonkit_status("ready" if self.plonkit_tips else "error",
-                                       f"Plonk It : erreur inattendue ({type(exc).__name__})")
+                                       i18n.t("srv.plonkit_unexpected", error=type(exc).__name__))
             raise
 
     async def _classify_plonkit(self, summary: str) -> None:
@@ -499,11 +500,11 @@ class Engine(MarksMixin, LocksMixin):
         model, done = pc.ai_model or self.cfg.vision.model, 0
         for start in range(0, len(pending), pc.ai_batch):
             batch = pending[start:start + pc.ai_batch]
-            await self._plonkit_status("ready", f"{summary} ; classement par l'IA : {done}/{len(pending)}")
+            await self._plonkit_status("ready", i18n.t("srv.classify_progress", summary=summary, done=done, total=len(pending)))
             try:
                 found = await classify_tips(self.vision.client, model, batch)
             except Exception as exc:  # 429, timeout, model unavailable: we will resume at the next update
-                await self._plonkit_status("ready", f"{summary} ; classement par l'IA interrompu ({type(exc).__name__})")
+                await self._plonkit_status("ready", i18n.t("srv.classify_stopped", summary=summary, error=type(exc).__name__))
                 break
             if found:  # usable answer: the tips it leaves aside stay "autre" for good
                 await asyncio.to_thread(index.store_ai_categories, {h: found.get(h, "autre") for h, _ in batch})
@@ -512,7 +513,7 @@ class Engine(MarksMixin, LocksMixin):
             if start + pc.ai_batch < len(pending):
                 await asyncio.sleep(pc.ai_pause_s)
         else:
-            await self._plonkit_status("ready", f"{summary} ; {done} astuces classées par l'IA")
+            await self._plonkit_status("ready", i18n.t("srv.classify_done", summary=summary, n=done))
         self.plonkit_base = await asyncio.to_thread(index.load, self.cfg.streetclip.model)
 
     async def _index_plonkit(self):
@@ -571,10 +572,10 @@ class Engine(MarksMixin, LocksMixin):
                 await asyncio.to_thread(self.plonkit_index.store_translations, lang, found)
             message = {"type": "tips_translated", "id": capture_id, "translations": found}
             if len(found) < len(items):  # unreadable or incomplete answer: the rest keeps its English
-                message["error"] = "réponse du modèle incomplète"
+                message["error"] = i18n.t("srv.model_incomplete")
         except Exception as exc:  # timeout, 429…: the tips stay in English for this capture
             message = {"type": "tips_translated", "id": capture_id, "translations": {},
-                       "error": f"traduction indisponible ({type(exc).__name__})"}
+                       "error": i18n.t("srv.translation_unavailable", error=type(exc).__name__)}
         entry = self.recent.get(capture_id)
         if entry is not None:  # debug mode log: each batch, its duration, what it returned
             entry.setdefault("translation", []).append({
@@ -606,7 +607,8 @@ class Engine(MarksMixin, LocksMixin):
                 await asyncio.sleep(1)
             if not self.cfg.plonkit.pretranslate or self.translation_lang != lang:
                 return  # settings changed meanwhile: the next scheduling will start again from the cache
-            await self._plonkit_status("ready", f"{self.plonkit_summary} ; traduction d'avance : {done}/{total}")
+            await self._plonkit_status("ready", i18n.t("srv.pretranslate_progress", summary=self.plonkit_summary, done=done,
+                                                                total=total))
             batch = pending[start:start + PRETRANSLATE_BATCH]
             model = self.cfg.plonkit.ai_model or self.cfg.vision.model
             try:
@@ -614,13 +616,13 @@ class Engine(MarksMixin, LocksMixin):
                                                max(self.cfg.plonkit.translate_timeout_s, 60))
             except Exception as exc:  # 429, timeout: we stop there, resume at the next start
                 await self._plonkit_status(
-                    "ready", f"{self.plonkit_summary} ; traduction d'avance interrompue ({type(exc).__name__})")
+                    "ready", i18n.t("srv.pretranslate_stopped", summary=self.plonkit_summary, error=type(exc).__name__))
                 return
             if found:
                 await asyncio.to_thread(index.store_translations, lang, found)
             done += len(found)
             await asyncio.sleep(self.cfg.plonkit.ai_pause_s)
-        await self._plonkit_status("ready", f"{self.plonkit_summary} ; {done} astuces traduites d'avance"
+        await self._plonkit_status("ready", i18n.t("srv.pretranslate_done", summary=self.plonkit_summary, n=done)
                                    if total else self.plonkit_summary)
 
     # --- analysis --------------------------------------------------------------------------
@@ -629,7 +631,7 @@ class Engine(MarksMixin, LocksMixin):
         try:
             return await asyncio.to_thread(self.capture.grab), ""
         except CaptureError as exc:
-            await asyncio.to_thread(self.notifier.send, "Capture impossible", str(exc), error=True)
+            await asyncio.to_thread(self.notifier.send, i18n.t("srv.capture_failed"), str(exc), error=True)
             await self.broadcast({"type": "error", "message": str(exc)})
             return None, str(exc)
 
@@ -655,7 +657,7 @@ class Engine(MarksMixin, LocksMixin):
         capture_ms = (time.perf_counter() - t0) * 1000
         if self.cfg.debug.enabled:
             await self._start_log(capture_id, saved)
-        await asyncio.to_thread(self.notifier.send, "Capture prise", f"{capture_ms:.0f} ms", image=saved)
+        await asyncio.to_thread(self.notifier.send, i18n.t("srv.capture_taken"), f"{capture_ms:.0f} ms", image=saved)
         await self.broadcast({
             "type": "capture", "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
             "thumbnail": await asyncio.to_thread(data_url, view), "ms": round(capture_ms),
@@ -671,7 +673,7 @@ class Engine(MarksMixin, LocksMixin):
                 async with self.gpu_lock:
                     scores, ms, emb, cls = await asyncio.to_thread(self.streetclip.analyse, view)
             except Exception as exc:  # GPU memory full, driver…
-                await self.broadcast({"type": "error", "message": f"Niveau 1 indisponible : {exc}"})
+                await self.broadcast({"type": "error", "message": i18n.t("srv.level1_unavailable", error=exc)})
                 return {"ok": False, "id": capture_id, "error": str(exc)}
             pairs = [(s.code, s.probability) for s in scores]
             if capture_id in self.recent and scores:
@@ -732,7 +734,7 @@ class Engine(MarksMixin, LocksMixin):
     async def judge(self, req: JudgeRequest) -> dict[str, Any]:
         """"Right" / "Wrong" on a seed clue: written to mes-metas.toml, then the metas are reloaded."""
         if not (self.cfg.metas.enabled and self.cfg.metas.judge_buttons):
-            raise HTTPException(409, "verdicts désactivés dans la configuration")
+            raise HTTPException(409, i18n.t("srv.verdicts_off"))
         async with self.settings_lock:
             try:
                 await asyncio.to_thread(
@@ -755,8 +757,7 @@ class Engine(MarksMixin, LocksMixin):
         """True place from a Google Maps link: position, country (local borders), region (closest place)."""
         found = coords_of(link)
         if found is None:
-            raise HTTPException(422, "pas de coordonnées dans ce lien : colle le lien complet (pas un lien court "
-                                     "maps.app.goo.gl), ou « latitude, longitude »")
+            raise HTTPException(422, i18n.t("srv.no_coords"))
         lat, lon = found
         if self.borders is None:
             self.borders = await asyncio.to_thread(Borders)
@@ -782,19 +783,19 @@ class Engine(MarksMixin, LocksMixin):
 
     async def label(self, req: LabelRequest) -> dict[str, Any]:
         if self.dataset is None:
-            raise HTTPException(409, "jeu de test désactivé dans la configuration")
+            raise HTTPException(409, i18n.t("srv.dataset_off"))
         country, guessed = req.country.upper(), req.guessed.upper()
         where = await self.truth(req.link) if req.link.strip() else None
         if where and where["country"]:
             if country and country != where["country"]:
-                raise HTTPException(422, f"le lien tombe en {where['country']}, pas en {country}")
+                raise HTTPException(422, i18n.t("srv.link_elsewhere", found=where["country"], country=country))
             country = where["country"]
         known = set(self.cfg.streetclip.countries.values())
         if country not in known or (guessed and guessed not in known):
-            raise HTTPException(422, "pays inconnu")
+            raise HTTPException(422, i18n.t("srv.unknown_country"))
         entry = self.recent.get(req.id)
         if entry is None:
-            raise HTTPException(404, "capture trop ancienne ou inconnue")
+            raise HTTPException(404, i18n.t("srv.capture_unknown"))
         try:
             saved = await asyncio.to_thread(
                 self.dataset.add, req.id, entry["frame"], country,
@@ -869,7 +870,7 @@ async def _unix_trigger(engine: Engine) -> asyncio.AbstractServer:
                 result = await (engine.analyse() if cmd == "capture" else engine.freeze())
                 writer.write((f"OK {result['id']}" if result["ok"] else f"ERR {result['error']}").encode() + b"\n")
             else:
-                writer.write(b"ERR commande inconnue\n")
+                writer.write(b"ERR unknown command\n")
             await writer.drain()
         except (TimeoutError, ConnectionError):
             pass
@@ -915,7 +916,7 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
         # A website open in the browser could target 127.0.0.1: any unknown origin is refused.
         origin = request.headers.get("origin")
         if origin is not None and origin not in allowed:
-            return JSONResponse({"error": "origine refusée"}, status_code=403)
+            return JSONResponse({"error": i18n.t("srv.origin_refused")}, status_code=403)
         return await call_next(request)
 
     @app.get("/health")
@@ -973,12 +974,12 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
 
     @app.post("/capture/restart")
     async def restart() -> dict[str, Any]:
-        return await _restart("relance du partage d'écran…", forget_window=False)
+        return await _restart(i18n.t("srv.sharing_restarting"), forget_window=False)
 
     @app.post("/capture/reselect")
     async def reselect() -> dict[str, Any]:
         """Change window (other browser, screen, resolution): reopens the GNOME picker."""
-        return await _restart("choisis la fenêtre du jeu à partager…", forget_window=True)
+        return await _restart(i18n.t("srv.pick_window"), forget_window=True)
 
     @app.post("/label")
     async def label(req: LabelRequest) -> dict[str, Any]:
@@ -999,9 +1000,9 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def plonkit_refresh() -> dict[str, Any]:
         """"Update" button: checks the guides list now, without waiting for refresh_days."""
         if not engine.cfg.plonkit.enabled:
-            raise HTTPException(409, "Plonk It désactivé dans la configuration")
+            raise HTTPException(409, i18n.t("srv.plonkit_off"))
         if not engine.schedule_plonkit(check=True):
-            raise HTTPException(409, "mise à jour déjà en cours")
+            raise HTTPException(409, i18n.t("srv.update_running"))
         return {"ok": True}
 
     @app.get("/map/countries")

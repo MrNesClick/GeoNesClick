@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from typing import Any
 
+from .i18n import t
 from .evidence import Evidence
 from .places import normalise
 
@@ -176,8 +177,8 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
     """Restricts a mark's proofs to what the player chose, and removes from them what they rejected.
 
     Used to locate the view under their choices (namesakes in their country, their region), NEVER to conclude: the
-    marks' conclusion stays independent. A proof that no longer points to anything keeps the reason ("hors du pays
-    verrouillé"). The alphabet is restricted only by rejections: Cyrillic under a "France" lock must stay a visible
+    marks' conclusion stays independent. A proof that no longer points to anything keeps the reason ("outside the
+    locked country"). The alphabet is restricted only by rejections: Cyrillic under a "France" lock must stay a visible
     contradiction, not become an alphabet without a country.
     """
     country, region, no_countries, no_regions = scope
@@ -189,7 +190,7 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
                     region and p[2] == region.split(".")[0] and where != region)
             points = [p for p in e.points if keep(p)]
             if not points and not e.note:
-                e.note = "hors de la région verrouillée" if region else "dans une région rejetée"
+                e.note = t("locks.note.outside_region") if region else t("locks.note.rejected_region")
             e.points = points
             e.countries = [c for c in e.countries if any(p[2] == c for p in points)]
         if e.kind == "alphabet":
@@ -197,8 +198,8 @@ def restrict(found: list[Evidence], scope: Scope) -> list[Evidence]:
             continue
         inside = [c for c in e.countries if c not in no_countries and (country is None or c == country)]
         if e.countries and not inside and not e.note:
-            e.note = (f"hors du pays verrouillé ({', '.join(e.countries[:4])})" if country
-                      else f"pays rejeté ({', '.join(e.countries[:4])})")
+            e.note = t("locks.note.outside_country" if country else "locks.note.rejected_country",
+                       list=", ".join(e.countries[:4]))
         e.countries = inside
         if e.kind == "lieu":  # namesakes of the remaining countries only (keep_nearby re-derives the countries)
             e.points = [p for p in e.points if p[2] in inside]

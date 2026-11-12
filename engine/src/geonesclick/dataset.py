@@ -16,6 +16,8 @@ from pathlib import Path
 
 from PIL import Image
 
+from .i18n import t
+
 CAPTURE_ID = re.compile(r"^\d{8}-\d{6}-\d{3}$")  # format produced by Engine.analyse()
 # Coordinates of the true place in a Google Maps link (GeoGuessr end screen) or typed as "54.65, 43.22".
 # The link is NEVER opened: only its digits are read. From most to least precise.
@@ -28,8 +30,8 @@ COORDS = [re.compile(p) for p in (
     rf"^\s*{_LAT}\s*[,;]\s*{_LON}\s*$",
 )]
 HEADER = (
-    "# Jeu de test étiqueté. Les images (dataset/images/) restent locales et ne sont pas versionnées.\n"
-    "# Une entrée par capture : pays réel (ISO 3166-1 alpha-2), zone si connue, mode de jeu et mise en page.\n"
+    "# Labelled test set. The images (dataset/images/) stay local and are not versioned.\n"
+    "# One entry per capture: real country (ISO 3166-1 alpha-2), area if known, game mode and layout.\n"
 )
 
 
@@ -99,7 +101,7 @@ class Dataset:
     ) -> Label:
         """Saves (or relabels) a capture. Raises DatasetError if the identifier is invalid."""
         if not CAPTURE_ID.fullmatch(capture_id):
-            raise DatasetError("identifiant de capture invalide")
+            raise DatasetError(t("dataset.bad_id"))
         if guessed:
             found = guessed == country
         label = Label(
@@ -107,7 +109,7 @@ class Dataset:
             country=country,
             area=area.strip()[:200],
             mode=mode,
-            layout=f"fenêtre {frame.width}x{frame.height}",
+            layout=f"window {frame.width}x{frame.height}",
             found=found,
             predicted=predicted,
             guessed=guessed,

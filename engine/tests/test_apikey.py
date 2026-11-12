@@ -17,9 +17,9 @@ def test_key_is_saved_private_and_only_its_end_is_shown(monkeypatch):
     path = paths.CONFIG_DIR / "nvapi.key"
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert apikey.read("NVAPI") == "nvapi-abcdef123456"
-    assert apikey.hint("NVAPI") == {"source": "fichier", "end": "3456"}
+    assert apikey.hint("NVAPI") == {"source": "file", "end": "3456"}
     monkeypatch.setenv("NVAPI", "nvapi-from-env-9999")
-    assert apikey.hint("NVAPI") == {"source": "variable d'environnement", "end": "9999"}  # takes priority
+    assert apikey.hint("NVAPI") == {"source": "env", "end": "9999"}  # takes priority
     apikey.forget("NVAPI")
     monkeypatch.delenv("NVAPI")
     assert apikey.read("NVAPI") is None
@@ -50,7 +50,7 @@ def test_settings_route_saves_without_ever_returning_the_key(tmp_path):
     user.write_text(f'[capture]\nnotify = false\n\n[metas]\nuser_file = "{tmp_path / "m.toml"}"\n')
     client = TestClient(create_app(load_config(user), user), base_url="http://127.0.0.1:47615")
     res = client.post("/settings/api-key", json={"key": "nvapi-secret-7777"}, headers=ORIGIN)
-    assert res.json() == {"ok": True, "key": {"source": "fichier", "end": "7777"}}
+    assert res.json() == {"ok": True, "key": {"source": "file", "end": "7777"}}
     assert "nvapi-secret" not in client.get("/health").text
     assert client.post("/settings/api-key", json={"key": "x y"}, headers=ORIGIN).status_code == 422
     assert client.post("/settings/api-key", json={"key": "nvapi-secret-7777"},

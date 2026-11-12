@@ -33,7 +33,7 @@ def test_tips_are_extracted_with_their_section_and_image():
 
 
 def test_page_without_preloaded_data_is_an_error():
-    with pytest.raises(PlonkitError, match="introuvable"):
+    with pytest.raises(PlonkitError, match="not found"):
         extract_guide("<html></html>")
 
 

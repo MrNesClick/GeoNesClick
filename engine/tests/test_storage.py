@@ -39,7 +39,7 @@ def folders(tmp_path):
 def test_inventory_gives_each_size(folders):
     items = {i["id"]: i for i in storage.inventory(*folders)}
     assert items["villages"]["size"] == 900 and items["villages"]["detail"] == "BG, FR, IT"
-    assert items["lieux"]["size"] == 1500 and items["plonkit"]["size"] == 750 and items["captures"]["size"] == 220
+    assert items["places"]["size"] == 1500 and items["plonkit"]["size"] == 750 and items["captures"]["size"] == 220
     assert items["plonkit"]["confirm"] and items["villages"]["kind"] == "cache"
 
 
@@ -70,12 +70,12 @@ def client(folders, tmp_path):
 def test_storage_route_and_clear(client, folders):
     c, engine = client
     places, _, captures = folders
-    assert {i["id"] for i in c.get("/storage").json()["items"]} == {"villages", "lieux", "plonkit", "captures"}
+    assert {i["id"] for i in c.get("/storage").json()["items"]} == {"villages", "places", "plonkit", "captures"}
     res = c.post("/storage/clear", json={"id": "captures"}, headers=ORIGIN).json()
     assert res["freed"] == 220 and not storage.capture_files(captures)
-    c.post("/storage/clear", json={"id": "lieux"}, headers=ORIGIN)
+    c.post("/storage/clear", json={"id": "places"}, headers=ORIGIN)
     assert not storage.base_place_files(places) and not storage.village_files(places)
-    assert engine.places is None and "prochain démarrage" in engine.places_message
+    assert engine.places is None and "next start" in engine.places_message
 
 
 def test_clearing_is_refused_from_a_foreign_origin_or_for_unknown_items(client):
@@ -133,7 +133,7 @@ def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
     client = TestClient(create_app(load_config(settings), settings), base_url="http://127.0.0.1:47615")
     origin = {"Origin": "http://localhost:1420"}
     plan = {g["id"]: g for g in client.get("/storage/erase").json()["groups"]}
-    assert plan["jeu"]["precious"] and plan["jeu"]["files"] == 3 and plan["modeles"]["optional"]
+    assert plan["dataset"]["precious"] and plan["dataset"]["files"] == 3 and plan["models"]["optional"]
     assert client.post("/storage/erase", json={"confirm": "oui"}, headers=origin).status_code == 422
     res = client.post("/storage/erase", json={"confirm": "EFFACER"}, headers=origin).json()
     assert res["ok"] and res["shortcuts"] == 1

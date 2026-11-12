@@ -3,119 +3,98 @@
 # transparent, state CLEARLY everything we download"). A test (tests/test_downloads.py) checks that every
 # address written in the code is listed here, whether contacted or only displayed.
 #
-# when: installation (once, on first launch) · option (once, if you accept it) · demande (on demand, during
-#        use, when useful) · continu (continuous, on every use of the feature)
+# when: installation (once, on first launch) · option (once, if you accept it) · on_demand (during use, when
+#        useful) · continuous (on every use of the feature)
 # required: without it, the app does not work ("required" block of the flow, a single consent)
-# sends: what leaves your machine, beyond the plain download request
+# The texts shown (what, why, what is sent) are in the catalogs, locales/<lang>.json: download.<id>.what, .why,
+# .sends (and .license when it is a sentence).
 # Sizes measured on 2026-11-07 (Python packages: computed from uv.lock when building the AppImage).
 
 [[download]]
 id = "python"
-what = "Python 3.12 (interpréteur autonome, python-build-standalone)"
 hosts = ["github.com", "objects.githubusercontent.com"]
 size_mb = 30
 license = "PSF-2.0"
-why = "faire tourner le moteur d'analyse, sans toucher au Python de ton système"
 when = "installation"
 required = true
 
 [[download]]
 id = "packages"
-what = "Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte"
 hosts = ["pypi.org", "files.pythonhosted.org"]
 size_mb = 3060  # with an NVIDIA card (PyTorch CUDA); without an NVIDIA card, see "pytorch-cpu"
-license = "variées (BSD, MIT, Apache-2.0…), liste détaillée paquet par paquet dans le tunnel"
-why = "le moteur : analyse locale de la vue, serveur de l'interface, lecture des réponses de l'IA"
+license = "various (BSD, MIT, Apache-2.0…), detailed package by package below"
 when = "installation"
 required = true
 
 [[download]]
 id = "pytorch-cpu"
-what = "PyTorch pour processeur (à la place de la version CUDA, s'il n'y a pas de carte NVIDIA)"
 hosts = ["download.pytorch.org"]
 size_mb = 200
 license = "BSD-3-Clause"
-why = "faire tourner StreetCLIP sans carte graphique NVIDIA (plus lent)"
 when = "installation"
 required = true
 
 [[download]]
 id = "streetclip"
-what = "Modèle StreetCLIP (geolocal/StreetCLIP, version figée, poids safetensors)"
 hosts = ["huggingface.co", "cas-bridge.xethub.hf.co", "cdn-lfs.hf.co"]
 size_mb = 1712
-license = "CC BY-NC 4.0 (usage non commercial)"
-why = "reconnaître le pays d'après l'allure de la vue, en local (niveau 1)"
+license = "CC BY-NC 4.0 (non-commercial use)"
 when = "installation"
 required = true
 
 [[download]]
 id = "geonames"
-what = "Répertoire des lieux GeoNames (villes de plus de 1 000 habitants) et noms des régions"
 hosts = ["download.geonames.org"]
 size_mb = 11
 license = "CC BY 4.0 (GeoNames)"
-why = "reconnaître les noms de lieux lus sur tes marques, et les régions"
 when = "option"
 required = false
 option = "rules.places"
 
 [[download]]
 id = "villages"
-what = "Villages d'un pays (répertoire complet GeoNames du pays en tête)"
 hosts = ["download.geonames.org"]
 size_mb = 8  # per country: France 7.3 MB, Denmark 1.2 MB
 license = "CC BY 4.0 (GeoNames)"
-why = "trouver les petits villages lus sur un panneau ; GeoNames voit quel pays est consulté"
-when = "demande"
+when = "on_demand"
 required = false
 option = "rules.detail"
 
 [[download]]
 id = "plonkit"
-what = "Guides Plonk It (84 pages), puis contrôle des mises à jour tous les 30 jours"
 hosts = ["www.plonkit.net"]
 size_mb = 2
-license = "aucune licence de réutilisation : collectés pour ton usage personnel, jamais redistribués"
-why = "astuces par pays qui ressemblent à ta vue (mode GeoGuessr)"
+license = "no reuse licence: collected for your personal use, never redistributed"
 when = "option"
 required = false
 option = "plonkit.enabled"
 
 [[download]]
 id = "plonk"
-what = "Modèle PLONK (nicolas-dufour/PLONK_OSV_5M, version figée, safetensors)"
 hosts = ["huggingface.co", "cas-bridge.xethub.hf.co", "cdn-lfs.hf.co"]
 size_mb = 144
 license = "MIT"
-why = "zones probables sur la carte, calculées en local (+120 Mo de mémoire vidéo)"
 when = "option"
 required = false
 option = "plonk.enabled"
 
 [[download]]
 id = "nvidia"
-what = "Analyse par le modèle de vision NVIDIA (API en ligne)"
 hosts = ["integrate.api.nvidia.com"]
 size_mb = 0
-license = "conditions d'utilisation de l'API NVIDIA (build.nvidia.com) ; ta clé API"
-why = "lire le texte de la vue et de tes marques, classer et traduire les astuces"
-when = "continu"
+license = "terms of use of the NVIDIA API (build.nvidia.com); your API key"
+when = "continuous"
 required = false
 option = "vision.enabled"
-sends = "tes captures (réduites à 1 280 px), les découpes de tes marques et les astuces à traduire"
 
 [[download]]
 id = "tiles"
-what = "Fond de carte OpenStreetMap (tuiles)"
 hosts = ["tile.openstreetmap.org"]
 size_mb = 0
-license = "données © contributeurs OpenStreetMap (ODbL) ; politique d'usage des tuiles de l'OSMF"
-why = "afficher la carte sous les pays, zones et lieux"
-when = "continu"
+license = "data © OpenStreetMap contributors (ODbL); OSMF tile usage policy"
+when = "continuous"
 required = false
 option = "map.enabled"
-sends = "ton adresse IP et les zones de carte affichées"
 
 # Addresses written in the code but NEVER contacted by the app: displayed links (sources of a rule,
 # attributions, help pages), links you paste (read, never opened), or install.sh development tools.

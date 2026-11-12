@@ -16,8 +16,8 @@ const LANGUAGE_NAMES = Object.fromEntries(LANGS.map((l) => [l, t("language.name"
 const chooseLanguage = (lang: string) => setLanguage(uiLanguage(lang));
 
 interface Download {
-  id: string; what: string; hosts: string[]; size_mb: number; license: string; why: string;
-  when: "installation" | "option" | "demande" | "continu"; required: boolean; option?: string; sends?: string;
+  id: string; hosts: string[]; size_mb: number; license: string;
+  when: "installation" | "option" | "on_demand" | "continuous"; required: boolean; option?: string;
 }
 interface Package { name: string; version: string; size: number; license: string; note?: string }
 /** label: catalog key of its name (setup.rs, system_checks). */
@@ -61,10 +61,10 @@ const packagesMb = computed(() => {
 const sizeOf = (d: Download) => (d.id === "packages" ? packagesMb.value : d.size_mb);
 const requiredMb = computed(() => required.value.filter((d) => d.id !== "pytorch-cpu").reduce((n, d) => n + sizeOf(d), 0));
 const mb = (n: number) => (n >= 1000 ? t("unit.gb", { n: num(n / 1000) }) : n >= 1 ? t("unit.mb", { n: Math.round(n) }) : n ? t("setup.size.less_mb") : "—");
-/** A text of a download (downloads.toml) in the UI's language: download.<id>.<field>, else the file's own text. */
+/** A text of a download in the UI's language (download.<id>.<field>); the licence falls back on downloads.toml's. */
 const dl = (d: Download, field: "what" | "why" | "license" | "sends") => {
   const key = `download.${d.id}.${field}`;
-  return hasKey(key) ? t(key) : d[field] ?? "";
+  return hasKey(key) ? t(key) : field === "license" ? d.license : "";
 };
 // Short names for the summary; the full text (why, sources, licence) stays under the details.
 const short = (d: Download) => {
@@ -76,8 +76,8 @@ const sent = (d: Download) => {
   const key = `setup.sent.${d.id}`;
   return hasKey(key) ? t(key) : t("setup.sent.fallback", { what: dl(d, "what"), sends: dl(d, "sends") });
 };
-const optional = computed(() => all.value.filter((x) => x.when === "option" || x.when === "demande"));
-const continuous = computed(() => all.value.filter((x) => x.when === "continu"));
+const optional = computed(() => all.value.filter((x) => x.when === "option" || x.when === "on_demand"));
+const continuous = computed(() => all.value.filter((x) => x.when === "continuous"));
 const missing = computed(() => (status.value?.checks ?? []).filter((c) => !c.ok));
 const aptCommand = computed(() => `sudo apt install ${missing.value.map((c) => c.package).join(" ")}`);
 

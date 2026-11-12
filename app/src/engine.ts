@@ -370,7 +370,8 @@ export const engine = reactive({
   streetclip: { ready: false, message: "" },
   /** key: where the API key comes from and its last 4 characters (never the key), null if missing. */
   vision: { enabled: false, ready: false, model: "", key: null as { source: string; end: string } | null },
-  metas: { count: 0, message: "", judge: true },
+  /** error: the metas could not be loaded (invalid my-metas file…); message says why. */
+  metas: { count: 0, message: "", error: false, judge: true },
   dataset: { enabled: false, ask_guessed: true },
   plonkit: { enabled: false, status: "off", message: "", tips: 0 },
   plonk: { enabled: false, ready: false, message: "" },

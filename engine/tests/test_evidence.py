@@ -56,7 +56,7 @@ def evidence(lines, gazetteer):
 # --- alphabet, letters, words -----------------------------------------------------------------------
 def test_cyrillic_rules_out_france():
     [script] = [e for e in text_evidence(MARK_2) if e.kind == "alphabet"]
-    assert script.value == "cyrillique" and "FR" not in script.countries and "BG" in script.countries
+    assert script.value == "Cyrillic" and "FR" not in script.countries and "BG" in script.countries
 
 
 def test_latin_rules_out_nobody():
@@ -65,8 +65,8 @@ def test_latin_rules_out_nobody():
 
 def test_bulgarian_hard_sign_before_a_consonant():
     found = {e.value: e.countries for e in text_evidence(["Гърмен"])}
-    assert found["ъ devant une consonne"] == ["BG"]
-    assert "ъ devant une consonne" not in {e.value for e in text_evidence(["подъезд"])}  # Russian: ъ before е
+    assert found["ъ before a consonant"] == ["BG"]
+    assert "ъ before a consonant" not in {e.value for e in text_evidence(["подъезд"])}  # Russian: ъ before е
 
 
 @pytest.mark.parametrize("text, country", [
@@ -132,12 +132,12 @@ def test_common_word_alone_concludes_nothing(gazetteer):
 
 def test_alphabet_restricts_the_countries(gazetteer):
     v = verdict([(2, evidence(["Город"], gazetteer))])
-    assert v.country == "" and "FR" not in v.allowed and "BG" in v.allowed and v.scripts == ["cyrillique"]
+    assert v.country == "" and "FR" not in v.allowed and "BG" in v.allowed and v.scripts == ["Cyrillic"]
 
 
 def test_incompatible_alphabets_exclude_nothing():
     v = verdict([(1, text_evidence(["Αθήνα"])), (2, text_evidence(["Москва"]))])
-    assert v.allowed is None and "incompatibles" in v.conflict
+    assert v.allowed is None and "incompatible" in v.conflict
 
 
 # --- estimated position -----------------------------------------------------------------------------
@@ -283,7 +283,7 @@ def test_two_nearby_places_pick_the_right_homonym(gazetteer):
 def test_unzipped_size_is_bounded(tmp_path, monkeypatch):
     monkeypatch.setattr(places, "MAX_UNZIPPED", 100)
     monkeypatch.setattr(places, "_fetch", lambda _url: archive())
-    with pytest.raises(PlacesError, match="démesuré"):
+    with pytest.raises(PlacesError, match="oversized"):
         build("https://example.org/cities1000.zip", tmp_path)
 
 

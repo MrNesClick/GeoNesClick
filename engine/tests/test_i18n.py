@@ -92,3 +92,29 @@ def test_placeholders_are_filled_and_unknown_ones_left_visible(monkeypatch):
     monkeypatch.setitem(catalog("en"), "x.count.one", "{n} mark")
     monkeypatch.setitem(catalog("en"), "x.count.other", "{n} marks")
     assert (tn("x.count", 1, "en"), tn("x.count", 2, "en")) == ("1 mark", "2 marks")
+
+
+def test_every_id_translated_at_run_time_has_its_key():
+    """Keys built from tables (a missing one would raise KeyError while a mark is read, or in Settings)."""
+    from geonesclick import evidence, settings
+
+    needed = {f"script.{name}" for name, _, _ in evidence.SCRIPTS.values()}
+    needed |= {f"lang.{lang}" for _, _, lang, _, _ in evidence.LETTERS} | {f"lang.{lang}" for _, lang, _ in evidence.WORDS}
+    needed |= {f"evidence.letters.{shown}" for _, shown, *_ in evidence.LETTERS if shown.isascii()}
+    needed |= {f"settings.why.{why}" for keys in settings.FILE_ONLY.values() for why in keys.values()}
+    needed |= {f"storage.group.{g}" for g in ("account", "captures", "dataset", "plonkit", "places", "models")}
+    for lang in UI_LANGUAGES:
+        assert sorted(needed - set(catalog(lang))) == [], lang
+
+
+def test_settings_tool_refuses_a_coach_section_that_is_not_an_object(monkeypatch, capsys):
+    import io
+
+    from geonesclick import settings
+
+    monkeypatch.setattr("sys.stdin", io.StringIO('{"coach": 3}'))
+    try:
+        assert settings.main() == 1  # refused with a message, no traceback
+    finally:
+        i18n.set_language("en")
+    assert "settings refused" in capsys.readouterr().err

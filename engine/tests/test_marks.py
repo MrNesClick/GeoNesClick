@@ -289,7 +289,7 @@ def test_country_detail_is_loaded_once_and_marks_are_reread(setup, monkeypatch, 
     last = [m for m in sent if m["type"] == "verdict"][-1]
     assert (last["country"], last["level"]) == ("FR", "certain") and last["ignored"] == []
     assert {c["n"] for c in last["cites"]} == {1, 2}  # "LAAS" found in France after the detail
-    assert "FR" in engine.places.details and "villages : FR" in engine.places_message
+    assert "FR" in engine.places.details and "villages: FR" in engine.places_message
 
 
 def test_countries_outside_the_candidates_do_not_count(setup, monkeypatch, tmp_path):

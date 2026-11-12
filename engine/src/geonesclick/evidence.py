@@ -24,108 +24,112 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from .i18n import t
+
 WIKI = "https://en.wikipedia.org/wiki/"
 
-# Alphabet → countries that write it on their signs (official or co-official script).
+# Alphabet → countries that write it on their signs (official or co-official script). The first value is the id of
+# its name in the catalogs (script.<id>); the languages below are ids too (lang.<id>), translated when a mark is read.
 # Latin rules out nobody: it is found everywhere (transliterations, shop signs, brands).
 SCRIPTS: dict[str, tuple[str, set[str], str]] = {
-    "CYRILLIC": ("cyrillique", {"RU", "UA", "BY", "BG", "RS", "MK", "ME", "BA", "KZ", "KG", "MN", "TJ"},
+    "CYRILLIC": ("cyrillic", {"RU", "UA", "BY", "BG", "RS", "MK", "ME", "BA", "KZ", "KG", "MN", "TJ"},
                  WIKI + "Cyrillic_script"),
-    "GREEK": ("grec", {"GR", "CY"}, WIKI + "Greek_alphabet"),
-    "HEBREW": ("hébreu", {"IL"}, WIKI + "Hebrew_alphabet"),
-    "ARABIC": ("arabe", {"AE", "JO", "TN", "IL", "QA", "LB", "OM", "EG", "MA", "SA", "DZ", "IQ", "KW", "BH", "PS",
+    "GREEK": ("greek", {"GR", "CY"}, WIKI + "Greek_alphabet"),
+    "HEBREW": ("hebrew", {"IL"}, WIKI + "Hebrew_alphabet"),
+    "ARABIC": ("arabic", {"AE", "JO", "TN", "IL", "QA", "LB", "OM", "EG", "MA", "SA", "DZ", "IQ", "KW", "BH", "PS",
                          "PK", "AF", "IR"}, WIKI + "Arabic_script"),
-    "THAI": ("thaï", {"TH"}, WIKI + "Thai_script"),
-    "HANGUL": ("hangeul", {"KR"}, WIKI + "Hangul"),
+    "THAI": ("thai", {"TH"}, WIKI + "Thai_script"),
+    "HANGUL": ("hangul", {"KR"}, WIKI + "Hangul"),
     "HIRAGANA": ("kana", {"JP"}, WIKI + "Kana"),
     "KATAKANA": ("kana", {"JP"}, WIKI + "Kana"),
-    "CJK": ("sinogrammes", {"JP", "TW", "CN", "HK", "MO", "SG"}, WIKI + "Chinese_characters"),
+    "CJK": ("chinese", {"JP", "TW", "CN", "HK", "MO", "SG"}, WIKI + "Chinese_characters"),
     "KHMER": ("khmer", {"KH"}, WIKI + "Khmer_script"),
     "LAO": ("lao", {"LA"}, WIKI + "Lao_script"),
-    "SINHALA": ("cinghalais", {"LK"}, WIKI + "Sinhala_script"),
-    "TAMIL": ("tamoul", {"LK", "IN", "SG", "MY"}, WIKI + "Tamil_script"),
+    "SINHALA": ("sinhala", {"LK"}, WIKI + "Sinhala_script"),
+    "TAMIL": ("tamil", {"LK", "IN", "SG", "MY"}, WIKI + "Tamil_script"),
     "BENGALI": ("bengali", {"BD", "IN"}, WIKI + "Bengali%E2%80%93Assamese_script"),
     "DEVANAGARI": ("devanagari", {"IN", "NP"}, WIKI + "Devanagari"),
     "GURMUKHI": ("gurmukhi", {"IN"}, WIKI + "Gurmukhi"),
     "GUJARATI": ("gujarati", {"IN"}, WIKI + "Gujarati_script"),
     "KANNADA": ("kannada", {"IN"}, WIKI + "Kannada_script"),
-    "TELUGU": ("télougou", {"IN"}, WIKI + "Telugu_script"),
+    "TELUGU": ("telugu", {"IN"}, WIKI + "Telugu_script"),
     "MALAYALAM": ("malayalam", {"IN"}, WIKI + "Malayalam_script"),
     "ORIYA": ("odia", {"IN"}, WIKI + "Odia_script"),
-    "TIBETAN": ("tibétain", {"BT", "CN", "IN", "NP"}, WIKI + "Tibetan_script"),
-    "GEORGIAN": ("géorgien", {"GE"}, WIKI + "Georgian_scripts"),
-    "ARMENIAN": ("arménien", {"AM"}, WIKI + "Armenian_alphabet"),
-    "ETHIOPIC": ("guèze", {"ET", "ER"}, WIKI + "Ge%CA%BDez_script"),
-    "MYANMAR": ("birman", {"MM"}, WIKI + "Burmese_alphabet"),
-    "THAANA": ("thâna", {"MV"}, WIKI + "Thaana"),
+    "TIBETAN": ("tibetan", {"BT", "CN", "IN", "NP"}, WIKI + "Tibetan_script"),
+    "GEORGIAN": ("georgian", {"GE"}, WIKI + "Georgian_scripts"),
+    "ARMENIAN": ("armenian", {"AM"}, WIKI + "Armenian_alphabet"),
+    "ETHIOPIC": ("geez", {"ET", "ER"}, WIKI + "Ge%CA%BDez_script"),
+    "MYANMAR": ("burmese", {"MM"}, WIKI + "Burmese_alphabet"),
+    "THAANA": ("thaana", {"MV"}, WIKI + "Thaana"),
 }
 MIN_SCRIPT_LETTERS = 2  # a single letter (symbol, misread reflection) is not enough to set an alphabet
 
 _SPANISH = {"ES", "MX", "GT", "PA", "DO", "CO", "EC", "PE", "BO", "CL", "AR", "UY", "PY", "CR", "HN", "SV", "NI",
             "VE", "CU", "PR"}
 
-# Letters specific to a language: (pattern, displayed letter, language, countries, source). Caution: a letter shared
+# Letters specific to a language: (pattern, displayed letter (or the id of its description,
+# evidence.letters.<id>), language, countries, source). Caution: a letter shared
 # by several languages lists all their countries ("ā" is also Maori: not kept for Latvian).
 LETTERS: list[tuple[str, str, str, set[str], str]] = [
     # In Russian, "ъ" only precedes е, ё, ю, я; in Bulgarian it is a vowel (Гърмен, България).
-    (r"ъ(?=[бвгджзйклмнпрстфхцчшщ])", "ъ devant une consonne", "bulgare", {"BG"}, WIKI + "Bulgarian_alphabet"),
-    (r"[ыэ]", "ы, э", "russe ou langue d'Asie centrale", {"RU", "BY", "KZ", "KG", "MN"}, WIKI + "Yery"),
-    (r"[їєґ]", "ї, є, ґ", "ukrainien", {"UA"}, WIKI + "Ukrainian_alphabet"),
-    (r"[ђћ]", "ђ, ћ", "serbe", {"RS", "ME", "BA"}, WIKI + "Serbian_Cyrillic_alphabet"),
-    (r"[ѓќѕ]", "ѓ, ќ, ѕ", "macédonien", {"MK"}, WIKI + "Macedonian_alphabet"),
-    (r"[өү]", "ө, ү", "kirghize, kazakh ou mongol", {"KG", "KZ", "MN"}, WIKI + "Kyrgyz_alphabets"),
-    (r"[őű]", "ő, ű", "hongrois", {"HU"}, WIKI + "Hungarian_alphabet"),
-    (r"[șțţ]", "ș, ț", "roumain", {"RO", "MD"}, WIKI + "Romanian_alphabet"),
-    (r"[łżśźń]", "ł, ż, ś, ź, ń", "polonais", {"PL"}, WIKI + "Polish_alphabet"),
-    (r"[řůě]", "ř, ů, ě", "tchèque", {"CZ"}, WIKI + "Czech_orthography"),
-    (r"[ľĺŕ]", "ľ, ĺ, ŕ", "slovaque", {"SK"}, WIKI + "Slovak_orthography"),
-    (r"[ėįų]", "ė, į, ų", "lituanien", {"LT"}, WIKI + "Lithuanian_orthography"),
-    (r"[ģķļņ]", "ģ, ķ, ļ, ņ", "letton", {"LV"}, WIKI + "Latvian_orthography"),
-    (r"[ğı]", "ğ, ı", "turc", {"TR"}, WIKI + "Turkish_alphabet"),
-    (r"ß", "ß", "allemand", {"DE", "AT", "LU"}, WIKI + "%C3%9F"),
-    (r"[þð]", "þ, ð", "islandais", {"IS"}, WIKI + "Icelandic_orthography"),
-    (r"[øæ]", "ø, æ", "danois ou norvégien", {"DK", "NO"}, WIKI + "Danish_and_Norwegian_alphabet"),
-    (r"õ", "õ", "estonien ou portugais", {"EE", "PT", "BR"}, WIKI + "%C3%95"),
-    (r"[ươẠ-ỹ]", "ư, ơ, ạ…", "vietnamien", {"VN"}, WIKI + "Vietnamese_alphabet"),
-    (r"ñ", "ñ", "espagnol", _SPANISH, WIKI + "%C3%91"),
+    (r"ъ(?=[бвгджзйклмнпрстфхцчшщ])", "hard_sign", "bulgarian", {"BG"}, WIKI + "Bulgarian_alphabet"),
+    (r"[ыэ]", "ы, э", "russian_central_asian", {"RU", "BY", "KZ", "KG", "MN"}, WIKI + "Yery"),
+    (r"[їєґ]", "ї, є, ґ", "ukrainian", {"UA"}, WIKI + "Ukrainian_alphabet"),
+    (r"[ђћ]", "ђ, ћ", "serbian", {"RS", "ME", "BA"}, WIKI + "Serbian_Cyrillic_alphabet"),
+    (r"[ѓќѕ]", "ѓ, ќ, ѕ", "macedonian", {"MK"}, WIKI + "Macedonian_alphabet"),
+    (r"[өү]", "ө, ү", "kyrgyz_kazakh_mongolian", {"KG", "KZ", "MN"}, WIKI + "Kyrgyz_alphabets"),
+    (r"[őű]", "ő, ű", "hungarian", {"HU"}, WIKI + "Hungarian_alphabet"),
+    (r"[șțţ]", "ș, ț", "romanian", {"RO", "MD"}, WIKI + "Romanian_alphabet"),
+    (r"[łżśźń]", "ł, ż, ś, ź, ń", "polish", {"PL"}, WIKI + "Polish_alphabet"),
+    (r"[řůě]", "ř, ů, ě", "czech", {"CZ"}, WIKI + "Czech_orthography"),
+    (r"[ľĺŕ]", "ľ, ĺ, ŕ", "slovak", {"SK"}, WIKI + "Slovak_orthography"),
+    (r"[ėįų]", "ė, į, ų", "lithuanian", {"LT"}, WIKI + "Lithuanian_orthography"),
+    (r"[ģķļņ]", "ģ, ķ, ļ, ņ", "latvian", {"LV"}, WIKI + "Latvian_orthography"),
+    (r"[ğı]", "ğ, ı", "turkish", {"TR"}, WIKI + "Turkish_alphabet"),
+    (r"ß", "ß", "german", {"DE", "AT", "LU"}, WIKI + "%C3%9F"),
+    (r"[þð]", "þ, ð", "icelandic", {"IS"}, WIKI + "Icelandic_orthography"),
+    (r"[øæ]", "ø, æ", "danish_norwegian", {"DK", "NO"}, WIKI + "Danish_and_Norwegian_alphabet"),
+    (r"õ", "õ", "estonian_portuguese", {"EE", "PT", "BR"}, WIKI + "%C3%95"),
+    (r"[ươẠ-ỹ]", "ư, ơ, ạ…", "vietnamese", {"VN"}, WIKI + "Vietnamese_alphabet"),
+    (r"ñ", "ñ", "spanish", _SPANISH, WIKI + "%C3%91"),
 ]
 _LETTERS = [(re.compile(p), *rest) for p, *rest in LETTERS]
 
 # Street and address words, as whole words ("utca": measured, the model concluded Slovakia from it). Common source:
 # street names by language, https://en.wikipedia.org/wiki/Street_name and each language's articles.
 WORDS: list[tuple[str, str, set[str]]] = [
-    ("utca", "hongrois", {"HU"}),
-    ("út", "hongrois", {"HU"}),
-    ("iela", "letton", {"LV"}),
-    ("gatvė", "lituanien", {"LT"}),
-    ("katu", "finnois", {"FI"}),
-    ("gatan", "suédois", {"SE"}),
-    ("vägen", "suédois", {"SE"}),
-    ("gade", "danois", {"DK"}),
-    ("vej", "danois", {"DK"}),
-    ("veien", "norvégien", {"NO"}),
-    ("gata", "suédois, norvégien ou islandais", {"SE", "NO", "IS"}),
-    ("tänav", "estonien", {"EE"}),
-    ("ulica", "langue slave occidentale ou du Sud", {"PL", "SK", "HR", "SI", "RS", "BA", "ME"}),
-    ("ulice", "tchèque", {"CZ"}),
-    ("straße", "allemand", {"DE", "AT", "CH", "LU"}),
-    ("strasse", "allemand", {"DE", "AT", "CH", "LU"}),
-    ("straat", "néerlandais", {"NL", "BE"}),
-    ("strada", "roumain ou italien", {"RO", "MD", "IT"}),
-    ("sokak", "turc", {"TR"}),
-    ("sokağı", "turc", {"TR"}),
-    ("caddesi", "turc", {"TR"}),
-    ("rruga", "albanais", {"AL"}),
-    ("вулиця", "ukrainien", {"UA"}),
-    ("улица", "russe, bulgare, macédonien ou serbe", {"RU", "BY", "KZ", "KG", "BG", "MK", "RS"}),
-    ("via", "italien", {"IT", "CH", "SM", "VA"}),
-    ("viale", "italien", {"IT", "CH", "SM"}),
-    ("piazza", "italien", {"IT", "CH", "SM"}),
-    ("vicolo", "italien", {"IT", "CH", "SM"}),
-    ("rue", "français", {"FR", "BE", "CH", "LU", "MC", "CA"}),
-    ("calle", "espagnol", _SPANISH),
-    ("plaza", "espagnol", _SPANISH),
-    ("rua", "portugais", {"PT", "BR"}),
+    ("utca", "hungarian", {"HU"}),
+    ("út", "hungarian", {"HU"}),
+    ("iela", "latvian", {"LV"}),
+    ("gatvė", "lithuanian", {"LT"}),
+    ("katu", "finnish", {"FI"}),
+    ("gatan", "swedish", {"SE"}),
+    ("vägen", "swedish", {"SE"}),
+    ("gade", "danish", {"DK"}),
+    ("vej", "danish", {"DK"}),
+    ("veien", "norwegian", {"NO"}),
+    ("gata", "swedish_norwegian_icelandic", {"SE", "NO", "IS"}),
+    ("tänav", "estonian", {"EE"}),
+    ("ulica", "west_south_slavic", {"PL", "SK", "HR", "SI", "RS", "BA", "ME"}),
+    ("ulice", "czech", {"CZ"}),
+    ("straße", "german", {"DE", "AT", "CH", "LU"}),
+    ("strasse", "german", {"DE", "AT", "CH", "LU"}),
+    ("straat", "dutch", {"NL", "BE"}),
+    ("strada", "romanian_italian", {"RO", "MD", "IT"}),
+    ("sokak", "turkish", {"TR"}),
+    ("sokağı", "turkish", {"TR"}),
+    ("caddesi", "turkish", {"TR"}),
+    ("rruga", "albanian", {"AL"}),
+    ("вулиця", "ukrainian", {"UA"}),
+    ("улица", "russian_bulgarian_macedonian_serbian", {"RU", "BY", "KZ", "KG", "BG", "MK", "RS"}),
+    ("via", "italian", {"IT", "CH", "SM", "VA"}),
+    ("viale", "italian", {"IT", "CH", "SM"}),
+    ("piazza", "italian", {"IT", "CH", "SM"}),
+    ("vicolo", "italian", {"IT", "CH", "SM"}),
+    ("rue", "french", {"FR", "BE", "CH", "LU", "MC", "CA"}),
+    ("calle", "spanish", _SPANISH),
+    ("plaza", "spanish", _SPANISH),
+    ("rua", "portuguese", {"PT", "BR"}),
 ]
 
 # Words that announce a STREET NAME: the words that follow them ("Via Paolo Lo Manto", "Rue de Paris") or
@@ -144,7 +148,7 @@ STREET_AFTER = {
 # Languages that weld the word to the name (Mannerheimintie, Storgatan, Vesterbrogade): also recognised at the end
 # of a word, preceded by at least 3 letters ("tie" alone would be English).
 SUFFIXES = {"katu", "tie", "gatan", "vägen", "gade", "vej", "veien", "straße", "strasse", "straat", "iela", "tänav"}
-WORDS.append(("tie", "finnois", {"FI"}))
+WORDS.append(("tie", "finnish", {"FI"}))
 _WORDS = [(re.compile(rf"(?<!\w)(?:\w{{3,}})?{re.escape(word)}(?!\w)" if word in SUFFIXES
                       else rf"(?<!\w){re.escape(word)}(?!\w)"), word, language, countries)
           for word, language, countries in WORDS]
@@ -153,13 +157,13 @@ _WORDS = [(re.compile(rf"(?<!\w)(?:\w{{3,}})?{re.escape(word)}(?!\w)" if word in
 @dataclass
 class Evidence:
     kind: str  # "alphabet" (rules out), "lettres" or "mot" (language), "lieu" (place name), "rue" (does not count)
-    value: str  # what was read: "ъ devant une consonne", "Благоевград"
-    label: str  # what it means: "bulgare", "ville de Bulgarie"
+    value: str  # what was read: "ъ before a consonant", "Благоевград"
+    label: str  # what it means: "Bulgarian", "town in Bulgaria"
     countries: list[str]
     source: str = ""
     km: float | None = None  # place: distance read right after the name (direction sign)
     points: list[list[Any]] = field(default_factory=list)  # place: namesakes as [latitude, longitude, country, name]
-    note: str = ""  # why it does not count ("hors de tes pays candidats"), shown as is
+    note: str = ""  # why it does not count ("outside your candidate countries"), shown as is
 
 
 def scripts_of(text: str) -> Counter[str]:
@@ -178,16 +182,18 @@ def text_evidence(lines: list[str]) -> list[Evidence]:
     out = []
     for script, count in scripts_of(text).most_common():
         if script in SCRIPTS and count >= MIN_SCRIPT_LETTERS:
-            label, countries, source = SCRIPTS[script]
+            name, countries, source = SCRIPTS[script]
+            label = t(f"script.{name}")
             if not any(e.kind == "alphabet" and e.value == label for e in out):  # kana: hiragana + katakana
-                out.append(Evidence("alphabet", label, f"alphabet {label}", sorted(countries), source))
+                out.append(Evidence("alphabet", label, t("evidence.alphabet", script=label), sorted(countries), source))
     for pattern, shown, language, countries, source in _LETTERS:
         if pattern.search(lower):
-            out.append(Evidence("lettres", shown, language, sorted(countries), source))
+            letters = t(f"evidence.letters.{shown}") if shown.isascii() else shown
+            out.append(Evidence("lettres", letters, t(f"lang.{language}"), sorted(countries), source))
     for pattern, word, language, countries in _WORDS:
         found = pattern.search(lower)
         if found and not (word == "tie" and found.group() == "tie"):
-            out.append(Evidence("mot", word, language, sorted(countries), WIKI + "Street_name"))
+            out.append(Evidence("mot", word, t(f"lang.{language}"), sorted(countries), WIKI + "Street_name"))
     return out
 
 
@@ -221,7 +227,7 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
                     v.scripts.append(e.value)
                 allowed = set(e.countries) if allowed is None else allowed & set(e.countries)
     if allowed is not None and not allowed:  # e.g. Greek on one mark, Cyrillic on the other
-        v.conflict = f"alphabets incompatibles : {', '.join(v.scripts)}"
+        v.conflict = t("evidence.scripts_conflict", list=", ".join(v.scripts))
         allowed = None
     v.allowed = sorted(allowed) if allowed is not None else None
 

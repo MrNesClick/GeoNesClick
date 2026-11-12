@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from tomlkit.exceptions import TOMLKitError
 
 from .config import USER_CONFIG, Config, merge
+from .i18n import set_language, t
 
 EDITABLE: dict[str, tuple[str, ...]] = {
     "coach": ("help_level", "trust_proof", "language", "leader_min", "leader_margin"),
@@ -45,11 +46,8 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     "debug": ("enabled",),
 }
 
-_NETWORK = "réseau du moteur : il ne doit écouter que ta machine et ta fenêtre du coach"
-_KEY = "redirigerait ta clé API vers un autre serveur"
-_DISK = "chemin sur le disque : une requête ne doit pas pouvoir faire écrire ailleurs"
-_MODEL = "modèle téléchargé puis exécuté sur ta machine : un modèle piégé pourrait exécuter du code"
-_CSP = "doit aussi être autorisé dans la fenêtre (CSP et autorisations de Tauri)"
+# Why each one is file-only: the catalog key of the reason (settings.why.<reason>).
+_NETWORK, _KEY, _DISK, _MODEL, _CSP, _SOURCE = "network", "key", "disk", "model", "csp", "source"
 FILE_ONLY: dict[str, dict[str, str]] = {
     "server": {"host": _NETWORK, "port": _NETWORK, "allowed_origins": _NETWORK},
     "capture": {"directory": _DISK},
@@ -60,10 +58,7 @@ FILE_ONLY: dict[str, dict[str, str]] = {
     "plonk": {"model": _MODEL, "revision": _MODEL},
     "map": {"tile_url": _CSP, "attribution_url": _CSP},
     "vision": {"base_url": _KEY, "api_key_env": _KEY},
-    "rules": {"places_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
-              "detail_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
-              "regions_url": "source téléchargée puis lue sur ta machine : elle ne doit pas être détournée",
-              "places_dir": _DISK},
+    "rules": {"places_url": _SOURCE, "detail_url": _SOURCE, "regions_url": _SOURCE, "places_dir": _DISK},
 }
 
 # Taken into account at the next start only (the rest applies right away).
@@ -86,15 +81,10 @@ def current(cfg: Config) -> dict[str, dict[str, Any]]:
 def file_only(cfg: Config) -> dict[str, dict[str, dict[str, Any]]]:
     """File-only settings, for the read-only display: value and reason."""
     return {
-        section: {key: {"value": getattr(getattr(cfg, section), key), "why": why} for key, why in keys.items()}
+        section: {key: {"value": getattr(getattr(cfg, section), key), "why": t(f"settings.why.{why}")}
+                  for key, why in keys.items()}
         for section, keys in FILE_ONLY.items()
     }
-
-
-HEADER = (
-    "# Tes réglages GeoNesClick : ils remplacent les valeurs par défaut clé par clé.\n"
-    "# Modifiable à la main ou depuis l'écran Réglages du coach (tes commentaires sont conservés).\n\n"
-)
 
 
 def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config:
@@ -105,10 +95,10 @@ def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config
     """
     for section, values in changes.items():
         if section not in EDITABLE or not isinstance(values, dict):
-            raise SettingsError(f"section non modifiable depuis l'interface : {section}")
+            raise SettingsError(t("settings.section_locked", section=section))
         if forbidden := set(values) - set(EDITABLE[section]):
-            raise SettingsError(f"réglages non modifiables depuis l'interface : {', '.join(sorted(forbidden))}")
-    text = path.read_text() if path.exists() else HEADER
+            raise SettingsError(t("settings.keys_locked", list=", ".join(sorted(forbidden))))
+    text = path.read_text() if path.exists() else t("settings.header")
     defaults = tomllib.loads(resources.files(__package__).joinpath("default_config.toml").read_text())
     try:
         doc = tomlkit.parse(text)
@@ -120,9 +110,9 @@ def save(changes: dict[str, dict[str, Any]], path: Path = USER_CONFIG) -> Config
         cfg = Config.model_validate(merge(defaults, doc.unwrap()))
     except ValidationError as exc:
         first = exc.errors()[0]
-        raise SettingsError(f"{'.'.join(map(str, first['loc']))} : {first['msg']}") from exc
+        raise SettingsError(t("settings.invalid", field=".".join(map(str, first["loc"])), message=first["msg"])) from exc
     except (TOMLKitError, TypeError, AttributeError) as exc:  # unreadable file, or section that is not a table
-        raise SettingsError(f"{path.name} illisible, corrige-le à la main : {exc}") from exc
+        raise SettingsError(t("settings.unreadable", file=path.name, error=exc)) from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
     tmp.write_text(tomlkit.dumps(doc))
@@ -139,7 +129,9 @@ def main() -> int:
     try:
         changes = json.loads(sys.stdin.read() or "{}")
         if not isinstance(changes, dict):
-            raise SettingsError("objet JSON attendu")
+            raise SettingsError(t("settings.json_expected"))
+        coach = changes.get("coach")
+        set_language(str(coach.get("language", "en")) if isinstance(coach, dict) else "en")  # errors in its language
         save(changes)
     except (ValueError, SettingsError) as exc:
         print(f"settings refused: {exc}", file=sys.stderr)

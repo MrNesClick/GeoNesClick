@@ -10,7 +10,7 @@ import { t } from "../i18n";
 interface Item {
   id: string;
   label: string;
-  kind: "cache" | "socle" | "historique";
+  kind: "cache" | "base" | "history";
   size: number;
   detail: string;
   effect: string;

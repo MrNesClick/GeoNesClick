@@ -158,7 +158,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
               <label for="cle-api" class="block text-papier">{{ t("settings.api_key") }}</label>
               <p class="text-[0.85rem] text-courbe">
                 <template v-if="engine.vision.key">
-                  {{ t("settings.key_stored", { end: engine.vision.key.end, source: engine.vision.key.source }) }}
+                  {{ t("settings.key_stored", { end: engine.vision.key.end, source: t(engine.vision.key.source === "env" ? "settings.key_source.env" : "settings.key_source.file") }) }}
                 </template>
                 <template v-else>{{ t("settings.key_none") }}</template>
                 {{ t("settings.key_where_before") }}
@@ -171,7 +171,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
                 <button type="submit" :class="[button, 'border-lac/50 hover:bg-lac/10']" :disabled="!keyInput.trim() || engine.busy">
                   {{ t("settings.save") }}
                 </button>
-                <button v-if="engine.vision.key?.source === 'fichier'" type="button" :class="[button, 'border-alerte/50 hover:bg-alerte/10']"
+                <button v-if="engine.vision.key?.source === 'file'" type="button" :class="[button, 'border-alerte/50 hover:bg-alerte/10']"
                         :disabled="engine.busy" @click="storeKey('')">
                   {{ t("settings.forget") }}
                 </button>
@@ -190,7 +190,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
               </p>
             </div>
             <p v-if="f.section === 'metas' && f.key === 'enabled'" class="-mt-3 text-[0.85rem]"
-               :class="engine.metas.message.startsWith('metas indisponibles') ? 'text-alerte' : 'text-courbe'">
+               :class="engine.metas.error ? 'text-alerte' : 'text-courbe'">
               {{ engine.metas.message }}
             </p>
             <div v-if="f.section === 'plonkit' && f.key === 'refresh_days'" class="-mt-2 space-y-2">

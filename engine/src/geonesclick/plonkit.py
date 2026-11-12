@@ -20,11 +20,12 @@ import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .i18n import t
 from .paths import DATA_DIR as APP_DATA
 from typing import Any
 
 BASE_URL = "https://www.plonkit.net"
-USER_AGENT = "GeoNesClick/0.1 (outil d'entrainement personnel)"
+USER_AGENT = "GeoNesClick/0.1 (personal training tool)"
 DATA_DIR = APP_DATA / "plonkit"
 CHECKED_FILE = "checked_at"  # date of the last check of the guides list
 MAX_BYTES = 5_000_000  # a guide page is ~30 KB: beyond that, something is wrong
@@ -67,14 +68,14 @@ def _get(url: str, timeout: float = 20.0) -> bytes:
     with urllib.request.urlopen(req, timeout=timeout) as res:  # noqa: S310 (URL built from BASE_URL)
         body = res.read(MAX_BYTES + 1)
     if len(body) > MAX_BYTES:
-        raise PlonkitError(f"réponse trop volumineuse : {url}")
+        raise PlonkitError(t("plonkit.too_big", url=url))
     return body
 
 
 def parse_guide_list(payload: bytes) -> list[GuideRef]:
     data = json.loads(payload)
     if not data.get("success") or not isinstance(data.get("data"), list):
-        raise PlonkitError("liste des guides inattendue")
+        raise PlonkitError(t("plonkit.bad_list"))
     refs = []
     for entry in data["data"]:
         slug, code = entry.get("slug", ""), entry.get("code", "")
@@ -87,11 +88,11 @@ def extract_guide(html: str) -> dict[str, Any]:
     """The published guide, as the page embeds it."""
     m = PRELOADED.search(html)
     if not m:
-        raise PlonkitError("bloc __PRELOADED_DATA__ introuvable : la page a peut-être changé de forme")
+        raise PlonkitError(t("plonkit.no_data"))
     data = json.loads(m.group(1))
     guide = (data.get("data") or {}).get("public")
     if not isinstance(guide, dict) or not isinstance(guide.get("steps"), list):
-        raise PlonkitError("guide sans étapes : format inattendu")
+        raise PlonkitError(t("plonkit.no_steps"))
     return guide
 
 
@@ -144,7 +145,7 @@ def collect(
             guide = extract_guide(_get(f"{BASE_URL}/{ref.slug}").decode("utf-8"))
         except urllib.error.HTTPError as exc:
             if exc.code == 429:  # the site asks to slow down: we stop there, the rest will wait
-                raise PlonkitError(f"Plonk It demande de ralentir (429), réessai après {exc.headers.get('Retry-After', '?')} s") from exc
+                raise PlonkitError(t("plonkit.slow_down", seconds=exc.headers.get("Retry-After", "?"))) from exc
             stats["failed"] += 1
             log(f"  failed {ref.slug}: {exc}")
             continue

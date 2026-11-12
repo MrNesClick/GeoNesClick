@@ -24,18 +24,23 @@ def test_every_address_in_the_code_is_declared():
     found = {(URL.match(u).group(1).rstrip("."), str(f.relative_to(ROOT)))
              for f in files for u in URL.findall(f.read_text(errors="ignore")) for u in [f"https://{u}"]}
     missing = sorted((host, where) for host, where in found if host not in known)
-    assert not missing, f"adresses absentes de downloads.toml : {missing}"
+    assert not missing, f"addresses missing from downloads.toml: {missing}"
 
 
 def test_every_entry_says_what_where_how_much_license_why_when():
+    from geonesclick.i18n import UI_LANGUAGES, catalog
+
     for d in manifest()["download"]:
-        assert d["what"] and d["hosts"] and d["license"] and d["why"], d["id"]
-        assert d["when"] in ("installation", "option", "demande", "continu"), d["id"]
+        assert d["hosts"] and d["license"], d["id"]
+        assert d["when"] in ("installation", "option", "on_demand", "continuous"), d["id"]
         assert isinstance(d["size_mb"], int) and isinstance(d["required"], bool), d["id"]
-        if d["when"] == "continu":
-            assert d.get("sends"), f"{d['id']} : dire ce qui part de ta machine"
+        assert not d.keys() & {"what", "why", "sends"}, f"{d['id']}: the texts belong in the catalogs"
+        fields = ["what", "why"] + (["sends"] if d["when"] == "continuous" else [])  # what leaves your machine
+        for lang in UI_LANGUAGES:
+            missing = [f for f in fields if f"download.{d['id']}.{f}" not in catalog(lang)]
+            assert not missing, f"{lang}.json: download.{d['id']}.{missing}"
         if not d["required"]:
-            assert d.get("option"), f"{d['id']} : quel réglage l'active ou le coupe"
+            assert d.get("option"), f"{d['id']}: which setting turns it on or off"
 
 
 def test_option_keys_exist_in_the_config():

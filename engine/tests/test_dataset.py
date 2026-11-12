@@ -15,7 +15,7 @@ def test_add_saves_raw_image_and_label(tmp_path, frame):
     label = ds.add("20261107-080023-137", frame, "LV", found=True, predicted="EE", area='côte "ouest"')
     assert (tmp_path / "images" / label.file).exists()
     [read] = ds.labels()
-    assert (read.country, read.found, read.predicted, read.layout) == ("LV", True, "EE", "fenêtre 64x40")
+    assert (read.country, read.found, read.predicted, read.layout) == ("LV", True, "EE", "window 64x40")
     assert read.area == 'côte "ouest"'  # quotes correctly escaped in TOML
 
 

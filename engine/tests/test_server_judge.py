@@ -157,7 +157,7 @@ def test_looks_can_be_hidden(tmp_path):
 def test_unknown_category_in_config_is_rejected(tmp_path):
     user = tmp_path / "config.toml"
     user.write_text('[metas]\ncategory_weights = { inconnue = 1.0 }\n')
-    with pytest.raises(ValueError, match="catégories inconnues"):
+    with pytest.raises(ValueError, match="unknown categories"):
         load_config(user)
 
 
@@ -177,5 +177,5 @@ def test_unreadable_user_file_is_a_conflict(setup, cfg):
 def test_negative_weight_is_rejected(tmp_path):
     user = tmp_path / "config.toml"
     user.write_text("[metas]\ncategory_weights = { domaine = -1.0 }\n")
-    with pytest.raises(ValueError, match="positif"):
+    with pytest.raises(ValueError, match="positive or zero"):
         load_config(user)

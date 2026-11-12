@@ -25,6 +25,7 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from .i18n import t
 from .evidence import STREET_AFTER, STREET_BEFORE, Evidence
 from .locate import haversine
 
@@ -90,9 +91,9 @@ def _fetch(url: str) -> bytes:
         with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310 (https checked by build)
             data = resp.read(MAX_BYTES + 1)
     except OSError as exc:
-        raise PlacesError(f"téléchargement impossible ({exc})") from exc
+        raise PlacesError(t("places.download_failed", error=exc)) from exc
     if len(data) > MAX_BYTES:
-        raise PlacesError("archive démesurée, refusée")
+        raise PlacesError(t("places.archive_too_big"))
     return data
 
 
@@ -107,7 +108,7 @@ def _regions(url: str | None, directory: Path) -> dict[str, str]:
     fresh = not cached.exists()
     if fresh:
         if not url.startswith("https://"):
-            raise PlacesError("adresse des régions refusée : https attendu")
+            raise PlacesError(t("places.regions_url"))
         try:
             text = _fetch(url).decode("utf-8")
         except (PlacesError, UnicodeDecodeError):
@@ -132,7 +133,7 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
     regions_url: region names (general directory only; the countries' details share these codes).
     """
     if not url.startswith("https://"):
-        raise PlacesError("adresse du répertoire refusée : https attendu")
+        raise PlacesError(t("places.directory_url"))
     directory.mkdir(parents=True, exist_ok=True)
     cached = directory / archive_name if archive_name else None
     data = cached.read_bytes() if cached and cached.exists() else _fetch(url)
@@ -142,12 +143,12 @@ def build(url: str, directory: Path, min_len: int = 3, db_name: str = DB_NAME, a
             member = next((n for n in archive.namelist()
                            if n.endswith(".txt") and "/" not in n and n.lower() != "readme.txt"), None)
             if member is None:
-                raise PlacesError("archive sans fichier de lieux")
+                raise PlacesError(t("places.no_file"))
             if archive.getinfo(member).file_size > MAX_UNZIPPED:
-                raise PlacesError("fichier de lieux démesuré une fois décompressé, refusé")
+                raise PlacesError(t("places.file_too_big"))
             text = archive.read(member).decode("utf-8")
     except (zipfile.BadZipFile, UnicodeDecodeError) as exc:
-        raise PlacesError("archive illisible") from exc
+        raise PlacesError(t("places.unreadable")) from exc
     best: dict[tuple[str, str], list[tuple[int, str, float, float, str]]] = {}
     for line in text.splitlines():
         cols = line.split("\t")
@@ -250,7 +251,7 @@ def _read_table(table: list[float | list[Evidence]], ahead: dict[int, float]) ->
 
 def detail_name(country: str) -> str:
     if not COUNTRY.fullmatch(country):
-        raise PlacesError(f"code pays invalide : {country!r}")
+        raise PlacesError(t("places.bad_country", code=repr(country)))
     return f"detail-{country}-{VERSION}.sqlite"
 
 
@@ -269,7 +270,7 @@ class Places:
 
     def __init__(self, path: Path) -> None:
         if not path.exists():
-            raise PlacesError("répertoire des lieux absent")
+            raise PlacesError(t("places.missing"))
         self.con = _open(path)
         self._lock = threading.Lock()
         self.count = self.con.execute("SELECT COUNT(*) FROM place").fetchone()[0]
@@ -375,7 +376,7 @@ class Places:
                     blocked |= set(range(i + 1))
             if blocked and len(blocked) > 1:
                 street = f"{street_next} {line}".strip() if street_next else line.strip()
-                out.append(Evidence("rue", street, "nom de rue : ne situe pas la vue", [], ""))
+                out.append(Evidence("rue", street, t("places.street"), [], ""))
             street_next = line.strip() if len(norm) == 1 and norm[0] in STREET_BEFORE else ""
             used = [i in blocked for i in range(len(words))]
             for size in range(min(MAX_WORDS, len(words)), 0, -1):
