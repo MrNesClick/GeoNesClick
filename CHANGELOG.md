@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-11-12
+
 ### Fixed
 
 - "Erase everything" with the models box left their weights on the disk (1.7 GB for StreetCLIP) and showed their
@@ -153,7 +155,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.4...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.5...HEAD
+[0.2.5]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.3...v0.2.4
 [0.2.3]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.1...v0.2.2
