@@ -136,6 +136,7 @@ app/                        Tauri shell and interface
   src/components/           coach (Countries, CoachMap, Observations, Locks, Marks…), Settings, Setup
   src/MarksOverlay.vue      full-screen marks window
   src/settingsSchema.ts     the settings screen: groups and fields
+  e2e/                      interface tests (Playwright, WebKit): the Rust side and the engine simulated
 engine/                     Python engine
   src/geonesclick/          server, capture, StreetCLIP, PLONK, vision, marks and local rules, locks, metas,
                             Plonk It, test set, settings, storage
@@ -149,5 +150,8 @@ scripts/
   build-appimage.sh         builds the AppImage
   install-engine.sh         run by the installer to install the engine
   release-notes.sh          a version's section of CHANGELOG.md, for the release
-.github/workflows/          release build
+  check-version.py          the release number follows strict SemVer (CLAUDE.md)
+  test-install.py           installs the engine in containers of six systems (with install-smoke.py)
+.github/workflows/          release: checks, tests, AppImage, then publication
+.github/ISSUE_TEMPLATE/     the "Report on my system" form
 ```

@@ -75,7 +75,7 @@ by its sha256 in `scripts/build-appimage.sh` (`RUNTIME_SHA256`), although upstre
 "continuous". When upstream publishes a new one, the build stops with "the AppImage runtime changed upstream": build
 with the new hash, test the AppImage on a clean Ubuntu (no libfuse2), then commit the hash.
 
-**Before each commit**: the three test suites (see [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-send-a-change)),
+**Before each commit**: the test suites (see [CONTRIBUTING.md](../CONTRIBUTING.md#before-you-send-a-change)),
 then a code review and a security review.
 
 ## Tools and licences

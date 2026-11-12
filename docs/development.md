@@ -82,9 +82,10 @@ git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin v0.2.0
 
 The workflow checks that the tag matches the four versions, that CHANGELOG.md has a section for it
 (`scripts/release-notes.sh 0.2.0` prints it) and that the number follows the rule above against the previous tag
-(`scripts/check-version.py 0.2.0`, which gives the expected number otherwise); then it runs the tests, builds the
-AppImage on Ubuntu 24.04 and publishes the release with the AppImage, its SHA-256 checksum and that section as
-release notes.
+(`scripts/check-version.py 0.2.0`, which gives the expected number otherwise). It then runs the tests and the
+interface tests, builds the AppImage on Ubuntu 24.04, installs the engine bundle it has just built on six systems
+(`scripts/test-install.py`), and only then publishes the release with the AppImage, its SHA-256 checksum and that
+section as release notes. A failure at any step publishes nothing.
 
 ## Tests
 
