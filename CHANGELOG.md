@@ -7,6 +7,10 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- The installation of the engine no longer fails at the AI model step ("No module named 'httpx'", 0.2.0 and 0.2.1).
+
 ## [0.2.1] - 2026-11-12
 
 ### Added

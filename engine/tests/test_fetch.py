@@ -1,5 +1,6 @@
 import errno
 
+import httpx2
 import huggingface_hub
 import pytest
 from huggingface_hub.errors import LocalEntryNotFoundError
@@ -19,6 +20,8 @@ def _failing(exc):
      "LocalEntryNotFoundError: An error happened while trying to locate the file on the Hub and we cannot find "
      "the requested files in the local cache."),
     (OSError(errno.ENOSPC, "No space left on device"), "No space left on device"),
+    (httpx2.ConnectError("[Errno -3] Temporary failure in name resolution"),
+     "ConnectError: [Errno -3] Temporary failure in name resolution"),
 ])
 def test_a_failed_download_is_one_readable_line_naming_the_hub(monkeypatch, capsys, exc, expected):
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", _failing(exc))

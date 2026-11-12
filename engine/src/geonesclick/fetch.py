@@ -22,7 +22,7 @@ FILES = {
 
 
 def fetch(which: str) -> None:
-    import httpx
+    import httpx2  # huggingface_hub's HTTP client (httpx is only a test dependency here)
     from huggingface_hub import hf_hub_download
 
     quiet_token_nag()
@@ -32,7 +32,7 @@ def fetch(which: str) -> None:
     for name in FILES[which]:
         try:
             hf_hub_download(model, name, revision=revision)
-        except (OSError, httpx.HTTPError) as e:  # Hub unreachable or failing, interrupted transfer, disk full
+        except (OSError, httpx2.HTTPError) as e:  # Hub unreachable or failing, interrupted transfer, disk full
             raise FetchError(f"{model}/{name}", e) from e
         print(f"FICHIER {model}/{name}", flush=True)
 
