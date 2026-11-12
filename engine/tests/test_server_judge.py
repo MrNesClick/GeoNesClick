@@ -32,6 +32,8 @@ def setup(cfg):
 
 
 class FakeClip:
+    device = "cpu"
+
     def analyse(self, _img):
         return [CountryScore("Norway", "NO", 0.6), CountryScore("Sweden", "SE", 0.4)], 5.0, None, None
 

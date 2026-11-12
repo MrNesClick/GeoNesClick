@@ -12,6 +12,8 @@ from geonesclick.streetclip import CountryScore
 
 
 class FakeClip:
+    device = "cpu"
+
     def analyse(self, _img):
         return [CountryScore("Hungary", "HU", 0.7), CountryScore("Slovakia", "SK", 0.3)], 5.0, None, None
 

@@ -23,6 +23,9 @@ its release notes.
 
 - The Settings screen no longer stays on "Loading the settings…" when it was opened while the engine was still
   starting (first launch): it loads once the engine answers.
+- Without an NVIDIA card, the first captures no longer wait minutes for the Plonk It tips to be prepared (about 5
+  minutes on a 4-core processor, once): a capture now waits under a second, and the coach shows the preparation's
+  progress until the tips close to the view appear.
 
 ## [0.2.2] - 2026-11-12
 

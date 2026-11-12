@@ -17,6 +17,8 @@ ORIGIN = {"Origin": "http://localhost:1420"}
 
 
 class FakeClip:
+    device = "cpu"
+
     def analyse(self, _img):
         return [CountryScore("Romania", "RO", 0.6), CountryScore("Bulgaria", "BG", 0.4)], 5.0, None, None
 

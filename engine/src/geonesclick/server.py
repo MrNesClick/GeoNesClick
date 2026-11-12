@@ -68,6 +68,9 @@ from .vision import VisionClient, VisionError
 
 RECENT_FRAMES = 10  # raw captures kept in memory for "Where was it?"
 TRANSLATE_BATCH = 3  # tips per translation call (the calls go out in parallel)
+# Plonk It tips encoded per batch, the model's lock released between two: about 0.07 s per tip on a 4-core processor
+# (measured 2026-11-12, VM), so a capture waits 0.6 s at most; on a graphics card, the batch is the old one.
+PLONKIT_BATCH_CPU, PLONKIT_BATCH_GPU = 8, 64
 PRETRANSLATE_BATCH = 10  # tips per call of the ahead-of-time translation (short answer: less fragile JSON)
 
 
@@ -523,10 +526,19 @@ class Engine(MarksMixin, LocksMixin):
         tips = await asyncio.to_thread(load_tips, pc.path)
         await asyncio.to_thread(index.rebuild, tips, pc.keywords)
         missing = await asyncio.to_thread(index.missing_embeddings, model)
-        if missing:
-            async with self.gpu_lock:  # shares the graphics card with the captures
-                vectors = await asyncio.to_thread(self.streetclip.encode_texts, [text for _, text in missing])
-            await asyncio.to_thread(index.store_embeddings, model, zip([h for h, _ in missing], vectors, strict=True))
+        # Short batches, the model's lock released between two (decided with the user on 2026-11-12): on a processor,
+        # the 4,000 tips take minutes (5 on a 4-core VM) and a capture must not wait for them, only for one batch.
+        # Each batch is stored at once: closing the app in the middle loses nothing.
+        batch = PLONKIT_BATCH_GPU if self.streetclip.device == "cuda" else PLONKIT_BATCH_CPU
+        shown = 0.0
+        for start in range(0, len(missing), batch):
+            if time.monotonic() - shown >= 1:  # progress at most once a second: every batch would flood the UI
+                shown = time.monotonic()
+                await self._plonkit_status("busy", i18n.t("srv.plonkit_preparing", done=start, total=len(missing)))
+            chunk = missing[start:start + batch]
+            async with self.gpu_lock:  # shares the model with the captures
+                vectors = await asyncio.to_thread(self.streetclip.encode_texts, [text for _, text in chunk])
+            await asyncio.to_thread(index.store_embeddings, model, zip([h for h, _ in chunk], vectors, strict=True))
         return await asyncio.to_thread(index.load, model)
 
     @property

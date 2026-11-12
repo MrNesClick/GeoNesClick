@@ -151,6 +151,16 @@ const tabs = computed(() => [
             >
               <PlonkitTips :analysis="engine.current" />
             </Section>
+            <!-- First launch on a processor: the tips are still being encoded (minutes); say so instead of nothing. -->
+            <Section
+              v-else-if="engine.plonkit.enabled && engine.plonkit.status === 'busy'"
+              id="tips"
+              :title="t('app.section.tips')"
+              :open="false"
+              :summary="engine.plonkit.message"
+            >
+              <p class="text-[0.9rem] text-courbe" role="status">{{ t("tips.preparing") }}</p>
+            </Section>
           </template>
 
           <Section v-if="level >= 2" id="vision" :title="t('app.section.vision')" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">

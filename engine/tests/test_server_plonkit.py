@@ -23,11 +23,15 @@ def guide(slug, code, texts):
 
 
 class FakeClip:
+    device = "cpu"
+
     def __init__(self):
-        self.encoded = 0
+        self.encoded, self.batches = 0, []
 
     def encode_texts(self, texts):
         self.encoded += len(texts)
+        self.batches.append(len(texts))
+        time.sleep(0.01)  # long enough for a capture to queue for the model
         return np.stack([YELLOW if "yellow" in t else OTHER for t in texts])
 
 
@@ -54,6 +58,30 @@ def test_local_guides_are_indexed_and_matched_to_the_view(engine):
     assert similar["NO"][0]["text"] == "A yellow centre line."
     assert similar["NO"][0]["url"] == "https://www.plonkit.net/norway"
     assert set(similar) == {"NO", "SE"}
+
+
+def test_tips_are_encoded_in_short_batches_that_let_a_capture_through(engine, monkeypatch):
+    """On a processor, encoding the 4,000 tips takes minutes: a capture must only wait for one batch."""
+    raw = engine.cfg.plonkit.path / "raw"
+    (raw / "norway.json").write_text(json.dumps(guide("norway", "NO", [f"Tip {i}." for i in range(20)])))
+    monkeypatch.setattr(server, "PLONKIT_BATCH_CPU", 8)
+    messages = []
+    engine.broadcast = lambda state: asyncio.sleep(0, messages.append(state["plonkit"]["message"]))
+
+    async def go():
+        refresh = asyncio.create_task(engine.refresh_plonkit(check=False))
+        while not engine.gpu_lock.locked():  # wait for the first batch to hold the model
+            await asyncio.sleep(0.001)
+        async with engine.gpu_lock:  # a capture
+            got_it_after = engine.streetclip.encoded
+        await refresh
+        return got_it_after
+
+    got_it_after = asyncio.run(go())
+    assert engine.streetclip.batches == [8, 8, 5]  # 20 tips + Sweden's
+    assert got_it_after == 8  # the capture waited for one batch only, not for the 21 tips
+    assert any("21" in m and "0 / 21" in m for m in messages)  # progress shown
+    assert engine.plonkit_status == "ready" and len(engine.plonkit_tips) == 21
 
 
 def test_vectors_are_cached_between_refreshes(engine):
