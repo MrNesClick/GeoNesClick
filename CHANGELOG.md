@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-13
+
 ### Changed
 
 - Without a proof read on the view, the coach names a country as the answer only when the look of the view
@@ -196,7 +198,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.5...v0.3.0
