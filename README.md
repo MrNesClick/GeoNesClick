@@ -50,8 +50,47 @@ The interface is in English and French (chosen on first launch, changeable in th
 4. Choose your options, enter your API key if you have one, and you are ready. One option, off by default, adds
    GeoNesClick to the applications menu, with its own icon in the dock; it can be changed in Settings › GNOME
    integration, like the keyboard shortcuts.
+5. The assistant also copies the application itself to `~/.local/share/geonesclick/GeoNesClick.AppImage`, under a
+   name without its version, and the applications menu launches it from there. Why: the menu entry and the updates
+   need a file that stays put, whereas yours carries a version in its name and lives in your downloads. Renaming,
+   moving or deleting the file you downloaded therefore breaks nothing; once the coach has started, it tells you
+   that it can be deleted.
 
-To update, download the new AppImage and open it: the assistant updates the engine.
+### Update
+
+Download the new AppImage and open it once. The update runs on its own, without a question:
+
+- your settings, your API key and your data are kept; the settings are migrated in the background when the new
+  version needs it;
+- only the libraries that changed are downloaded (a few MB when only GeoNesClick changed, instead of 3.1 GB with an
+  NVIDIA card), so the engine's size must be free on the disk for a moment;
+- while it runs, it shows what changed since your version (the [changelog](CHANGELOG.md) entries, in English);
+- the new version then replaces the installed copy, the menu opens it from then on, and the coach tells you once that
+  the downloaded file can be deleted.
+
+Opening an AppImage older than the installed version changes nothing: it says so and offers to open the installed
+one.
+
+### Uninstall
+
+From the app: Settings › Storage › **Erase everything**, with the **engine** box ticked (and the **models** box to
+also remove StreetCLIP and PLONK, 1.8 GB). This removes your settings, your API key, your data, the keyboard
+shortcuts, the applications-menu entry, the engine and the installed copy of the application. Only the AppImage you
+downloaded is left, if you kept it: delete it.
+
+If the app no longer starts, close it, then remove the same things by hand (default folders; yours differ if you set
+`XDG_DATA_HOME`, `XDG_CONFIG_HOME` or `HF_HOME`):
+
+```sh
+rm -rf ~/.local/share/geonesclick ~/.config/geonesclick
+rm -f ~/.local/share/applications/fr.mrnesclick.geonesclick.desktop \
+      ~/.local/share/icons/hicolor/*/apps/fr.mrnesclick.geonesclick.png
+rm -rf ~/.cache/huggingface/hub/models--geolocal--StreetCLIP \
+       ~/.cache/huggingface/hub/models--nicolas-dufour--PLONK_OSV_5M
+```
+
+and delete the two shortcuts "GeoNesClick – capture" and "GeoNesClick – marks" in GNOME's Settings › Keyboard ›
+Custom Shortcuts.
 
 ## Use
 

@@ -107,12 +107,16 @@ pub fn run() {
             setup::setup_system_install,
             setup::setup_install,
             setup::setup_apply,
+            setup::setup_finish_update,
+            setup::place_appimage,
+            setup::open_installed,
             integration::integration_status,
             integration::set_shortcuts,
             integration::set_menu_entry,
             integration::remove_integration
         ])
         .setup(|app| {
+            setup::ensure_installed_copy(app.handle());
             integration::refresh_menu_entry();
             integration::refresh_shortcuts(app.handle());
             let child = spawn_engine(app.handle());

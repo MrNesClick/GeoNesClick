@@ -13,6 +13,22 @@ the app's start resumes the remembered window without asking. If that window no 
 and opens the picker. A capture that is the same image as the previous one is analysed with a note: if the game view
 changed in between, the sharing is frozen; restart it.
 
+## Installed copy and updates (AppImage)
+
+The assistant copies the AppImage being run to `$XDG_DATA_HOME/geonesclick/GeoNesClick.AppImage` (by default
+`~/.local/share/`, the folder the XDG Base Directory specification gives every distribution for user data), under a
+name without its version, through a temporary file renamed over the previous copy: a running instance keeps its file.
+The applications-menu entry launches that copy, so the downloaded file can be renamed, moved or deleted. A launch
+that installs nothing puts the copy back if it went missing.
+
+Opening a newer AppImage over an installed version (`setup_status`: `upgrade`) updates without a question: the same
+variant (`engine/VARIANT`, or PyTorch's `+cpu` suffix for an engine installed before 0.5.0), the choices and the key
+kept, then the new copy installed and the coach started. `install-engine.sh` starts `venv.new` from a copy of the
+installed engine when its Python version and variant are the same, then `uv pip sync`s it to the pinned
+requirements: only what changed is downloaded. The bundle carries `CHANGELOG.md`; the sections after the installed
+version are shown during the update and once in the coach. An older AppImage (`older`) changes nothing and offers
+to open the installed copy.
+
 ## Updates and data
 
 **Update (from source)**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with
@@ -53,7 +69,8 @@ coach are deleted, never a whole folder.
 goes is shown with the sizes: API key, settings, your metas, screen-sharing permission, captures and logs, test set
 (flagged as precious), Plonk It guides and translations, GeoNames places and villages, UI state, the app's GNOME
 shortcuts and its applications-menu entry. Two separate boxes, unticked: also the downloaded models (StreetCLIP, PLONK: nothing personal; other
-software's models stay), and, with the AppImage, the engine installed in `~/.local/share/geonesclick/engine/`. You
+software's models stay), and, with the AppImage, the engine installed in `~/.local/share/geonesclick/engine/` with the
+installed copy of the application (`~/.local/share/geonesclick/GeoNesClick.AppImage`). You
 have to type the word shown ("ERASE" in English). Then the engine and the UI start again from scratch; with the
 engine box, GeoNesClick is uninstalled instead (with the models box too, only the AppImage is left), and opening
 the AppImage again reinstalls the engine. Only files

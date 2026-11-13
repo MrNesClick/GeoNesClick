@@ -98,6 +98,71 @@ fn read_version(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
 }
 
+/// A version's numbers ("0.5.0" → [0, 5, 0]); None for anything else, which is never called older.
+fn numbers(version: &str) -> Option<Vec<u64>> {
+    version.split('.').map(|n| n.parse().ok()).collect()
+}
+
+/// Is `version` older than `than`? Only plain x.y.z versions compare (the releases'); anything else is not older.
+fn older(version: &str, than: &str) -> bool {
+    matches!((numbers(version), numbers(than)), (Some(a), Some(b)) if a < b)
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct Release {
+    version: String,
+    /// Its CHANGELOG.md section (Markdown), without the "## [x.y.z]" heading.
+    text: String,
+}
+
+/// The CHANGELOG.md sections of the versions after `installed` up to `version` included, newest first: what an
+/// update brings, migrations included (each section's "Migration" part).
+fn releases_between(changelog: &str, installed: &str, version: &str) -> Vec<Release> {
+    let mut out: Vec<Release> = Vec::new();
+    let mut current: Option<Release> = None;
+    for line in changelog.lines() {
+        if line.starts_with("## [") || (line.starts_with('[') && line.contains("]: ")) {
+            out.extend(current.take());
+            let heading = line.strip_prefix("## [").and_then(|rest| rest.split(']').next());
+            current = heading
+                .filter(|v| older(installed, v) && !older(version, v))
+                .map(|v| Release { version: v.to_string(), text: String::new() });
+        } else if let Some(release) = current.as_mut() {
+            release.text.push_str(line);
+            release.text.push('\n');
+        }
+    }
+    out.extend(current);
+    for release in &mut out {
+        release.text = release.text.trim().to_string();
+    }
+    out.retain(|r| !r.text.is_empty());
+    out
+}
+
+/// The installed copy of the application: the newest AppImage opened is copied there under a name without its
+/// version, and the applications-menu entry points to it, so deleting or renaming the downloaded file breaks nothing.
+pub fn installed_appimage() -> PathBuf {
+    data_dir().join("GeoNesClick.AppImage")
+}
+
+/// The AppImage file being run (None in development).
+pub fn running_appimage() -> Option<PathBuf> {
+    std::env::var_os("APPIMAGE").filter(|v| !v.is_empty()).map(PathBuf::from).filter(|p| p.is_file())
+}
+
+/// The variant installed by an earlier version ("cuda" or "cpu"): install-engine.sh writes it since 0.5.0; before,
+/// PyTorch's own version tells (2.9.1+cpu for the processor one).
+fn installed_variant() -> Option<String> {
+    if let Some(variant) = read_version(&engine_home().join("VARIANT")) {
+        return Some(variant);
+    }
+    let site = engine_home().join("venv/lib").read_dir().ok()?.flatten().next()?.path().join("site-packages");
+    let torch = site.read_dir().ok()?.flatten().map(|e| e.file_name().to_string_lossy().into_owned())
+        .find(|n| n.starts_with("torch-") && n.ends_with(".dist-info"))?;
+    Some(if torch.contains("+cpu") { "cpu" } else { "cuda" }.to_string())
+}
+
 /// Does the engine need installing (first launch) or updating (different AppImage version)?
 pub fn needed(app: &AppHandle) -> bool {
     match bundle_dir(app) {
@@ -265,6 +330,18 @@ pub struct Status {
     installed: Option<String>,
     /// Installed for this version, but the choices are not written yet (window closed before the end).
     engine_ready: bool,
+    /// Another version is installed with its choices: an update, done without a question (settings and key kept).
+    upgrade: bool,
+    /// This AppImage is older than the installed version: nothing is touched, the installed one is to be opened.
+    older: bool,
+    /// The variant to update ("cuda" or "cpu"), the one installed.
+    installed_variant: Option<String>,
+    /// The installed copy of the application exists (it can be opened instead of an older AppImage).
+    installed_copy: bool,
+    /// Where the installed copy goes, as shown.
+    copy_dir: String,
+    /// For an update: what changed since the installed version (bundled CHANGELOG.md), newest first.
+    whats_new: Vec<Release>,
     gpu: bool,
     checks: Vec<Check>,
     package_manager: Option<PackageManager>,
@@ -280,11 +357,27 @@ pub struct Status {
 pub fn setup_status(app: AppHandle) -> Status {
     let bundle = bundle_dir(&app);
     let file = |name: &str| bundle.as_ref().map(|b| read_json(&b.join(name))).unwrap_or(Value::Null);
+    let version = bundle.as_ref().and_then(|b| read_version(&b.join("VERSION")));
+    let installed = read_version(&engine_home().join("VERSION"));
+    let other = matches!((&version, &installed), (Some(v), Some(i)) if v != i);
+    let older = matches!((&version, &installed), (Some(v), Some(i)) if self::older(v, i));
+    let installed_variant = installed_variant();
     Status {
         bundled: bundle.is_some(),
         needed: needed(&app),
-        version: bundle.as_ref().and_then(|b| read_version(&b.join("VERSION"))),
-        installed: read_version(&engine_home().join("VERSION")),
+        upgrade: other && !older && venv_python().is_file() && installed_variant.is_some(),
+        installed_copy: installed_appimage().is_file(),
+        whats_new: match (&bundle, &version, &installed) {
+            (Some(b), Some(v), Some(i)) => {
+                releases_between(&std::fs::read_to_string(b.join("CHANGELOG.md")).unwrap_or_default(), i, v)
+            }
+            _ => Vec::new(),
+        },
+        copy_dir: shown(&data_dir()),
+        older,
+        installed_variant,
+        version,
+        installed,
         engine_ready: venv_python().is_file()
             && bundle.as_ref().and_then(|b| read_version(&b.join("VERSION"))).is_some_and(|v| {
                 read_version(&engine_home().join("INSTALLED")).as_deref() == Some(v.as_str())
@@ -468,6 +561,67 @@ pub fn setup_apply(app: AppHandle, choices: Value, api_key: Option<String>) -> R
     Ok(())
 }
 
+/// The end of an update: the installed choices and key stay as they are; the new version may now start.
+#[tauri::command]
+pub fn setup_finish_update(app: AppHandle) -> Result<(), String> {
+    let bundle = bundle_dir(&app).ok_or_else(|| i18n::tr("setup.error.no_bundle", &[]))?;
+    std::fs::copy(bundle.join("VERSION"), engine_home().join("VERSION")).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn same_file(a: &Path, b: &Path) -> bool {
+    matches!((a.canonicalize(), b.canonicalize()), (Ok(a), Ok(b)) if a == b)
+}
+
+/// Copies `from` to `to` as an executable, through a temporary file renamed over it: an instance running the old
+/// copy keeps its file, and an interrupted copy never leaves half a program.
+fn copy_executable(from: &Path, to: &Path) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    let part = to.with_extension("AppImage.part");
+    std::fs::create_dir_all(to.parent().unwrap_or(Path::new("."))).map_err(|e| e.to_string())?;
+    let copied = std::fs::copy(from, &part)
+        .and_then(|_| std::fs::set_permissions(&part, std::fs::Permissions::from_mode(0o755)))
+        .and_then(|()| std::fs::rename(&part, to));
+    if copied.is_err() {
+        let _ = std::fs::remove_file(&part);
+    }
+    copied.map_err(|e| i18n::tr("setup.error.copy", &[("error", &e.to_string())]))
+}
+
+/// Installs the AppImage being run as the application's copy (installed_appimage). Returns the downloaded file, as
+/// shown, which the player may now delete; None when the installed copy is the one running, or in development.
+#[tauri::command]
+pub fn place_appimage() -> Result<Option<String>, String> {
+    let Some(running) = running_appimage() else { return Ok(None) };
+    let target = installed_appimage();
+    if same_file(&running, &target) {
+        return Ok(None);
+    }
+    copy_executable(&running, &target)?;
+    Ok(Some(shown(&running)))
+}
+
+/// An older AppImage was opened: the installed version is started instead, and this one quits without touching
+/// anything.
+#[tauri::command]
+pub fn open_installed(app: AppHandle) -> Result<(), String> {
+    host_command(installed_appimage())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| i18n::tr("setup.error.launch", &[("error", &e.to_string())]))?;
+    app.exit(0);
+    Ok(())
+}
+
+/// At a launch that installs nothing, the installed copy is put back if it went missing (removed by hand).
+pub fn ensure_installed_copy(app: &AppHandle) {
+    if bundle_dir(app).is_some() && !needed(app) && !installed_appimage().is_file() {
+        let _ = place_appimage();
+    }
+}
+
 fn store_key(key: &str) -> bool {
     let Ok(mut child) = host_command(venv_python())
         .args(["-m", "geonesclick.apikey"])
@@ -494,6 +648,11 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
     if home.ends_with("geonesclick/engine") && home.is_dir() {
         std::fs::remove_dir_all(&home).map_err(|e| e.to_string())?;
     }
+    // The installed copy of the application goes with it (a running instance keeps its open file).
+    match std::fs::remove_file(installed_appimage()) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e.to_string()),
+        _ => {}
+    }
     // The engine was the last thing in ~/.local/share/geonesclick (the engine erased the rest): the folder goes if
     // it is empty, never with something in it.
     let _ = std::fs::remove_dir(data_dir());
@@ -503,6 +662,41 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_update_shows_the_sections_since_the_installed_version() {
+        let changelog = "# Changelog\n\n## [Unreleased]\n\n- soon\n\n## [0.5.1] - 2026-12-01\n\n### Fixed\n\n- b\n\n\
+                         ## [0.5.0] - 2026-11-20\n\n### Added\n\n- a\n\n## [0.4.1] - 2026-11-13\n\n- old\n\n\
+                         [0.5.1]: https://github.com/x/compare/v0.5.0...v0.5.1\n";
+        let found = releases_between(changelog, "0.4.1", "0.5.1");
+        assert_eq!(found.iter().map(|r| r.version.as_str()).collect::<Vec<_>>(), ["0.5.1", "0.5.0"]);
+        assert_eq!(found[0].text, "### Fixed\n\n- b");
+        assert_eq!(releases_between(changelog, "0.5.0", "0.5.0"), Vec::new());
+        assert_eq!(releases_between(changelog, "0.4.1", "0.5.0").len(), 1); // a newer section is not this version's
+    }
+
+    #[test]
+    fn only_an_older_release_number_is_older() {
+        assert!(older("0.4.1", "0.5.0") && older("0.5.0", "0.10.0") && older("0.9.9", "1.0.0"));
+        assert!(!older("0.5.0", "0.5.0") && !older("0.5.1", "0.5.0") && !older("1.0.0", "0.9.9"));
+        assert!(!older("0.5.0-dev", "0.5.0") && !older("0.4.1", "x"));
+    }
+
+    #[test]
+    fn the_installed_copy_is_replaced_whole_and_executable() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("gnc-copy-{}", std::process::id()));
+        let (from, to) = (dir.join("GeoNesClick_0.5.0_amd64.AppImage"), dir.join("data/GeoNesClick.AppImage"));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(&from, b"new").unwrap();
+        copy_executable(&from, &to).unwrap();
+        std::fs::write(&from, b"newer").unwrap();
+        copy_executable(&from, &to).unwrap(); // over the previous copy
+        assert_eq!(std::fs::read(&to).unwrap(), b"newer");
+        assert_eq!(std::fs::metadata(&to).unwrap().permissions().mode() & 0o777, 0o755);
+        assert!(!to.with_extension("AppImage.part").exists() && same_file(&to, &to) && !same_file(&from, &to));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 
     #[test]
     fn appimage_entries_are_dropped_from_path_lists() {

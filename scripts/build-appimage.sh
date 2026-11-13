@@ -80,6 +80,7 @@ step "4. Pinned dependencies and detailed list"
 "$ROOT/engine/.venv/bin/python" -I "$ROOT/scripts/bundle_meta.py" "$OUT"
 install -m 0755 "$ROOT/scripts/install-engine.sh" "$OUT/install-engine.sh"
 grep -m1 '^version' "$ROOT/engine/pyproject.toml" | cut -d'"' -f2 > "$OUT/VERSION"
+install -m 0644 "$ROOT/CHANGELOG.md" "$OUT/CHANGELOG.md"  # an update shows what changed since the installed version
 ok "version $(cat "$OUT/VERSION")"
 
 ((ENGINE_ONLY)) && { du -sh "$OUT"; exit 0; }

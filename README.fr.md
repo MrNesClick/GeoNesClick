@@ -53,8 +53,48 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
 4. Choisis tes options, saisis ta clé API si tu en as une, et c'est prêt. Une option, désactivée par défaut, ajoute
    GeoNesClick au menu des applications, avec sa propre icône dans le dock ; elle se change dans Réglages ›
    Intégration GNOME, comme les raccourcis clavier.
+5. L'assistant copie aussi l'application elle-même dans `~/.local/share/geonesclick/GeoNesClick.AppImage`, sous un
+   nom sans sa version, et le menu des applications la lance de là. Pourquoi : l'entrée du menu et les mises à jour
+   ont besoin d'un fichier qui ne bouge pas, alors que le tien porte une version dans son nom et vit dans tes
+   téléchargements. Renommer, déplacer ou supprimer le fichier téléchargé ne casse donc rien ; une fois le coach
+   démarré, il te dit qu'il peut être supprimé.
 
-Pour mettre à jour, télécharge la nouvelle AppImage et ouvre-la : l'assistant met le moteur à jour.
+### Mettre à jour
+
+Télécharge la nouvelle AppImage et ouvre-la une fois. La mise à jour se fait toute seule, sans question :
+
+- tes réglages, ta clé API et tes données sont gardés ; les réglages sont migrés en arrière-plan quand la nouvelle
+  version le demande ;
+- seules les bibliothèques qui ont changé sont téléchargées (quelques Mo quand seul GeoNesClick a changé, au lieu de
+  3,1 Go avec une carte NVIDIA) : il faut donc, un moment, la taille du moteur libre sur le disque ;
+- pendant ce temps, elle montre ce qui a changé depuis ta version (les entrées du [journal des
+  modifications](CHANGELOG.md), en anglais) ;
+- la nouvelle version remplace ensuite la copie installée, le menu l'ouvre désormais, et le coach te dit une fois que
+  le fichier téléchargé peut être supprimé.
+
+Ouvrir une AppImage plus ancienne que la version installée ne change rien : elle le dit et propose d'ouvrir celle
+qui est installée.
+
+### Désinstaller
+
+Depuis l'app : Réglages › Stockage › **Tout effacer**, avec la case **moteur** cochée (et la case **modèles** pour
+retirer aussi StreetCLIP et PLONK, 1,8 Go). Cela retire tes réglages, ta clé API, tes données, les raccourcis
+clavier, l'entrée du menu des applications, le moteur et la copie installée de l'application. Il ne reste que
+l'AppImage que tu as téléchargée, si tu l'as gardée : supprime-la.
+
+Si l'app ne démarre plus, ferme-la, puis retire les mêmes éléments à la main (dossiers par défaut ; les tiens
+diffèrent si tu as défini `XDG_DATA_HOME`, `XDG_CONFIG_HOME` ou `HF_HOME`) :
+
+```sh
+rm -rf ~/.local/share/geonesclick ~/.config/geonesclick
+rm -f ~/.local/share/applications/fr.mrnesclick.geonesclick.desktop \
+      ~/.local/share/icons/hicolor/*/apps/fr.mrnesclick.geonesclick.png
+rm -rf ~/.cache/huggingface/hub/models--geolocal--StreetCLIP \
+       ~/.cache/huggingface/hub/models--nicolas-dufour--PLONK_OSV_5M
+```
+
+puis supprime les deux raccourcis « GeoNesClick – capture » et « GeoNesClick – marques » dans Paramètres de GNOME ›
+Clavier › Raccourcis personnalisés.
 
 ## Utiliser
 

@@ -9,6 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { num } from "../engine";
 import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
+import WhatsNew, { type Release } from "./WhatsNew.vue";
 
 // Language: English by default, chosen on the first screen, written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
@@ -29,6 +30,15 @@ interface Status {
   package_manager: "apt" | "dnf" | "pacman" | "zypper" | null;
   /** Where the engine and the models go, home written ~ (XDG_DATA_HOME, HF_HOME… followed). */
   data_dir: string; models_dir: string;
+  /** Another version installed with its choices: updated without a question. */
+  upgrade: boolean;
+  /** This AppImage is older than the installed version: nothing is touched. */
+  older: boolean;
+  installed_variant: "cuda" | "cpu" | null;
+  /** The installed copy of the application (setup.rs, installed_appimage) exists; copy_dir: its folder, as shown. */
+  installed_copy: boolean; copy_dir: string;
+  /** For an update: the CHANGELOG sections since the installed version, newest first. */
+  whats_new: Release[];
 }
 
 const emit = defineEmits<{ done: [] }>();
@@ -39,11 +49,20 @@ const stepIndex = computed(() => STEPS.indexOf(step.value));
 const variant = ref<"cuda" | "cpu">("cpu");
 const showPackages = ref(false);
 let invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+/** setup: the first installation's steps; update: a newer version over an installed one, without a question; older:
+ * an older AppImage than the installed version, which touches nothing. */
+const mode = computed(() => (status.value?.older ? "older" : status.value?.upgrade ? "update" : "setup"));
 
 async function load() {
   ({ invoke } = await import("@tauri-apps/api/core"));
   status.value = (await invoke("setup_status")) as Status;
   variant.value = status.value.gpu ? "cuda" : "cpu";
+  if (mode.value === "older") return;
+  if (mode.value === "update") {
+    variant.value = status.value.installed_variant ?? variant.value; // the same engine, updated
+    if (status.value.checks.every((c) => c.ok) && !installing.value) startInstall();
+    return;
+  }
   restoreChoices();
   if (status.value.engine_ready) {
     // Installed earlier, window closed before the end: only the options are left, nothing is downloaded again.
@@ -239,6 +258,8 @@ async function finish() {
       finishError.value = "";
       await invoke("setup_apply", { choices: choices.value, apiKey: key.value.trim() || null });
       const failed: string[] = [];
+      // Before the menu entry: it points to the copy.
+      await placeApp().catch((e) => failed.push(String(e)));
       if (shortcuts.value) {
         await invoke("set_shortcuts", { on: true }).catch((e) => failed.push(t("setup.shortcuts_failed", { error: String(e) })));
       }
@@ -265,6 +286,44 @@ async function finish() {
   }
 }
 
+/** What the coach says once after an installation or an update (Notices.vue): the downloaded file that can be deleted,
+ * and for an update what changed. */
+const NOTICE = "geonesclick.notice";
+function notice(file: string | null) {
+  const whatsNew = mode.value === "update" ? status.value?.whats_new ?? [] : [];
+  if (!status.value || (!file && !whatsNew.length)) return;
+  try {
+    localStorage.setItem(NOTICE, JSON.stringify({ version: status.value.version, dir: status.value.copy_dir, file, whats_new: whatsNew }));
+  } catch {
+    /* storage unavailable: the note is simply not shown */
+  }
+}
+/** The application copied to its folder (setup.rs, place_appimage); a failure is told by the caller, and the note
+ * still says what an update brings. */
+async function placeApp() {
+  let file: string | null = null;
+  try {
+    file = (await invoke("place_appimage")) as string | null;
+  } finally {
+    notice(file);
+  }
+}
+
+// --- update: the installed choices and key are kept, the coach starts as soon as the engine is updated -----
+const updateError = ref("");
+watch(installDone, async (done) => {
+  if (mode.value !== "update" || done !== true) return;
+  try {
+    await invoke("setup_finish_update");
+    await placeApp().catch((e) => console.warn("[setup] copy", e)); // the old copy still runs: not a reason to stop
+    await invoke("restart_engine");
+    emit("done");
+  } catch (e) {
+    updateError.value = String(e);
+  }
+});
+const openInstalled = () => invoke("open_installed").catch((e) => (updateError.value = String(e)));
+
 onMounted(load);
 
 const box = "rounded-md border border-courbe-fonce px-3 py-2";
@@ -275,7 +334,57 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
 </script>
 
 <template>
-  <main class="flex h-screen flex-col bg-encre text-[1.05rem]">
+  <main v-if="status && mode === 'older'" class="flex h-screen flex-col justify-center gap-4 bg-encre px-6 text-[1.05rem]">
+    <h1 class="text-[1.4rem] font-bold text-papier">{{ t("setup.older.title") }}</h1>
+    <p class="text-papier">{{ t("setup.older.text", { installed: status.installed ?? "", version: status.version ?? "" }) }}</p>
+    <button v-if="status.installed_copy" type="button" :class="primary" class="self-start" @click="openInstalled">
+      {{ t("setup.older.open", { installed: status.installed ?? "" }) }}
+    </button>
+    <p v-if="updateError" class="text-alerte" role="alert">{{ updateError }}</p>
+  </main>
+
+  <main v-else-if="status && mode === 'update'" class="flex h-screen flex-col gap-4 bg-encre px-6 py-6 text-[1.05rem]">
+    <h1 class="text-[1.4rem] font-bold text-papier">{{ t("setup.update.title", { from: status.installed ?? "", to: status.version ?? "" }) }}</h1>
+    <p class="text-courbe">{{ t("setup.update.intro") }}</p>
+    <div v-if="missing.length" class="space-y-2">
+      <p class="text-papier">{{ missingText }}</p>
+      <code v-if="installCommand" class="block rounded bg-relief px-3 py-2 text-papier select-all">{{ installCommand }}</code>
+      <p v-if="systemError" class="text-alerte" role="alert">{{ systemError }}</p>
+      <div class="flex gap-2">
+        <button type="button" :class="secondary" :disabled="systemInstalling" @click="load">{{ t("setup.recheck") }}</button>
+        <button v-if="packageManager" type="button" :class="primary" :disabled="systemInstalling" @click="installSystem">
+          {{ systemInstalling ? t("setup.system.installing") : t("setup.system.install") }}
+        </button>
+      </div>
+    </div>
+    <ol v-else role="status" aria-live="polite" class="space-y-2">
+      <li v-for="(p, i) in PHASES" :key="p" class="flex items-center gap-3">
+        <span class="grid h-6 w-6 place-items-center rounded-full text-[0.85rem] font-bold"
+              :class="i < phaseIndex ? 'bg-foret text-encre'
+                : i === phaseIndex && installDone === false ? 'bg-alerte text-encre'
+                : i === phaseIndex ? 'border-2 border-papier border-t-transparent animate-spin'
+                : 'border border-courbe-fonce'">
+          {{ i < phaseIndex ? "✓" : i === phaseIndex && installDone === false ? "!" : "" }}
+        </span>
+        <span :class="i <= phaseIndex ? 'text-papier' : 'text-courbe'">{{ t(`setup.phase.${p}`) }}</span>
+      </li>
+    </ol>
+    <div v-if="installDone === false" role="alert">
+      <p class="font-bold text-alerte">{{ t("setup.install.failed") }}</p>
+      <p v-if="failure" class="mt-1 text-papier">{{ failure }}</p>
+      <button type="button" :class="primary" class="mt-3" @click="startInstall">{{ t("setup.retry") }}</button>
+    </div>
+    <p v-if="updateError" class="text-alerte" role="alert">{{ updateError }}</p>
+    <details v-if="lines.length" :open="installDone === false">
+      <summary :class="disclosure">{{ t("setup.install.log") }}</summary>
+      <div ref="logBox" class="mt-2 max-h-48 overflow-auto rounded-md border border-courbe-fonce bg-relief px-3 py-2">
+        <p v-for="(l, i) in lines" :key="i" class="whitespace-pre font-mono text-[0.95rem] leading-relaxed text-courbe">{{ l }}</p>
+      </div>
+    </details>
+    <WhatsNew v-if="status.whats_new.length" :releases="status.whats_new" :class="box" class="min-h-0 flex-1 overflow-y-auto" />
+  </main>
+
+  <main v-else class="flex h-screen flex-col bg-encre text-[1.05rem]">
     <header class="border-b border-courbe-fonce px-6 pt-5 pb-4">
       <div class="flex items-baseline justify-between gap-4">
         <h1 class="text-[1.7rem] font-bold text-papier">{{ t("setup.title") }}</h1>
@@ -348,6 +457,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
           </label>
           <p v-else class="mt-2 text-[1rem] text-courbe">{{ t("setup.no_nvidia") }}</p>
           <p class="mt-1 text-[1rem] text-courbe">{{ t("setup.where", { data: status.data_dir, models: status.models_dir }) }}</p>
+          <p class="mt-1 text-[1rem] text-courbe">{{ t("setup.copy_note", { dir: status.copy_dir }) }}</p>
           <details class="mt-3">
             <summary :class="disclosure">{{ t("setup.sources") }}</summary>
             <table class="mt-2 w-full text-[1rem]">

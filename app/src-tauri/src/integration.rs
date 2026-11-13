@@ -11,7 +11,7 @@ use serde::Serialize;
 use tauri::AppHandle;
 
 use crate::i18n;
-use crate::setup::{bundle_dir, host_command, venv_python};
+use crate::setup::{bundle_dir, host_command, installed_appimage, running_appimage, venv_python};
 
 const DESKTOP_ID: &str = "fr.mrnesclick.geonesclick";
 /// GTK's Wayland app id and X11 WM_CLASS: the program name (the binary is "geonesclick").
@@ -42,9 +42,10 @@ fn icon_file(data: &Path, size: &str) -> PathBuf {
     data.join("icons/hicolor").join(size).join("apps").join(format!("{DESKTOP_ID}.png"))
 }
 
-/// The AppImage file being run (None in development).
+/// What the menu entry launches: the installed copy of the application (setup.rs, installed_appimage), so deleting or
+/// renaming the downloaded file breaks nothing; the AppImage being run while there is no copy yet.
 fn appimage() -> Option<PathBuf> {
-    std::env::var_os("APPIMAGE").filter(|v| !v.is_empty()).map(PathBuf::from).filter(|p| p.is_file())
+    Some(installed_appimage()).filter(|p| p.is_file()).or_else(running_appimage)
 }
 
 /// A path as one quoted argument of an Exec key (Desktop Entry Specification): `"`, `` ` ``, `$` and `\` escaped

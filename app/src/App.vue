@@ -8,6 +8,7 @@ import LabelForm from "./components/LabelForm.vue";
 import Locks from "./components/Locks.vue";
 import LookHere from "./components/LookHere.vue";
 import Marks from "./components/Marks.vue";
+import Notices from "./components/Notices.vue";
 import MetaHints from "./components/MetaHints.vue";
 import Observations from "./components/Observations.vue";
 import PlonkitTips from "./components/PlonkitTips.vue";
@@ -99,6 +100,7 @@ const tabs = computed(() => [
     <p v-if="engine.error" class="mt-3 border-l-2 border-alerte pl-3 text-[0.9rem] text-papier" role="alert">
       {{ engine.error }}
     </p>
+    <Notices />
 
     <main v-if="showSettings" class="flex-1">
       <SettingsPanel />

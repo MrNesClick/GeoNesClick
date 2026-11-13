@@ -15,6 +15,14 @@ its release notes.
 
 ### Changed
 
+- Opening a newer AppImage now updates GeoNesClick without a question: your settings, your API key and your data are
+  kept (they were reset to the recommended choices, and the key asked again), and only the libraries that changed
+  are downloaded (a few MB instead of 3.1 GB with an NVIDIA card). While it runs, the update shows what changed since
+  your version, and the coach shows it once afterwards. Opening an older AppImage than the installed one changes
+  nothing and offers to open the installed one.
+- GeoNesClick is now installed as `~/.local/share/geonesclick/GeoNesClick.AppImage` and launched from there by the
+  applications menu: the file you downloaded can be renamed, moved or deleted (the coach tells you so once), and
+  the menu entry no longer breaks when you do. Erase everything removes that copy with the engine.
 - A country read in your marks is "certain" (put first, the others ruled out, locked by the coach) only when a
   second source seconds the reading: a second mark, or the look of the view (StreetCLIP giving that country 10 % or
   more). One mark alone is otherwise "very likely": a single blurry crop can be made up whole and still be coherent.
