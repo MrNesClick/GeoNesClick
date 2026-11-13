@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-13
+
 ### Security
 
 - The browser's bars (tab titles, address, bookmarks) no longer leave with your captures for the NVIDIA vision
@@ -206,7 +208,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.2...v0.4.0
 [0.3.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.0...v0.3.1
