@@ -118,31 +118,18 @@ its release notes.
 
 - "Erase everything" can also remove the engine installed by the AppImage: with the models box too, a full
   uninstall from the app, after which only the AppImage is left.
-- A page explaining how the Rust, Vue and Python parts fit together
-  ([docs/architecture.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/architecture.md)).
 
 ### Changed
 
 - Marks: the interface says "draw a box around" a clue, since you draw a rectangle.
-- The README and the documentation were checked against the app: download sizes without an NVIDIA card, Plonk It
-  update checks, what is sent to NVIDIA, the names of the Settings sections, GeoGuessr's rules.
 
 ### Fixed
 
 - The help of "A proof read settles it" named local rules that do not exist (domain, dialling code).
 - The list of what is sent to NVIDIA now includes the Plonk It tips it classifies and translates.
 - The installer said "nothing is changed in the system" right after installing a missing system component.
-- The French installer texts use "tu", like the rest of the interface.
-- The User-Agent sent to OpenStreetMap, Plonk It and GeoNames named version 0.1; it now names the project.
 
 ## [0.2.3] - 2026-11-12
-
-### Added
-
-- The requirements name what GeoNesClick really needs (64-bit Linux with GNOME, glibc 2.39 or later) instead of
-  Ubuntu only, with the systems tested so far
-  ([docs/compatibility.md](https://github.com/MrNesClick/GeoNesClick/blob/main/docs/compatibility.md)) and a form to
-  tell how it runs on yours.
 
 ### Changed
 
@@ -170,12 +157,6 @@ its release notes.
 - The installation of the engine no longer fails at the AI model step ("No module named 'httpx'", 0.2.0 and 0.2.1).
 
 ## [0.2.1] - 2026-11-12
-
-### Added
-
-- How to report a vulnerability privately
-  ([SECURITY.md](https://github.com/MrNesClick/GeoNesClick/blob/main/SECURITY.md)) and how to contribute
-  ([CONTRIBUTING.md](https://github.com/MrNesClick/GeoNesClick/blob/main/CONTRIBUTING.md)).
 
 ### Changed
 
@@ -226,11 +207,6 @@ means restoring those backups.
 - Installer and settings texts found wrong on a clean Ubuntu 26.04 without an NVIDIA card (where PLONK's memory goes,
   where the engine and the AI models are stored).
 - The Hugging Face warning about unauthenticated requests no longer shows in the installation log.
-
-### Changed
-
-- The README gives the memory needed and where the files are stored.
-- The release build retries the GitHub downloads and pins the AppImage runtime.
 
 ## [0.1.0] - 2026-11-08
 
