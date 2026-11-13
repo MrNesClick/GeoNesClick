@@ -7,7 +7,8 @@ The vision model transcribes; these rules conclude, each with its source:
 3. PLACE NAMES (GeoNames directory, see places.py) point to a country.
 
 A country is "certain" only with at least one place name AND another concurring proof, with no mark
-pointing to another: the model invented "Казань" on a blurry crop.
+pointing to another, and seconded by a source the reading does not control: a second mark, or StreetCLIP giving
+that country prior_min or more. The model invented "Казань" on a blurry crop, coherent Russian on a Bulgarian view.
 
 A LONE PLACE concludes nothing: in one day of play, lone places were
 wrong 4 times (Gare → FR/LU, Laas → IT, Orion → PH/US, "Lo Manto" from a street name → Honduras, against
@@ -263,7 +264,10 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
             for n in sorted({n for n, _ in items}):
                 v.against.append({"n": n, "country": other, "items": [e.value for m, e in items if m == n]})
     has_place = any(e.kind == "place" for _, e in support)
-    v.level = "certain" if has_place and len(support) >= 2 and not v.against else "probable"
+    # A second source that the model's reading does not control: another mark, or the look of the view (StreetCLIP).
+    # One blurry crop can be made up whole, and coherent ("Город, Казань" on a Bulgarian view).
+    seconded = len(v.cites) >= 2 or (prior or {}).get(country, 0.0) >= prior_min
+    v.level = "certain" if has_place and len(support) >= 2 and not v.against and seconded else "probable"
     return v
 
 

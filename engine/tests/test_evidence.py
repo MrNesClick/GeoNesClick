@@ -108,10 +108,22 @@ def test_broken_archive_is_refused(tmp_path, monkeypatch):
 
 
 # --- conclusion -----------------------------------------------------------------------------------
-def test_places_and_letters_that_agree_are_certain(gazetteer):
-    v = verdict([(1, evidence(MARK_1, gazetteer))])
+def test_places_and_letters_that_agree_are_certain_when_the_view_seconds_them(gazetteer):
+    v = verdict([(1, evidence(MARK_1, gazetteer))], {"BG": 0.3})
     assert (v.country, v.level, v.against) == ("BG", "certain", [])
     assert "Благоевград" in v.cites[0]["items"]
+
+
+@pytest.mark.parametrize("prior", [None, {"BG": 0.05}, {"RU": 0.9}])
+def test_one_mark_that_the_view_does_not_second_is_only_very_likely(gazetteer, prior):
+    """A blurry crop can be made up whole and coherent: one reading alone never makes a country certain."""
+    v = verdict([(1, evidence(MARK_1, gazetteer))], prior)
+    assert (v.country, v.level) == ("BG", "probable")
+
+
+def test_two_marks_that_agree_are_certain_without_the_view(gazetteer):
+    v = verdict([(1, evidence(MARK_1, gazetteer)), (2, evidence(["София"], gazetteer))])
+    assert (v.country, v.level) == ("BG", "certain") and [c["n"] for c in v.cites] == [1, 2]
 
 
 def test_a_contradicting_mark_prevents_certainty(gazetteer):
@@ -229,7 +241,7 @@ def test_far_homonym_is_ignored_not_a_contradiction(france):
     found, _ = france
     kept, ignored = keep_nearby([(1, found.match(SIGN)), (2, found.match(HOTEL))], 400)
     assert [(i["value"], i["countries"]) for i in ignored] == [("LAAS", ["IT"])]  # Lasa, ~950 km from Orthez
-    v = verdict(kept)
+    v = verdict(kept, {"FR": 0.6})
     assert (v.country, v.level, v.against) == ("FR", "certain", [])
 
 
@@ -276,7 +288,7 @@ def test_street_names_are_not_places(gazetteer):
 
 def test_two_nearby_places_pick_the_right_homonym(gazetteer):
     kept, _ = keep_nearby([(1, gazetteer.match(["PALERMO - CATANIA A19"]))], 400)
-    v = verdict(kept)
+    v = verdict(kept, {"IT": 0.6})
     assert (v.country, v.level) == ("IT", "certain")  # Palermo (US) ruled out by the proximity of Catania
 
 

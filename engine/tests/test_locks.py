@@ -210,14 +210,25 @@ def test_rejected_country_and_region_are_removed(index):
 
 
 # --- in the engine: a round in Béarn ------------------------------------------------------------------
+from geonesclick.streetclip import CountryScore  # noqa: E402
 from test_marks import ORIGIN, ReaderVision, run, setup  # noqa: E402,F401  (shared fixture)
 
 SIGN_KM = ["ORTHEZ 17", "SAUVETERRE DE BEARN 9", "LAAS 2"]  # direction sign near Laàs (km by road)
 
 
+class FranceClip:
+    """StreetCLIP on a view in Béarn: it seconds the marks that read French places (evidence.verdict)."""
+
+    device = "cpu"
+
+    def analyse(self, _img):
+        return [CountryScore("France", "FR", 0.6), CountryScore("Spain", "ES", 0.3)], 5.0, None, None
+
+
 @pytest.fixture
 def bearn(setup, index):
     engine, sent, _ = setup
+    engine.streetclip = FranceClip()
     engine.places = index
     engine.cfg.marks.parallel = 1
     return engine, sent
@@ -427,6 +438,7 @@ def test_a_place_without_known_region_does_not_block_the_region(setup, tmp_path,
 
     monkeypatch.setattr(places, "_fetch", lambda url: REGIONS.encode() if url.endswith(".txt") else archive_rows())
     engine, sent, _ = setup
+    engine.streetclip = FranceClip()
     engine.places = Places(build("https://example.org/c.zip", tmp_path / "p", regions_url="https://example.org/a.txt"))
     engine.cfg.marks.parallel = 1
     run(engine, engine.analyse())

@@ -13,6 +13,12 @@ its release notes.
   frozen screen sharing) is still analysed, but comes with a note under the capture and in its summary line, so a
   worthless answer does not pass for a real one.
 
+### Changed
+
+- A country read in your marks is "certain" (put first, the others ruled out, locked by the coach) only when a
+  second source seconds the reading: a second mark, or the look of the view (StreetCLIP giving that country 10 % or
+  more). One mark alone is otherwise "very likely": a single blurry crop can be made up whole and still be coherent.
+
 ### Fixed
 
 - When the window shared last time no longer exists, the coach no longer shows "screen sharing active" at its start

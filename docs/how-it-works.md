@@ -46,7 +46,7 @@ the answer cites the marks that prove it:
 | **Alphabet** | Cyrillic | rules out the countries that do not write it (France, even if the AI "read" French on the whole view) |
 | **Specific letters** | "ъ" before a consonant, "ő", "ș" | language → **very likely** country |
 | **Street words** | "utca", "iela", "-katu", "вулиця" | language → **very likely** country |
-| **Place names** (GeoNames) | Благоевград, София | **certain** country, if confirmed by another proof and **no mark contradicts it** |
+| **Place names** (GeoNames) | Благоевград, София | **certain** country, if confirmed by another proof, **seconded** by a 2nd mark or by StreetCLIP at 10 % at least (`prior_min`), and **no mark contradicts it** |
 | **Lone place** | "MANTO" | a mere **clue**: it takes a 2nd nearby place, a letter or a word of the language, or StreetCLIP at 10 % at least (`prior_min`) |
 | **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street") |
 | **Country outside the candidates** | Manto → 🇭🇳 | shown, does not count |
@@ -58,8 +58,10 @@ at 96 %), whereas the right conclusions came from **grouped** places.
 Why so cautious? Measured on a Bulgarian round: mark ① ("Гърмен 3, Гоце Делчев 10, Благоевград 109,
 София 219") was read perfectly, but ②, blurry, was **made up** in plausible Russian ("Домой, Город, Казань"), and
 the analysis of the whole view had made up French ("Gare, Centre-ville, Mairie"). With both marks, the coach answers
-"Bulgaria, very likely" and flags ②; once ② is removed, "Bulgaria, certain". A common word can also name a place
-("Gare": districts in France and Luxembourg), hence the required agreement. Only the candidate countries count
+"Bulgaria, very likely" and flags ②; once ② is removed, "Bulgaria, certain" if the view also looks Bulgarian to
+StreetCLIP. A single crop can be made up whole and still be coherent, as ② was: one mark alone is only "very likely"
+unless a 2nd mark or the look of the view seconds it. A common word can also name a place ("Gare": districts in
+France and Luxembourg), hence the required agreement. Only the candidate countries count
 (Moldova does not prevent "ș" from pointing to Romania).
 
 **Position on the map.** The places read are plotted on the map. The distances on a direction sign ("Гърмен 3, Гоце
