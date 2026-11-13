@@ -664,16 +664,12 @@ class Engine(MarksMixin, LocksMixin):
             await asyncio.to_thread(self.page_top.learn, frame)
             page, guessed_crop = self.page_top.crop(frame)
             view = apply_crop_and_masks(page, [], self.cfg.capture.masks)
-        saved = None
-        if self.cfg.capture.save_to_disk:
-            saved = await asyncio.to_thread(save_png, view, self.cfg.capture.path, f"capture-{capture_id}")
-        if (self.cfg.capture.save_to_disk or self.cfg.debug.enabled) and self.cfg.capture.keep_last:
-            # Also in debug mode without capture copies: the logs alone must not pile up.
-            await asyncio.to_thread(prune_captures, self.cfg.capture.path, self.cfg.capture.keep_last)
         capture_ms = (time.perf_counter() - t0) * 1000
         if self.cfg.debug.enabled:
-            await self._start_log(capture_id, saved)
-        await asyncio.to_thread(self.notifier.send, i18n.t("srv.capture_taken"), f"{capture_ms:.0f} ms", image=saved)
+            await self._start_log(capture_id, f"capture-{capture_id}.png" if self.cfg.capture.save_to_disk else None)
+        task = asyncio.create_task(self._keep_capture(capture_id, view, capture_ms))  # the models do not wait for it
+        self.background.add(task)
+        task.add_done_callback(self.background.discard)
         await self.broadcast({
             "type": "capture", "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
             "thumbnail": await asyncio.to_thread(data_url, view), "ms": round(capture_ms),
@@ -732,6 +728,20 @@ class Engine(MarksMixin, LocksMixin):
                     self.background.add(task)
                     task.add_done_callback(self.background.discard)
         return {"ok": True, "id": capture_id}
+
+    async def _keep_capture(self, capture_id: str, view: Image.Image, capture_ms: float) -> None:
+        """The copy of the analysed view on disk, then the "capture taken" notification with it. Run while the models
+        work: a PNG takes 0.35 s at 1920 px wide and 1.3 s in 4K."""
+        saved = None
+        try:
+            if self.cfg.capture.save_to_disk:
+                saved = await asyncio.to_thread(save_png, view, self.cfg.capture.path, f"capture-{capture_id}")
+            if (self.cfg.capture.save_to_disk or self.cfg.debug.enabled) and self.cfg.capture.keep_last:
+                # Also in debug mode without capture copies: the logs alone must not pile up.
+                await asyncio.to_thread(prune_captures, self.cfg.capture.path, self.cfg.capture.keep_last)
+        except OSError:  # disk full, folder forbidden: the analysis carries on without its copy
+            pass
+        await asyncio.to_thread(self.notifier.send, i18n.t("srv.capture_taken"), f"{capture_ms:.0f} ms", image=saved)
 
     def look_for(self, scores: list[tuple[str, float]]):
         """Clue categories that tell a view's plausible countries apart (empty without metas)."""
@@ -854,11 +864,11 @@ class Engine(MarksMixin, LocksMixin):
             await self.broadcast({"type": "vision_error", "id": capture_id, "error": str(exc)})
 
     # --- debug mode: log of each analysis ---------------------------------------------------------
-    async def _start_log(self, capture_id: str, saved: Path | None) -> None:
+    async def _start_log(self, capture_id: str, saved: str | None) -> None:
         cfg = self.cfg
         base = {
             "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
-            "capture": saved.name if saved else None, "help_level": cfg.coach.help_level,
+            "capture": saved, "help_level": cfg.coach.help_level,
             "models": {"streetclip": cfg.streetclip.model, "vision": cfg.vision.model if cfg.vision.enabled else None,
                        "plonk": f"{cfg.plonk.model}@{cfg.plonk.revision[:7]}" if cfg.plonk.enabled else None},
         }
