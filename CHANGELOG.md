@@ -11,6 +11,8 @@ its release notes.
 
 - The keyboard shortcuts did nothing when the path of the home folder (or of `XDG_DATA_HOME`) holds a space. The
   shortcuts already added are repaired at the next launch, with nothing to do.
+- When the installer could not add the keyboard shortcuts or the menu entry, it went on to the coach without saying
+  so. It now shows the error on its last step, and the coach starts with "Launch anyway".
 
 ## [0.3.0] - 2026-11-12
 

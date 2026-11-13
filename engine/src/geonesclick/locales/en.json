@@ -729,6 +729,8 @@
   "setup.retry": "Retry",
   "setup.starting": "Starting…",
   "setup.launch": "Launch GeoNesClick",
+  "setup.launch_anyway": "Launch anyway",
+  "setup.integration_later": "Everything else is installed; this can be tried again in the Settings.",
   "download.python.what": "Python 3.12 (standalone interpreter, python-build-standalone)",
   "download.python.why": "run the analysis engine without touching your system's Python",
   "download.packages.what": "The engine's Python libraries (PyTorch, Transformers, FastAPI…), pinned versions checked by hash",

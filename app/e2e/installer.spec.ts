@@ -71,3 +71,38 @@ test("the menu entry is added only when ticked; the shortcuts are ticked by defa
   expect(await tauriArgs(page, "set_shortcuts")).toEqual([{ on: true }]);
   expect(await tauriArgs(page, "set_menu_entry")).toEqual([{ on: true }]);
 });
+
+test("a failed shortcut install is shown on the last step, and the coach starts only on demand", async ({ page }) => {
+  await tauri(page, {
+    setup_status: { ...status("apt"), engine_ready: true },
+    set_shortcuts: { error: "expected end of input" },
+  });
+  await page.goto("/e2e/harness.html");
+  await page.getByRole("checkbox", { name: en["setup.no_key"] }).check();
+  await page.getByRole("button", { name: en["setup.next"], exact: true }).click();
+  await page.getByRole("button", { name: en["setup.launch"], exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("expected end of input");
+  expect(await tauriCalls(page)).not.toContain("restart_engine");
+  await page.getByRole("button", { name: en["setup.launch_anyway"], exact: true }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
+  expect(await tauriArgs(page, "set_shortcuts")).toEqual([{ on: true }]); // not tried a second time
+});
+
+test("after a failed shortcut install, going back to the options applies the new choices", async ({ page }) => {
+  await tauri(page, {
+    setup_status: { ...status("apt"), engine_ready: true },
+    set_shortcuts: { error: "expected end of input" },
+  });
+  await page.goto("/e2e/harness.html");
+  await page.getByRole("checkbox", { name: en["setup.no_key"] }).check();
+  await page.getByRole("button", { name: en["setup.next"], exact: true }).click();
+  await page.getByRole("button", { name: en["setup.launch"], exact: true }).click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page.getByRole("button", { name: en["setup.back"], exact: true }).click();
+  await page.getByRole("checkbox", { name: en["setup.shortcuts"] }).uncheck();
+  await page.getByRole("button", { name: en["setup.next"], exact: true }).click();
+  await page.getByRole("button", { name: en["setup.launch"], exact: true }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
+  expect((await tauriArgs(page, "setup_apply")).length).toBe(2); // the new choices are applied
+  expect(await tauriArgs(page, "set_shortcuts")).toEqual([{ on: true }]); // unticked: not tried again
+});

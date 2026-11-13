@@ -223,19 +223,32 @@ const choices = computed(() => {
 // --- end: options written, shortcuts, first start ---------------------------------------------------
 const finishing = ref(false);
 const finishError = ref("");
+/** The options are applied but the shortcuts or the menu entry failed: the error stays shown until "Launch anyway". */
+const integrationFailed = ref(false);
+// Back to the options: the choices may change, so the next launch applies them and tries again.
+watch(step, () => {
+  integrationFailed.value = false;
+  finishError.value = "";
+});
 async function finish() {
   finishing.value = true;
-  finishError.value = "";
   try {
-    await invoke("setup_apply", { choices: choices.value, apiKey: key.value.trim() || null });
-    const failed: string[] = [];
-    if (shortcuts.value) {
-      await invoke("set_shortcuts", { on: true }).catch((e) => failed.push(t("setup.shortcuts_failed", { error: String(e) })));
+    if (!integrationFailed.value) {
+      finishError.value = "";
+      await invoke("setup_apply", { choices: choices.value, apiKey: key.value.trim() || null });
+      const failed: string[] = [];
+      if (shortcuts.value) {
+        await invoke("set_shortcuts", { on: true }).catch((e) => failed.push(t("setup.shortcuts_failed", { error: String(e) })));
+      }
+      if (menu.value) {
+        await invoke("set_menu_entry", { on: true }).catch((e) => failed.push(t("setup.menu_failed", { error: String(e) })));
+      }
+      if (failed.length) {
+        finishError.value = [...failed, t("setup.integration_later")].join(" ");
+        integrationFailed.value = true;
+        return;
+      }
     }
-    if (menu.value) {
-      await invoke("set_menu_entry", { on: true }).catch((e) => failed.push(t("setup.menu_failed", { error: String(e) })));
-    }
-    finishError.value = failed.join(" ");
     await invoke("restart_engine");
     try {
       localStorage.removeItem(SAVED);
@@ -497,7 +510,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         <button type="button" :class="secondary" @click="step = 'options'">{{ t("setup.back") }}</button>
         <button v-if="installDone === false" type="button" :class="primary" @click="startInstall">{{ t("setup.retry") }}</button>
         <button v-else type="button" :class="primary" :disabled="installDone !== true || finishing" @click="finish">
-          {{ t(finishing ? "setup.starting" : "setup.launch") }}
+          {{ t(finishing ? "setup.starting" : integrationFailed ? "setup.launch_anyway" : "setup.launch") }}
         </button>
       </template>
     </footer>

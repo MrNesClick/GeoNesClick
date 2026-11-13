@@ -729,6 +729,8 @@
   "setup.retry": "Réessayer",
   "setup.starting": "Démarrage…",
   "setup.launch": "Lancer GeoNesClick",
+  "setup.launch_anyway": "Lancer quand même",
+  "setup.integration_later": "Tout le reste est installé ; un nouvel essai est possible dans les Réglages.",
   "download.python.what": "Python 3.12 (interpréteur autonome, python-build-standalone)",
   "download.python.why": "faire tourner le moteur d'analyse, sans toucher au Python de ton système",
   "download.packages.what": "Bibliothèques Python du moteur (PyTorch, Transformers, FastAPI…), versions figées et vérifiées par empreinte",
