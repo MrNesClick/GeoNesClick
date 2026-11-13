@@ -11,7 +11,8 @@ At level 4, the Answer card honestly says what the coach knows:
   read the sign, Slovakia reading "ulica"). A conclusion only becomes **"certain"** (country first, others ruled
   out, `[coach] trust_proof`) when the local rules confirm it on your marks (see below);
 - **without a reading**, a country is given only if it **stands out** from the look of the view (StreetCLIP): at
-  least 70 % and a 15-point lead over the 2nd (`[coach] leader_min`, `leader_margin`). Otherwise: **"Hesitation"**
+  least 70 % and a 15-point lead over the 2nd (`[coach] leader_min`, `leader_margin`; from 58 % the lead always
+  holds, so it only acts with a lower `leader_min`). Otherwise: **"Hesitation"**
   between the first ones (e.g. Bulgaria 22 %, Hungary 21 %, Slovakia 16 %, Romania 14 %), without a false winner;
 - if the AI reports **unreadable text**, the coach advises zooming on it in the game then capturing again: on a
   Romanian capture, the "Monumentul Eroilor Neamului" sign was unreadable in the whole view, and read exactly

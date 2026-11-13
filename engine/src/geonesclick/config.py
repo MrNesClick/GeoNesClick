@@ -71,7 +71,8 @@ class CoachConfig(BaseModel):
     # The coach's language: the whole UI in en and fr (i18n.UI_LANGUAGES); es, de, it, pt translate the tips only.
     language: Literal["en", "fr", "es", "de", "it", "pt"]
     # A country is shown as the answer only if it stands out: at least leader_min, and a leader_margin lead
-    # over the 2nd. Otherwise the coach talks of hesitation between the first ones, instead of a false winner.
+    # over the 2nd. Otherwise the coach talks of hesitation between the first ones, instead of a false winner. The
+    # lead only acts when leader_min is below 0.58; it also decides when StreetCLIP's first contradicts a lock.
     leader_min: float = Field(ge=0, le=1)
     leader_margin: float = Field(ge=0, le=1)
 

@@ -230,10 +230,10 @@ export function certainProof(a: Analysis): Conclusion | null {
   return engine.trustProof && proof?.certainty === "strong" && proof.confirmed ? proof : null;
 }
 
-/** Country that clearly stands out according to StreetCLIP, or null: the coach then talks of hesitation. */
 /** StreetCLIP countries that the alphabet of your marks does not rule out. */
 export const viable = (a: Analysis): CountryScore[] => (a.scores ?? []).filter((s) => !excluded(a, s.code));
 
+/** Country that clearly stands out according to StreetCLIP, or null: the coach then talks of hesitation. */
 export function clearLeader(a: Analysis): CountryScore | null {
   const [first, second] = viable(a);
   if (!first) return null;
@@ -393,7 +393,7 @@ export const engine = reactive({
   /** A proof read with strong certainty puts its country first and rules out the others. */
   trustProof: true,
   /** Without proof, a country is given as the answer only if it stands out (probability and lead over the 2nd). */
-  leader: { min: 0.4, margin: 0.15 },
+  leader: { min: 0.7, margin: 0.15 }, // the engine's defaults, until its first state message
   /** "Erase everything" done: the engine is waiting to be restarted. */
   erased: false,
   /** The engine was removed by "Erase everything": only closing is left. */
