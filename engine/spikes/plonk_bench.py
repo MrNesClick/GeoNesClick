@@ -183,6 +183,8 @@ def main(borders_path: Path, n: int) -> None:
     drift = {s: [] for s in STEPS}  # distance from the mode to the mode at 250 steps (km)
     cost = {s: [] for s in STEPS}  # time (ms)
     small = []  # time for 128 points at 50 steps: does the number of points matter?
+    error = {s: [] for s in STEPS}  # distance from the mode to the true place (km), labels with coordinates only
+    held = {s: 0 for s in STEPS}  # true place within the spread around the mode
 
     for i, item in enumerate(labels):
         img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
@@ -207,10 +209,15 @@ def main(borders_path: Path, n: int) -> None:
             totals[key][0] += order[:1] == [truth]
             totals[key][1] += truth in order[:3]
             drift[steps].append(gap)
+            if "lat" in item:
+                error[steps].append((float(haversine(mode[0], mode[1], item["lat"], item["lon"])), order[:1] == [truth]))
+                held[steps] += error[steps][-1][0] <= spread
             cost[steps].append(ms)
             top_pl = ", ".join(f"{c} {k / n:.0%}" for c, k in share.most_common(4))
+            true = f" | {error[steps][-1][0]:.0f} km from the true place" if "lat" in item else ""
             print(f"  PLONK {steps:>3} steps  rank {rank(order, truth):>2} | {top_pl:<34} | mode {mode[0]:.2f},"
-                  f" {mode[1]:.2f} ({gap:.0f} km from the mode at {STEPS[0]} steps) | spread {spread:.0f} km | {ms:.0f} ms")
+                  f" {mode[1]:.2f} ({gap:.0f} km from the mode at {STEPS[0]} steps) | spread {spread:.0f} km{true}"
+                  f" | {ms:.0f} ms")
         small.append(timed(plonk, cls, 128, 50)[1])
 
     print(f"\nOver {len(labels)} captures ({n} points):")
@@ -220,6 +227,11 @@ def main(borders_path: Path, n: int) -> None:
         if key != "StreetCLIP":
             s = int(key.split()[1])
             extra = f" | mean drift of the mode {np.mean(drift[s]):.0f} km | {np.mean(cost[s]):.0f} ms"
+            if error[s]:
+                right = [km for km, ok in error[s] if ok]
+                extra += (f" | true place: median {np.median([km for km, _ in error[s]]):.0f} km over {len(error[s])},"
+                          f" {np.median(right) if right else float('nan'):.0f} km when the country is right"
+                          f" ({len(right)}), within the spread {held[s]}/{len(error[s])}")
         print(f"  {key:<15} top-1 {t1}/{len(labels)}  top-3 {t3}/{len(labels)}{extra}")
     print(f"128 points at 50 steps: {np.mean(small):.0f} ms (against {np.mean(cost[50]):.0f} ms for {n})")
     print(f"Peak VRAM: {torch.cuda.max_memory_allocated() / 2**20:.0f} MiB")

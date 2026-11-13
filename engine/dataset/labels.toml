@@ -35,3 +35,253 @@ country = "LT"
 area = "près de Vilnius"
 mode = "classique"
 layout = "fenêtre navigateur 1920x1200"
+
+[[capture]]
+file = "capture-20261113-061953-969.png"
+country = "CA"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "CA"
+lat = 45.351189
+lon = -75.502289
+region = "CA.08"
+
+[[capture]]
+file = "capture-20261113-062051-863.png"
+country = "PL"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "PL"
+lat = 52.048206
+lon = 20.986351
+region = "PL.78"
+
+[[capture]]
+file = "capture-20261113-062124-471.png"
+country = "DO"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "DO"
+lat = 18.509319
+lon = -69.985092
+region = "DO.37"
+
+[[capture]]
+file = "capture-20261113-062207-233.png"
+country = "ID"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "ID"
+lat = -5.254535
+lon = 120.218048
+region = "ID.38"
+
+[[capture]]
+file = "capture-20261113-062236-681.png"
+country = "GB"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "GB"
+lat = 51.478954
+lon = -2.782219
+region = "GB.ENG"
+
+[[capture]]
+file = "capture-20261113-062310-262.png"
+country = "RU"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "RU"
+lat = 51.833221
+lon = 108.296417
+region = "RU.11"
+
+[[capture]]
+file = "capture-20261113-062332-018.png"
+country = "EC"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "ID"
+lat = -0.394516
+lon = -79.3451
+region = "EC.26"
+
+[[capture]]
+file = "capture-20261113-062406-186.png"
+country = "TR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "ES"
+lat = 37.060177
+lon = 38.453259
+region = "TR.63"
+
+[[capture]]
+file = "capture-20261113-062429-604.png"
+country = "AR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "AR"
+lat = -45.591225
+lon = -70.60746
+region = "AR.04"
+
+[[capture]]
+file = "capture-20261113-062453-819.png"
+country = "GT"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "GT"
+lat = 14.254117
+lon = -90.127098
+region = "GT.11"
+
+[[capture]]
+file = "capture-20261113-062532-289.png"
+country = "IT"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "IT"
+lat = 38.084625
+lon = 13.394304
+region = "IT.15"
+
+[[capture]]
+file = "capture-20261113-062613-381.png"
+country = "US"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "US"
+lat = 34.34742
+lon = -97.810966
+region = "US.OK"
+
+[[capture]]
+file = "capture-20261113-062633-768.png"
+country = "HR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "HR"
+lat = 45.639942
+lon = 16.29958
+region = "HR.20"
+
+[[capture]]
+file = "capture-20261113-062658-182.png"
+country = "US"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "US"
+lat = 33.913536
+lon = -79.857704
+region = "US.SC"
+
+[[capture]]
+file = "capture-20261113-062716-600.png"
+country = "ID"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "ID"
+lat = 1.574406
+lon = 124.919624
+region = "ID.31"
+
+[[capture]]
+file = "capture-20261113-062750-302.png"
+country = "BR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "TH"
+lat = -22.726494
+lon = -42.470741
+region = "BR.21"
+
+[[capture]]
+file = "capture-20261113-062814-730.png"
+country = "US"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "US"
+lat = 39.586731
+lon = -84.010895
+region = "US.OH"
+
+[[capture]]
+file = "capture-20261113-062838-181.png"
+country = "AE"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "AE"
+lat = 25.27294
+lon = 55.314388
+region = "AE.03"
+
+[[capture]]
+file = "capture-20261113-062901-291.png"
+country = "US"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "US"
+lat = 31.1369
+lon = -95.478096
+region = "US.TX"
+
+[[capture]]
+file = "capture-20261113-062926-588.png"
+country = "FR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "FR"
+lat = 48.668968
+lon = 2.539955
+region = "FR.11"
+
+[[capture]]
+file = "capture-20261113-062955-633.png"
+country = "NG"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "NG"
+lat = 6.247115
+lon = 5.61656
+region = "NG.37"
+
+[[capture]]
+file = "capture-20261113-063017-684.png"
+country = "PE"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "PE"
+lat = -13.727662
+lon = -75.46611
+region = "PE.09"
+
+[[capture]]
+file = "capture-20261113-063040-288.png"
+country = "PH"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "PH"
+lat = 7.151226
+lon = 124.597168
+region = "PH.12"
+
+[[capture]]
+file = "capture-20261113-063100-419.png"
+country = "FR"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "FR"
+lat = 47.269695
+lon = -0.086764
+region = "FR.52"
+
+[[capture]]
+file = "capture-20261113-063123-766.png"
+country = "RO"
+mode = "classique"
+layout = "window 3840x2160"
+predicted = "RO"
+lat = 45.185444
+lon = 26.847376
+region = "RO.11"

@@ -46,7 +46,7 @@ def main() -> None:
     clip = StreetClip(cfg.streetclip)
     codes = list(cfg.streetclip.countries.values())
     labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
-    stats = {k: [0, 0, 0.0] for k in ("simple", "moyenne")}  # top-1, top-3, probability of the right country
+    stats = {k: [0, 0, 0.0] for k in ("single", "mean")}  # top-1, top-3, probability of the right country
     for item in labels:
         img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
         w, h = img.size

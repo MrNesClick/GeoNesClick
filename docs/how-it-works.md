@@ -232,12 +232,12 @@ ready. At levels 1 and 2, the tab is greyed out: the map would reveal the countr
 - the **likely zones**: the engine keeps the densest 80 % of the PLONK positions, groups them (two positions less
   than 150 km apart go together) and draws a rounded outline around each group of at least 5 % of the positions.
   Each zone is numbered with its share of the positions; under the map, the list gives its countries and its size
-  ("1. 🇸🇪 Sweden · ~450 × 450 km · 50 % of the positions"). It is a lead, not a proof: the zones usually fall
-  100–300 km from the place when the country is right.
+  ("1. 🇸🇪 Sweden · ~450 × 450 km · 50 % of the positions"). It is a lead, not a proof.
 
-On the 5 captures of the test set: a zone of ~150 × 200 km in south-western Norway (view north of Ålesund); for
-Sweden, a zone around Gothenburg (50 %) and one in Finland (30 %); for Lithuania, a zone straddling Poland and
-Lithuania.
+On the 25 rounds of the test set whose true place is known, with the right country followed, the true place is in a
+drawn zone 11 times and within 100 km of one 15 times; the zones of that country cover a median 79,000 km² (a square
+about 280 km wide); 3 countries get no zone, and 3 misses exceed 800 km (see
+[Measurements](benchmarks.md#what-the-map-shows)).
 
 The map frames the zones on its own, or the likely countries while the zones are not ready; at level 4, strong proof
 narrows it to its country. If the window is maximised, the map takes the full width.

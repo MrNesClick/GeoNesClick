@@ -31,65 +31,85 @@ StreetCLIP takes 1.55 s with 4 threads, against 1.6 s in the VM, and 1.26 s with
 Level 2 runs on NVIDIA's servers, whatever the machine: Nemotron 3.5 Super VL, no reasoning, answers in 3 to 5 s
 usually, up to 15 s depending on load.
 
+## Test set
+
+`engine/dataset/labels.toml`: 30 rounds of the classic game on the World map, 24 countries on every continent (United
+States 4, France and Indonesia 2), 5 captured in a 1920×1200 browser window, 25 in a 3840×2160 one. The 25 of the
+second batch hold the coordinates of the true place, read from the game, hence a true distance in km; the 5 others,
+only the country and a zone in words. The images stay local (not versioned).
+
 ## StreetCLIP over several crops
 
-Does averaging StreetCLIP over several crops (whole image, left, centre, right) help? Measured on the 5 captures
-(`spikes/streetclip_tta.py`): no. Top-1 unchanged (3/5), mean probability of the right country down (49 % → 41 %);
-the partial crops give more weight to the browser bar. Not kept.
+Does averaging StreetCLIP over several crops (whole image, left, centre, right) help? Measured on the 30 captures
+(`spikes/streetclip_tta.py`): no. Top-1 25/30 for the whole image against 24/30 for the mean, top-3 27/30 against
+28/30, mean probability of the right country down (69 % → 64 %). Not kept.
 
 ## PLONK for the map
 
 [PLONK](https://github.com/nicolas-dufour/plonk) (CVPR 2025, MIT) samples a cloud of GPS points from StreetCLIP's
-vector. Measured on the 5 captures (`spikes/plonk_bench.py`, 512 points); the distance is estimated from the zone
-noted in the test set:
+vector. Measured on the 30 captures (`spikes/plonk_bench.py`, 512 points); distance to the true place on the 25 that
+hold its coordinates:
 
-| Real | StreetCLIP 1st | PLONK 1st (country where most points fall) | Cloud centre | Estimated distance |
+| | Right country 1st | In the top 3 | Cloud centre → true place (median) | Same, when PLONK's country is right (14) |
 |---|---|---|---|---|
-| Latvia, west coast of Riga | Estonia (Latvia 2nd) | Poland (Latvia 7th) | Kaliningrad region | ~340 km |
-| Serbia, near Bulgaria | Croatia (Serbia 5th) | Croatia (Serbia 11th) | Austria, near Graz | ~700 km |
-| Sweden, near Gothenburg | Sweden | Sweden | near Trollhättan | ~90 km |
-| Norway, north of Ålesund | Norway | Norway | southern Norway | ~290 km |
-| Lithuania, near Vilnius | Lithuania | Lithuania | north-eastern Poland | ~190 km |
+| StreetCLIP | **25/30** | **27/30** | — | — |
+| PLONK, 50 steps | 17/30 | 24/30 | 483 km | 268 km (85 to 6,195 km: Indonesia) |
 
-- **To pick the country, it brings nothing**: top-1 3/5 like StreetCLIP, top-3 3/5 against 4/5. It reads the same
-  vector as StreetCLIP, so it repeats its mistakes (same finding as with the Plonk It tips).
-- **For the map, it brings what StreetCLIP does not give**: a position within the country, 90 to 300 km from the
-  real place when the country is right, and a spread that tells whether the view can be located (96 km for Norway
-  at 99 %, 270 km for the misranked Latvia).
+- **To pick the country, it brings nothing**: it reads the same vector as StreetCLIP and does worse (17/30 against
+  25/30).
+- **The spread of the cloud does not tell whether the view can be located**: a tight cloud can be far off (82 km
+  of spread in Brazil, 2,301 km from the place; 201 km in the United States, 7,195 km away). The true place is
+  within the spread around the cloud centre for 6 of the 25 captures.
+- **What it brings is the map**, once the country is known: see [What the map shows](#what-the-map-shows).
 - **Cost**: 119 MB of extra video memory (peak at 987 MB with StreetCLIP); no extra image pass (same `[CLS]` token
-  as StreetCLIP, cosine 0.99998 between our fp16 and the training fp32); 3.8 s for 512 points in 250 steps, 0.75 s
+  as StreetCLIP, cosine 0.99998 between our fp16 and the training fp32); 3.8 s for 512 points in 250 steps, 0.76 s
   in 50 steps.
 - Up to 16 % of the points fall at sea (coasts, borders at 1:50m).
 - **How many steps?** Same starting draw, 512 points:
 
-  | Steps | Time | Mean distance from the cloud centre to the one at 250 steps | Countries |
+  | Steps | Time | Mean distance from the cloud centre to the one at 250 steps | Cloud centre → true place (median) |
   |---|---|---|---|
-  | 250 (paper default) | 3.8 s | — | top-1 3/5 |
-  | 100 | 1.5 s | 28 km | identical |
-  | **50 (kept)** | **0.75 s** | **20 km** | identical |
-  | 25 | 0.37 s | 35 km; Norwegian cloud widened from 96 to 136 km | identical |
+  | 250 (paper default) | 3.8 s | — | 561 km |
+  | 100 | 1.5 s | 33 km | 574 km |
+  | **50 (kept)** | **0.76 s** | **36 km** | **483 km** |
+  | 25 | 0.38 s | 58 km | 521 km |
 
-  Up to 50 steps, the difference is sampling noise, negligible next to the error to the real place (90 to
-  300 km); at 25 steps, the cloud starts to degrade. Time follows the number of steps more than the number of
-  points: 128 points at 50 steps take 0.28 s.
+  The countries ranked are the same at every step count. Up to 50 steps, the difference is sampling noise,
+  negligible next to the distance to the true place; at 25 steps, the cloud starts to drift. Time follows the
+  number of steps more than the number of points: 128 points at 50 steps take 0.29 s.
 
 Hence **PLONK serves the map, not the choice of country**: cloud computed in the background after StreetCLIP
 (50 steps, 512 points by default), filtered by the proof, can be turned off. The engine bundles a reduced version of
 the PLONK code (see [How it works › Map](how-it-works.md#map)), checked identical to the bench: same points, same
 cloud centre, at 50 as at 250 steps.
 
+## What the map shows
+
+The zones drawn by the coach, measured with the engine's own code (`spikes/map_bench.py`: same cloud, same borders,
+same zones) on the 25 captures that hold the coordinates of the true place, in the two cases of the map:
+
+| Zones drawn | True place inside | Within 100 km | Median distance | Median area of the zones | Country without zone |
+|---|---|---|---|---|---|
+| Right country followed (proven or read) | 11/25 | 15/25 | 18 km | 79,000 km² (a square ~280 km wide) | 3/25 |
+| No country followed: all the zones | 11/25 | 15/25 | 36 km | 213,000 km² (~460 km) | 0/25 |
+
+Following the country keeps the same hits on a zone 2.7 times smaller. The misses are large: in 3 of the 25, the
+zones of the right country are more than 800 km from the place (Indonesia twice, Russia). The map is a lead toward a
+region, right about 6 times out of 10.
+
 ## Cropping and masking the game's UI
 
-Measured on 5 classic-game captures (`spikes/compare_views.py`):
+Measured on the 30 captures (`spikes/compare_views.py --no-vision`):
 
-| Variant | Right country 1st | In the top 3 | Mean probability | Country names copied by the AI |
-|---|---|---|---|---|
-| Whole browser window | 3/5 | 4/5 | 49 % | 0/5 |
-| Cropped view | 2/5 | 4/5 | 47 % | 0/5 |
-| Cropped view and masked UI | 2/5 | 4/5 | 44 % | 0/5 |
+| Variant | Right country 1st | In the top 3 | Mean probability |
+|---|---|---|---|
+| Whole browser window | 25/30 | 27/30 | 69 % |
+| Cropped view | 24/30 | 29/30 | 71 % |
+| Cropped view and masked UI | 25/30 | 29/30 | 69 % |
 
-Capturing the **window** (not the screen) is enough: no measurable gain from cropping, and the black masks even
-seem to hinder StreetCLIP. Cropping and masks stay available in the configuration.
+Capturing the **window** (not the screen) is enough: no clear gain from cropping or masking (one round more in the top
+3, one less in first place). On the 5 captures measured with the vision model, it copied no country name from the
+game's mini-map. Cropping and masks stay available in the configuration.
 
 ## Vision model prompts
 
@@ -122,7 +142,8 @@ the new rounds in `~/.local/share/geonesclick/dataset/`. The benches are in `eng
 | `compare_views.py` | whole window, cropped view, masked UI | `.venv/bin/python spikes/compare_views.py [--no-vision]` |
 | `streetclip_tta.py` | mean over several crops | `.venv/bin/python spikes/streetclip_tta.py` |
 | `search_bench.py` | search engines on the Plonk It tips | `uv run --with tantivy==0.26.2 python spikes/search_bench.py` |
-| `plonk_bench.py` | PLONK GPS cloud, countries, spread, cost | see below |
+| `plonk_bench.py` | PLONK GPS cloud, countries, spread, distance to the true place, cost | see below |
+| `map_bench.py` | zones drawn on the coach's map against the true place | `.venv/bin/python spikes/map_bench.py` |
 | `prompt_bench.py` | vision and marks prompts compared: words read, false conclusions, driving side | `.venv/bin/python spikes/prompt_bench.py [--repeats 3] [--only …]` |
 | `geonesclick.bench` | marks rules replayed on your rounds: false certainties, region, km | `.venv/bin/python -m geonesclick.bench [--json]` |
 
