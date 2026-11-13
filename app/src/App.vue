@@ -126,6 +126,7 @@ const tabs = computed(() => [
           <Section id="capture" :title="t('app.section.capture')" :open="false" tone="papier" :summary="sum.capture(engine.current)">
             <img :src="engine.current.thumbnail" :alt="t('app.capture_alt')" class="w-full rounded-md border border-courbe-fonce" />
             <p v-if="engine.current.guessedCrop" class="mt-1 text-[0.85rem] text-courbe">{{ t("app.crop_guessed") }}</p>
+            <p v-for="w in engine.current.warnings" :key="w" class="mt-1 text-[0.85rem] text-alerte">{{ t(sum.WARNING_TEXT[w]) }}</p>
           </Section>
 
           <Section v-if="level < 3" id="look-here" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">

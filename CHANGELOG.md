@@ -7,6 +7,12 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- A capture that is nearly a single colour (black, a loading screen) or the same image as the previous capture (a
+  frozen screen sharing) is still analysed, but comes with a note under the capture and in its summary line, so a
+  worthless answer does not pass for a real one.
+
 ### Fixed
 
 - When the window shared last time no longer exists, the coach no longer shows "screen sharing active" at its start

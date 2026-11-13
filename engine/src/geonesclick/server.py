@@ -45,8 +45,8 @@ from pydantic import BaseModel, Field
 
 from .analysis_log import AnalysisLog
 from .borders import Borders
-from .capture import (CaptureError, CaptureService, apply_crop_and_masks, data_url, new_id, prune_captures, save_png,
-                      trim_padding)
+from .capture import (CaptureError, CaptureService, apply_crop_and_masks, data_url, fingerprint, is_flat, new_id,
+                      prune_captures, save_png, trim_padding)
 from .locks_engine import LockRequest, LocksMixin, PlaceSearchRequest, RejectRequest
 from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
@@ -132,6 +132,7 @@ class Engine(MarksMixin, LocksMixin):
         self.dataset = Dataset(cfg.dataset.path) if cfg.dataset.enabled else None
         self.recent: OrderedDict[str, dict[str, Any]] = OrderedDict()  # id → raw image, predicted countries
         self.last_id: str | None = None  # last analysis: the marks complete it
+        self.last_print: bytes | None = None  # fingerprint of the last analysed view (capture.fingerprint)
         # Frozen views waiting for marks, with the analysis they complete (set at freeze time).
         self.frozen: OrderedDict[str, tuple[Image.Image, str]] = OrderedDict()
         self.mark_slots = asyncio.Semaphore(cfg.marks.parallel)
@@ -664,6 +665,10 @@ class Engine(MarksMixin, LocksMixin):
             await asyncio.to_thread(self.page_top.learn, frame)
             page, guessed_crop = self.page_top.crop(frame)
             view = apply_crop_and_masks(page, [], self.cfg.capture.masks)
+        flat, print_ = await asyncio.to_thread(lambda: (is_flat(view), fingerprint(view)))
+        # Analysed anyway, with a note: a plain view or the same pixels as last time (a frozen sharing) are suspect.
+        warnings = [name for name, seen in (("flat", flat), ("same", print_ == self.last_print)) if seen]
+        self.last_print = print_
         capture_ms = (time.perf_counter() - t0) * 1000
         if self.cfg.debug.enabled:
             await self._start_log(capture_id, f"capture-{capture_id}.png" if self.cfg.capture.save_to_disk else None)
@@ -673,7 +678,7 @@ class Engine(MarksMixin, LocksMixin):
         await self.broadcast({
             "type": "capture", "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
             "thumbnail": await asyncio.to_thread(data_url, view), "ms": round(capture_ms),
-            "guessed_crop": guessed_crop,
+            "guessed_crop": guessed_crop, "warnings": warnings,
         })
 
         if self.cfg.vision.enabled:  # level 2 in parallel: it is slow, we do not wait for it

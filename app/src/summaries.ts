@@ -17,9 +17,14 @@ export function answer(a: Analysis): string {
   return t("sum.hesitation", { flags: contenders(a).map((s) => flag(s.code)).join(" ") });
 }
 
+/** What a suspect capture's note says, in the section (TEXT) and in its summary line (NOTE). */
+export const WARNING_TEXT = { flat: "app.capture_flat", same: "app.capture_same" } as const;
+const WARNING_NOTE = { flat: "sum.capture_flat", same: "sum.capture_same" } as const;
+
 export function capture(a: Analysis): string {
   const time = `${new Date(a.at).toLocaleTimeString(i18n.lang)} · ${a.captureMs} ms`;
-  return a.guessedCrop ? `${time} · ${t("sum.crop_guessed")}` : time;
+  const notes = [...(a.guessedCrop ? [t("sum.crop_guessed")] : []), ...a.warnings.map((w) => t(WARNING_NOTE[w]))];
+  return [time, ...notes].join(" · ");
 }
 
 export function countries(a: Analysis): string {

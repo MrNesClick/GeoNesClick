@@ -8,6 +8,7 @@ asking again afterwards.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import os
 import secrets
@@ -21,7 +22,7 @@ import gi
 
 gi.require_version("Gst", "1.0")
 from gi.repository import Gio, GLib, Gst  # noqa: E402
-from PIL import Image  # noqa: E402
+from PIL import Image, ImageStat  # noqa: E402
 
 from .i18n import t
 from .config import CONFIG_DIR  # noqa: E402
@@ -275,6 +276,22 @@ def trim_padding(img: Image.Image) -> Image.Image:
     side; a frame black all over is left as it is. About 10 ms on a 4K frame."""
     box = (img if img.mode == "RGB" else img.convert("RGB")).point(_NOT_PADDING).getbbox()
     return img if box is None or box == (0, 0, *img.size) else img.crop(box)
+
+
+# Grey-level spread under which a view is plain (black, white, a loading screen): the least contrasted view of the
+# test set, a snowfield under a white sky, has 22.5; a single colour has 0.
+FLAT_SPREAD = 6
+
+
+def is_flat(img: Image.Image) -> bool:
+    small = img.convert("L")
+    small.thumbnail((64, 64))
+    return ImageStat.Stat(small).stddev[0] < FLAT_SPREAD
+
+
+def fingerprint(img: Image.Image) -> bytes:
+    """Same pixels, same fingerprint: tells a capture identical to the previous one (a frozen sharing)."""
+    return hashlib.blake2b(img.tobytes(), digest_size=16).digest()
 
 
 THUMB_SIDE = 720  # thumbnail of a capture sent to the UI

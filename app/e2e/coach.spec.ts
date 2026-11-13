@@ -48,6 +48,22 @@ test("a capture cut by a fixed share until the browser's bars are located says s
   await expect(capture).not.toContainText(en["sum.crop_guessed"]);
 });
 
+test("a plain capture or the same image as the previous one is analysed with a note", async ({ page }) => {
+  const engine = await fakeEngine(page, { state: sharing() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  const messages = round() as { type: string; id?: string; warnings?: string[] }[];
+  messages.forEach((message) => engine.send(message));
+  const capture = page.getByRole("region", { name: new RegExp(`^${en["app.section.capture"]}`) });
+  await expect(capture).not.toContainText(en["sum.capture_same"]);
+  const shot = messages.find((m) => m.type === "capture");
+  engine.send({ ...shot, id: "cap2", warnings: ["flat", "same"] });
+  await expect(capture).toContainText(en["sum.capture_flat"]);
+  await expect(capture).toContainText(en["sum.capture_same"]);
+  await capture.getByRole("button").first().click();
+  await expect(capture.getByText(en["app.capture_same"])).toBeVisible();
+});
+
 test("a country above the leader threshold is given as the answer, from the look of the view", async ({ page }) => {
   const state = { ...sharing(), leader: { min: 0.5, margin: 0.15 } }; // Sweden's 57 % now stands out
   const engine = await fakeEngine(page, { state });

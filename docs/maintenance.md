@@ -10,7 +10,8 @@ share: choose the browser window where you play. The permission is remembered
 **Settings** tab and click **Change window** (Capture section): the GNOME picker opens again. If you stop the
 sharing from GNOME's indicator, the coach says so and offers **Restart sharing**, which also opens the picker; only
 the app's start resumes the remembered window without asking. If that window no longer exists, the coach forgets it
-and opens the picker.
+and opens the picker. A capture that is the same image as the previous one is analysed with a note: if the game view
+changed in between, the sharing is frozen; restart it.
 
 ## Updates and data
 

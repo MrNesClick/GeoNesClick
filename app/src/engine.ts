@@ -336,6 +336,8 @@ export interface Mark {
 /** Mark number as a circled digit (① to ⑳). */
 export const circled = (n: number) => (n >= 1 && n <= 20 ? String.fromCodePoint(0x245f + n) : `(${n})`);
 
+export type CaptureWarning = "flat" | "same";
+
 export interface Analysis {
   id: string;
   at: string;
@@ -345,6 +347,8 @@ export interface Analysis {
   captureMs: number;
   /** The browser's bars were cut by a fixed share: their exact edge is learnt from the next capture. */
   guessedCrop: boolean;
+  /** Suspect capture, analysed anyway: "flat" (plain view), "same" (same pixels as the previous capture). */
+  warnings: CaptureWarning[];
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
   similar: Record<string, SimilarTip[]> | null;
@@ -426,7 +430,8 @@ type Message =
       trust_proof: boolean;
       leader: { min: number; margin: number };
     }
-  | { type: "capture"; id: string; at: string; thumbnail: string; ms: number; guessed_crop: boolean }
+  | { type: "capture"; id: string; at: string; thumbnail: string; ms: number; guessed_crop: boolean;
+      warnings: CaptureWarning[] }
   | {
       type: "streetclip";
       id: string;
@@ -484,6 +489,7 @@ function handle(msg: Message) {
         thumbnail: msg.thumbnail,
         captureMs: msg.ms,
         guessedCrop: msg.guessed_crop,
+        warnings: msg.warnings,
         scores: null,
         lookfor: null,
         similar: null,
