@@ -10,6 +10,9 @@ Follow [docs/development.md](docs/development.md) to build from source and run t
 
 ## Before you send a change
 
+- Work on a branch, never on `main`: `main` only moves when a release is published. Send your change as a pull
+  request against `main`.
+
 - Run the tests from the repository root; they need no network and no display:
 
   ```bash

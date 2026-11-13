@@ -13,6 +13,15 @@ These rules apply to every change, whoever (or whatever) writes it. The rest is 
 - Check before every push. The maintainer's clone has a local `pre-push` hook (in `.git/hooks`, never committed)
   that refuses a push whose files, commits or tags contain the real name.
 
+## Branches
+
+- Never commit on `main`: it is the public, released code, and it only moves when a release is published.
+- Each piece of work has its branch: `work/<version>` for the next release (`work/0.5.0`), or a topic name for work not
+  tied to one. Commit there, after the reviews; the branch may be pushed with tracking (`git push -u`): a branch
+  push publishes nothing (the release workflow runs on `v*` tags only).
+- A release happens on its branch: version commit, local AppImage, test in the VM; then `main` is fast-forwarded to
+  the branch and pushed with the annotated tag (see [docs/development.md](docs/development.md#publish-a-release)).
+
 ## Changelog
 
 - Every change visible to the people who use the app adds a line to `## [Unreleased]` in

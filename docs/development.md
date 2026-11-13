@@ -69,15 +69,18 @@ The app icon's source is `app/src-tauri/icons/icon.svg`; after changing it, rege
 ## Publish a release
 
 Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
-machine. Write the version's section in [CHANGELOG.md](../CHANGELOG.md) (move the `[Unreleased]` items under
+machine. The work for a version lives on its branch (`work/0.2.0`), never on `main`; everything below happens on that
+branch until the merge. Write the version's section in [CHANGELOG.md](../CHANGELOG.md) (move the `[Unreleased]` items under
 `## [x.y.z] - date`, written for the people who use the app). The section sets the number, strict SemVer: only `Fixed`
 entries → PATCH; any `Added`, `Changed` or `Deprecated` → MINOR; anything that breaks (a setting or data file no
 longer read without a migration, a raised system requirement, a removed feature) → MAJOR, or MINOR before 1.0.0. Then
 bump the version in the four manifests (`engine/pyproject.toml`, `app/package.json`, `app/src-tauri/Cargo.toml`,
-`app/src-tauri/tauri.conf.json`) and the two lock files, commit, then push an annotated tag:
+`app/src-tauri/tauri.conf.json`) and the two lock files, and commit. Build the AppImage and test it (above), then
+fast-forward `main` to the branch and push it with an annotated tag:
 
 ```bash
-git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin v0.2.0
+git switch main && git merge --ff-only work/0.2.0
+git tag -a v0.2.0 -m "GeoNesClick 0.2.0" && git push origin main v0.2.0
 ```
 
 The run first waits for the repository owner to approve it (Actions tab › the run › **Review deployments**): the
