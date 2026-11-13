@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-11-13
+
 ### Fixed
 
 - With `XDG_CACHE_HOME` set, the coach looked for the AI models in the wrong folder: the local analysis contacted
@@ -187,7 +189,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.4...v0.2.5
