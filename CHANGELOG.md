@@ -7,6 +7,14 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- With `XDG_CACHE_HOME` set, the coach looked for the AI models in the wrong folder: the local analysis contacted
+  Hugging Face at each start instead of staying offline, and "Erase everything" left the models on the disk (1.7 GB
+  for StreetCLIP).
+- The installer names the folders where the engine and the models actually go, when `XDG_DATA_HOME`, `HF_HOME` or
+  `XDG_CACHE_HOME` point elsewhere.
+
 ## [0.3.1] - 2026-11-13
 
 ### Fixed

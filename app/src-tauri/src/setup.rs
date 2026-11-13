@@ -68,6 +68,24 @@ pub fn data_dir() -> PathBuf {
         .join("geonesclick")
 }
 
+/// The Hugging Face model cache, as the engine's library finds it (paths.hf_hub_cache, huggingface_hub/constants.py).
+fn models_dir() -> PathBuf {
+    let var = |name: &str| std::env::var_os(name).map(PathBuf::from);
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
+    let hf_home = var("HF_HOME").unwrap_or_else(|| var("XDG_CACHE_HOME").unwrap_or(home.join(".cache")).join("huggingface"));
+    var("HF_HUB_CACHE").or_else(|| var("HUGGINGFACE_HUB_CACHE")).unwrap_or(hf_home.join("hub"))
+}
+
+/// A folder as the installer shows it: the home folder written ~.
+fn shown(path: &Path) -> String {
+    match std::env::var_os("HOME").map(PathBuf::from) {
+        Some(home) if !home.as_os_str().is_empty() && path.starts_with(&home) => {
+            format!("~/{}", path.strip_prefix(&home).unwrap_or(path).display())
+        }
+        _ => path.display().to_string(),
+    }
+}
+
 pub fn engine_home() -> PathBuf {
     data_dir().join("engine")
 }
@@ -253,6 +271,9 @@ pub struct Status {
     downloads: Value,
     packages_cuda: Value,
     packages_cpu: Value,
+    /// Where the engine and the models go, as shown to the user (XDG_DATA_HOME, HF_HOME… followed).
+    data_dir: String,
+    models_dir: String,
 }
 
 #[tauri::command]
@@ -274,6 +295,8 @@ pub fn setup_status(app: AppHandle) -> Status {
         downloads: file("downloads.json"),
         packages_cuda: file("packages-cuda.json"),
         packages_cpu: file("packages-cpu.json"),
+        data_dir: shown(&data_dir()),
+        models_dir: shown(&models_dir()),
     }
 }
 

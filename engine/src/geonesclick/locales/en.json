@@ -681,7 +681,7 @@
   "setup.required.title": "Required components",
   "setup.use_cpu": "Use the processor version (lighter, without GPU acceleration)",
   "setup.no_nvidia": "No NVIDIA card detected: processor version.",
-  "setup.where": "Engine in ~/.local/share/geonesclick, AI models in ~/.cache/huggingface: nothing else is changed in the system.",
+  "setup.where": "Engine in {data}, AI models in {models}: nothing else is changed in the system.",
   "setup.sources": "Sources, licences and list of packages",
   "setup.included": "included",
   "setup.show_packages": "Show the {n} Python packages",

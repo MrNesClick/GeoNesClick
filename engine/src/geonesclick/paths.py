@@ -25,9 +25,15 @@ SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / f"{APP}.sock"
 
 
 def hf_hub_cache() -> Path:
-    """Hugging Face model cache (StreetCLIP, PLONK), without importing the library."""
-    hf_home = Path(os.environ.get("HF_HOME") or Path.home() / ".cache" / "huggingface")
-    return Path(os.environ.get("HF_HUB_CACHE") or hf_home / "hub")
+    """Hugging Face model cache (StreetCLIP, PLONK), without importing the library: the same variables, in the same
+    order, as huggingface_hub/constants.py (HF_HUB_CACHE, HUGGINGFACE_HUB_CACHE, HF_HOME, XDG_CACHE_HOME)."""
+    def expand(value: str) -> str:
+        return os.path.expandvars(os.path.expanduser(value))
+
+    cache_home = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
+    hf_home = expand(os.environ.get("HF_HOME", os.path.join(cache_home, "huggingface")))
+    legacy = os.environ.get("HUGGINGFACE_HUB_CACHE", os.path.join(hf_home, "hub"))
+    return Path(expand(os.environ.get("HF_HUB_CACHE", legacy)))
 
 
 class _TokenNagFilter(logging.Filter):

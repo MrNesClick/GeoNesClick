@@ -27,6 +27,8 @@ interface Status {
   checks: Check[]; downloads: { download: Download[] }; packages_cuda: Package[]; packages_cpu: Package[];
   /** setup.rs, package_manager: the command to show and the Install button; none when unknown. */
   package_manager: "apt" | "dnf" | "pacman" | "zypper" | null;
+  /** Where the engine and the models go, home written ~ (XDG_DATA_HOME, HF_HOME… followed). */
+  data_dir: string; models_dir: string;
 }
 
 const emit = defineEmits<{ done: [] }>();
@@ -345,7 +347,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
             {{ t("setup.use_cpu") }}
           </label>
           <p v-else class="mt-2 text-[1rem] text-courbe">{{ t("setup.no_nvidia") }}</p>
-          <p class="mt-1 text-[1rem] text-courbe">{{ t("setup.where") }}</p>
+          <p class="mt-1 text-[1rem] text-courbe">{{ t("setup.where", { data: status.data_dir, models: status.models_dir }) }}</p>
           <details class="mt-3">
             <summary :class="disclosure">{{ t("setup.sources") }}</summary>
             <table class="mt-2 w-full text-[1rem]">

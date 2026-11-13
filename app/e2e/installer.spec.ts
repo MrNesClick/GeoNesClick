@@ -11,6 +11,7 @@ function status(packageManager: string | null, missing: Record<string, string> =
     bundled: true, needed: true, version: "0.2.4", installed: null, engine_ready: false, gpu: false,
     checks: CHECKS.map((id) => ({ label: `setup.check.${id}`, ok: !(id in missing), package: missing[id] ?? id })),
     downloads: fixture("downloads.json"), packages_cuda: [], packages_cpu: [], package_manager: packageManager,
+    data_dir: "~/Mes données/geonesclick", models_dir: "~/.cache/huggingface/hub",
   };
 }
 
@@ -39,6 +40,12 @@ test("a refused password is said, and the installer stays on the system step", a
   await page.getByRole("button", { name: en["setup.system.install"], exact: true }).click();
   await expect(page.getByRole("alert")).toHaveText(en["setup.system.install_cancelled"]);
   await expect(page.getByRole("heading", { name: en["setup.system.title"] })).toBeVisible();
+});
+
+test("the components step names the folders the engine and the models actually go to", async ({ page }) => {
+  await tauri(page, { setup_status: status("apt") });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText("Engine in ~/Mes données/geonesclick, AI models in ~/.cache/huggingface/hub")).toBeVisible();
 });
 
 test("on Fedora, the command and the button use dnf and Fedora's package names", async ({ page }) => {

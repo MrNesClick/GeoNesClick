@@ -681,7 +681,7 @@
   "setup.required.title": "Composants requis",
   "setup.use_cpu": "Utiliser la version processeur (plus légère, sans accélération GPU)",
   "setup.no_nvidia": "Aucune carte NVIDIA détectée : version processeur.",
-  "setup.where": "Moteur dans ~/.local/share/geonesclick, modèles d'IA dans ~/.cache/huggingface : rien d'autre n'est modifié dans le système.",
+  "setup.where": "Moteur dans {data}, modèles d'IA dans {models} : rien d'autre n'est modifié dans le système.",
   "setup.sources": "Sources, licences et liste des paquets",
   "setup.included": "inclus",
   "setup.show_packages": "Afficher les {n} paquets Python",
