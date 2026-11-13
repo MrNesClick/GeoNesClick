@@ -19,9 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import tomllib
 from collections import Counter
-from pathlib import Path
 
 from PIL import Image
 
@@ -31,7 +29,8 @@ from geonesclick.i18n import set_language
 from geonesclick.streetclip import StreetClip
 from geonesclick.vision import VisionClient, VisionError
 
-DATASET = Path(__file__).resolve().parent.parent / "dataset"
+import testset  # spikes/testset.py: labels and images, Claude in Chrome artefacts cropped out
+
 
 
 def conclusion(fiche: dict, known: set[str]) -> tuple[str, str]:
@@ -51,7 +50,7 @@ async def main(as_json: bool) -> None:
     if not vision.ready:
         raise SystemExit("No NVIDIA API key: the vision model cannot be asked.")
     known = set(cfg.streetclip.countries.values())
-    labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
+    labels = testset.labels()
     sem = asyncio.Semaphore(3)  # free tier rate limit
 
     async def ask(view: Image.Image) -> tuple[dict | None, str]:
@@ -61,7 +60,7 @@ async def main(as_json: bool) -> None:
             except VisionError as exc:
                 return None, str(exc)
 
-    views = [apply_crop_and_masks(Image.open(DATASET / "images" / item["file"]).convert("RGB"),
+    views = [apply_crop_and_masks(testset.image(item),
                                   cfg.capture.crop, cfg.capture.masks) for item in labels]
     sheets = await asyncio.gather(*(ask(v) for v in views))
     rows = []

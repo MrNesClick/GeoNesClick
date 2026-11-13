@@ -9,8 +9,6 @@ Usage: .venv/bin/python spikes/streetclip_tta.py
 from __future__ import annotations
 
 import os
-import tomllib
-from pathlib import Path
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
@@ -20,7 +18,8 @@ from PIL import Image  # noqa: E402
 from geonesclick.config import load_config  # noqa: E402
 from geonesclick.streetclip import StreetClip  # noqa: E402
 
-DATASET = Path(__file__).resolve().parent.parent / "dataset"
+import testset  # spikes/testset.py: labels and images, Claude in Chrome artefacts cropped out
+
 VIEWS = {  # fractions [left, top, right, bottom]
     "whole": (0.0, 0.0, 1.0, 1.0),
     "gauche": (0.0, 0.0, 0.55, 1.0),
@@ -45,10 +44,10 @@ def main() -> None:
     cfg = load_config()
     clip = StreetClip(cfg.streetclip)
     codes = list(cfg.streetclip.countries.values())
-    labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
+    labels = testset.labels()
     stats = {k: [0, 0, 0.0] for k in ("single", "mean")}  # top-1, top-3, probability of the right country
     for item in labels:
-        img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
+        img = testset.image(item)
         w, h = img.size
         per_view = {
             name: probs(clip, img.crop((int(a * w), int(b * h), int(c * w), int(d * h))))

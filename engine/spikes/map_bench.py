@@ -13,18 +13,16 @@ For each: is the true place inside a zone, how far from the nearest zone, and ho
 from __future__ import annotations
 
 import math
-import tomllib
-from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
 from geonesclick.borders import Borders
 from geonesclick.config import load_config
 from geonesclick.plonk import PlonkCloud, summarise
 from geonesclick.streetclip import StreetClip
 
-DATASET = Path(__file__).resolve().parent.parent / "dataset"
+import testset  # spikes/testset.py: labels and images, Claude in Chrome artefacts cropped out
+
 
 
 def local_xy(lat: float, lon: float, points: list[list[float]]) -> np.ndarray:
@@ -84,10 +82,10 @@ def main() -> None:
     cfg = load_config()
     clip, borders = StreetClip(cfg.streetclip), Borders()
     plonk = PlonkCloud(cfg.plonk, clip.device)
-    labels = [c for c in tomllib.loads((DATASET / "labels.toml").read_text())["capture"] if "lat" in c]
+    labels = [c for c in testset.labels() if "lat" in c]
     every, right = [], []
     for item in labels:
-        img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
+        img = testset.image(item)
         _, _, _, cls = clip.analyse(img)
         cloud = plonk.sample(cls)
         message = summarise(cloud, borders.countries_of(cloud.lat, cloud.lon), cfg.plonk)

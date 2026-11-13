@@ -19,7 +19,6 @@ import json
 import os
 import sys
 import time
-import tomllib
 import types
 from collections import Counter
 from pathlib import Path
@@ -31,7 +30,8 @@ from PIL import Image
 from geonesclick.config import load_config
 from geonesclick.streetclip import StreetClip
 
-DATASET = Path(__file__).resolve().parent.parent / "dataset"
+import testset  # spikes/testset.py: labels and images, Claude in Chrome artefacts cropped out
+
 VENDOR = Path(__file__).resolve().parent / ".vendor"  # filled by scripts/setup-plonk-spike.sh
 BORDERS = VENDOR / "ne_50m_admin_0_countries.geojson"
 MODEL_ID = "nicolas-dufour/PLONK_OSV_5M"
@@ -177,7 +177,7 @@ def main(borders_path: Path, n: int) -> None:
 
     codes = list(cfg.streetclip.countries.values())
     borders = load_borders(borders_path)
-    labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
+    labels = testset.labels()
     keys = ["StreetCLIP"] + [f"PLONK {s} steps" for s in STEPS]
     totals = {k: [0, 0] for k in keys}  # top-1, top-3
     drift = {s: [] for s in STEPS}  # distance from the mode to the mode at 250 steps (km)
@@ -187,7 +187,7 @@ def main(borders_path: Path, n: int) -> None:
     held = {s: 0 for s in STEPS}  # true place within the spread around the mode
 
     for i, item in enumerate(labels):
-        img = Image.open(DATASET / "images" / item["file"]).convert("RGB")
+        img = testset.image(item)
         probs, cls = encode(clip, img)
         if i == 0:
             print(f"Cosine [CLS] fp16 GPU / fp32 CPU: {check_cls(clip, img, cls):.5f}")

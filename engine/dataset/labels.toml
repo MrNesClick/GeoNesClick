@@ -55,6 +55,7 @@ predicted = "PL"
 lat = 52.048206
 lon = 20.986351
 region = "PL.78"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062124-471.png"
@@ -65,6 +66,7 @@ predicted = "DO"
 lat = 18.509319
 lon = -69.985092
 region = "DO.37"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062207-233.png"
@@ -75,6 +77,7 @@ predicted = "ID"
 lat = -5.254535
 lon = 120.218048
 region = "ID.38"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062236-681.png"
@@ -85,6 +88,7 @@ predicted = "GB"
 lat = 51.478954
 lon = -2.782219
 region = "GB.ENG"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062310-262.png"
@@ -95,6 +99,7 @@ predicted = "RU"
 lat = 51.833221
 lon = 108.296417
 region = "RU.11"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062332-018.png"
@@ -105,6 +110,7 @@ predicted = "ID"
 lat = -0.394516
 lon = -79.3451
 region = "EC.26"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062406-186.png"
@@ -115,6 +121,7 @@ predicted = "ES"
 lat = 37.060177
 lon = 38.453259
 region = "TR.63"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062429-604.png"
@@ -125,6 +132,7 @@ predicted = "AR"
 lat = -45.591225
 lon = -70.60746
 region = "AR.04"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062453-819.png"
@@ -135,6 +143,7 @@ predicted = "GT"
 lat = 14.254117
 lon = -90.127098
 region = "GT.11"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062532-289.png"
@@ -145,6 +154,7 @@ predicted = "IT"
 lat = 38.084625
 lon = 13.394304
 region = "IT.15"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062613-381.png"
@@ -155,6 +165,7 @@ predicted = "US"
 lat = 34.34742
 lon = -97.810966
 region = "US.OK"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062633-768.png"
@@ -165,6 +176,7 @@ predicted = "HR"
 lat = 45.639942
 lon = 16.29958
 region = "HR.20"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062658-182.png"
@@ -175,6 +187,7 @@ predicted = "US"
 lat = 33.913536
 lon = -79.857704
 region = "US.SC"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062716-600.png"
@@ -185,6 +198,7 @@ predicted = "ID"
 lat = 1.574406
 lon = 124.919624
 region = "ID.31"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062750-302.png"
@@ -195,6 +209,7 @@ predicted = "TH"
 lat = -22.726494
 lon = -42.470741
 region = "BR.21"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062814-730.png"
@@ -205,6 +220,7 @@ predicted = "US"
 lat = 39.586731
 lon = -84.010895
 region = "US.OH"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062838-181.png"
@@ -215,6 +231,7 @@ predicted = "AE"
 lat = 25.27294
 lon = 55.314388
 region = "AE.03"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062901-291.png"
@@ -225,6 +242,7 @@ predicted = "US"
 lat = 31.1369
 lon = -95.478096
 region = "US.TX"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062926-588.png"
@@ -235,6 +253,7 @@ predicted = "FR"
 lat = 48.668968
 lon = 2.539955
 region = "FR.11"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-062955-633.png"
@@ -245,6 +264,7 @@ predicted = "NG"
 lat = 6.247115
 lon = 5.61656
 region = "NG.37"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-063017-684.png"
@@ -255,6 +275,7 @@ predicted = "PE"
 lat = -13.727662
 lon = -75.46611
 region = "PE.09"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-063040-288.png"
@@ -265,6 +286,7 @@ predicted = "PH"
 lat = 7.151226
 lon = 124.597168
 region = "PH.12"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-063100-419.png"
@@ -275,6 +297,7 @@ predicted = "FR"
 lat = 47.269695
 lon = -0.086764
 region = "FR.52"
+source = "claude"
 
 [[capture]]
 file = "capture-20261113-063123-766.png"
@@ -285,3 +308,307 @@ predicted = "RO"
 lat = 45.185444
 lon = 26.847376
 region = "RO.11"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085238-759.png"
+country = "US"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "US"
+lat = 41.766769
+lon = -88.250427
+region = "US.IL"
+
+[[capture]]
+file = "capture-20261113-085412-634.png"
+country = "MX"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "GT"
+lat = 18.849617
+lon = -97.087654
+region = "MX.30"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085439-253.png"
+country = "TW"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "VN"
+lat = 24.492153
+lon = 118.407845
+region = "TW.01"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085508-794.png"
+country = "BR"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "BR"
+lat = -27.05122
+lon = -52.087963
+region = "BR.26"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085638-651.png"
+country = "US"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "US"
+lat = 36.673954
+lon = -90.33374
+region = "US.MO"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085728-066.png"
+country = "RU"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "RU"
+lat = 56.011883
+lon = 92.820465
+region = "RU.91"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085754-805.png"
+country = "ES"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "ES"
+lat = 41.495239
+lon = -1.398976
+region = "ES.52"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085827-595.png"
+country = "JP"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "JP"
+lat = 36.320568
+lon = 139.968826
+region = "JP.14"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085922-531.png"
+country = "MK"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "AL"
+lat = 41.112011
+lon = 21.355232
+region = "MK.D9"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-085955-988.png"
+country = "CL"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "CL"
+lat = -36.796375
+lon = -73.047707
+region = "CL.06"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090032-000.png"
+country = "SN"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "SN"
+lat = 16.469299
+lon = -15.711462
+region = "SN.14"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090105-900.png"
+country = "KE"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "UG"
+lat = -1.253369
+lon = 36.84362
+region = "KE.05"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090211-565.png"
+country = "FR"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "FR"
+lat = 46.661972
+lon = 4.945131
+region = "FR.27"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090259-853.png"
+country = "KR"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "KR"
+lat = 37.118416
+lon = 126.88942
+region = "KR.13"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090343-841.png"
+country = "BR"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "BR"
+lat = -13.176637
+lon = -59.874798
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090414-809.png"
+country = "US"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "US"
+lat = 40.025913
+lon = -86.042183
+region = "US.IN"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090447-726.png"
+country = "DE"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "FR"
+lat = 52.43037
+lon = 9.624784
+region = "DE.06"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090518-326.png"
+country = "US"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "CA"
+lat = 45.51292
+lon = -122.69062
+region = "US.OR"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090550-793.png"
+country = "CA"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "CA"
+lat = 56.227852
+lon = -117.282532
+region = "CA.01"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090619-696.png"
+country = "ID"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "ID"
+lat = -7.369372
+lon = 109.201866
+region = "ID.07"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090703-372.png"
+country = "ES"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "FR"
+lat = 42.914215
+lon = -7.060239
+region = "ES.58"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090734-937.png"
+country = "HU"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "HU"
+lat = 47.490952
+lon = 19.075584
+region = "HU.05"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090814-306.png"
+country = "CA"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "CA"
+lat = 58.737423
+lon = -93.381248
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090849-776.png"
+country = "FR"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "FR"
+lat = 44.846729
+lon = -0.63711
+region = "FR.75"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090923-520.png"
+country = "CL"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "CL"
+lat = -48.131268
+lon = -72.821022
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-090958-533.png"
+country = "US"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "US"
+lat = 38.840584
+lon = -97.618584
+region = "US.KS"
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-091031-858.png"
+country = "ID"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "ID"
+lat = -7.210654
+lon = 112.734207
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-091110-498.png"
+country = "RS"
+mode = "classique"
+layout = "window 1920x1200"
+predicted = "FR"
+lat = 43.568783
+lon = 21.589355
+region = "RS.SE"
+source = "claude"

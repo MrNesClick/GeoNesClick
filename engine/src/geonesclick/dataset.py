@@ -63,6 +63,9 @@ class Label:
     lat: float | None = None  # true place (Google Maps link from the end screen): the bench measures the error in km
     lon: float | None = None
     region: str = ""  # GeoNames code of its region ("RU.46"), derived from the position
+    # Who played the round: "" the player through the coach; "claude" played by Claude in Chrome, whose capture
+    # carries Chrome's debugging bar and the extension's badge and border (the benches crop them out).
+    source: str = ""
 
 
 def _toml_value(value: str | bool | float) -> str:

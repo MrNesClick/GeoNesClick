@@ -18,19 +18,16 @@ import json
 import os
 import re
 import sys
-import tomllib
-from pathlib import Path
 
 os.environ.setdefault("HF_HUB_OFFLINE", "1")  # StreetCLIP already cached: no network call
-
-from PIL import Image  # noqa: E402
 
 from geonesclick.capture import apply_crop_and_masks  # noqa: E402
 from geonesclick.config import load_config  # noqa: E402
 from geonesclick.streetclip import StreetClip  # noqa: E402
 from geonesclick.vision import VisionClient, VisionError  # noqa: E402
 
-DATASET = Path(__file__).resolve().parent.parent / "dataset"
+import testset  # spikes/testset.py: labels and images, Claude in Chrome artefacts cropped out
+
 
 # Layout "classic game, 1920x1200 browser window", measured on the captures.
 CROP = [0.0, 122 / 1200, 1.0, 1.0]
@@ -57,7 +54,7 @@ def leaked_names(fiche: dict) -> list[str]:
 
 
 async def main(with_vision: bool) -> None:
-    labels = tomllib.loads((DATASET / "labels.toml").read_text())["capture"]
+    labels = testset.labels()
     cfg = load_config()
     clip = StreetClip(cfg.streetclip.model_copy(update={"top_k": 20}))  # rank of the right country, up to 20
     vision = VisionClient(cfg.vision) if with_vision else None
@@ -74,7 +71,7 @@ async def main(with_vision: bool) -> None:
 
     summary = {v: {"top1": 0, "top3": 0, "proba": 0.0, "fuites": 0} for v in VARIANTS}
     for item in labels:
-        frame = Image.open(DATASET / "images" / item["file"]).convert("RGB")
+        frame = testset.image(item)
         truth = item["country"]
         print(f"\n=== {item['file']}  →  {code_to_name.get(truth, truth)} ({truth})")
         views = {name: apply_crop_and_masks(frame, c, m) for name, (c, m) in VARIANTS.items()}
