@@ -22,6 +22,11 @@ These rules apply to every change, whoever (or whatever) writes it. The rest is 
 - A release happens on its branch: version commit, local AppImage, test in the VM; then `main` is fast-forwarded to
   the branch and pushed with the annotated tag (see [docs/development.md](docs/development.md#publish-a-release)).
 
+## French texts
+
+- The French texts shown to users (catalog `engine/src/geonesclick/locales/fr.json`, `README.fr.md`) say "vous", never
+  "tu": "Vous pouvez supprimer…", "Choisissez…".
+
 ## Changelog
 
 - Every change visible to the people who use the app adds a line to `## [Unreleased]` in
