@@ -26,7 +26,7 @@ def produce(out: Path) -> None:
     from fastapi.testclient import TestClient
     from PIL import Image
 
-    from geonesclick import capture, server
+    from geonesclick import capture, server, updates
     from geonesclick.config import load_config
     from geonesclick.streetclip import CountryScore
 
@@ -51,6 +51,8 @@ def produce(out: Path) -> None:
     engine.vision.client = None
     ids = iter(f"cap{n}" for n in range(1, 100))
     capture.new_id = server.new_id = lambda: next(ids)  # stable ids: the fixtures do not change from run to run
+    # The installed package's version differs between a developer's venv and the release runner's: fixed too.
+    updates.current = lambda: "0.0.0"
     sent: list[dict] = []
 
     async def broadcast(message):
