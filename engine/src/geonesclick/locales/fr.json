@@ -1110,5 +1110,11 @@
   "whats_new.migration": "Migration",
   "setup.update.now": "Mise à jour vers la {version}…",
   "setup.update.downloading": "Téléchargement de {name} ({size})…",
-  "setup.update.details": "Détails"
+  "setup.update.details": "Détails",
+  "setup.update.ask_title": "Mettre à jour GeoNesClick {from} → {to} ?",
+  "setup.update.nothing": "Rien à télécharger : seul GeoNesClick lui-même change.",
+  "setup.update.download": "À télécharger : {size} (PyPI, PyTorch)",
+  "setup.update.go": "Mettre à jour",
+  "setup.update.later": "Plus tard",
+  "setup.update.later_hint": "Plus tard : la {installed} reste installée telle quelle, et cette fenêtre se ferme."
 }

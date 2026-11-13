@@ -22,13 +22,29 @@ function update() {
   return {
     ...status("apt"), version: "0.5.0", installed: "0.4.1", upgrade: true, installed_variant: "cpu", gpu: true,
     whats_new: [{ version: "0.5.0", text: "### Added\n\n- A capture that is nearly a single colour comes with a note.\n\n### Changed\n\n- A [CHANGELOG](https://x) line." }],
+    update_fetches: [],
   };
 }
+
+test("an update is asked first, with what it would download; Later keeps the installed version", async ({ page }) => {
+  await tauri(page, { setup_status: { ...update(), update_fetches: [{ name: "torch", version: "2.15.0+cpu", size: 200_000_000 }] } });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByRole("heading", { name: "Update GeoNesClick 0.4.1 → 0.5.0?" })).toBeVisible();
+  await expect(page.getByText("To download: 200 MB (PyPI, PyTorch)")).toBeVisible();
+  await expect(page.getByText("• A CHANGELOG line.")).toBeVisible(); // what changed, before deciding
+  await page.waitForTimeout(300);
+  expect(await tauriCalls(page)).not.toContain("setup_install"); // nothing starts without the click
+  await page.getByRole("button", { name: en["setup.update.later"] }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("plugin:window|close");
+  expect(await tauriCalls(page)).not.toContain("setup_install");
+});
 
 test("an update runs without a question, keeps the installed engine's variant, and says what changed", async ({ page }) => {
   await tauri(page, { setup_status: update(), place_appimage: "~/Téléchargements/GeoNesClick_0.5.0_amd64.AppImage" });
   await fakeEngine(page);
   await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["setup.update.nothing"])).toBeVisible();
+  await page.getByRole("button", { name: en["setup.update.go"] }).click();
   await expect(page.getByRole("heading", { name: "Updating GeoNesClick 0.4.1 → 0.5.0" })).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("Updating to 0.5.0…"); // one line, the steps under Details
   await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: "packages", line: "Downloading torch (199.8MiB)", done: false, ok: true, reason: null }));
@@ -53,6 +69,7 @@ test("an update whose copy could not be made still says once what changed", asyn
   await tauri(page, { setup_status: update(), place_appimage: { error: "No space left on device" } });
   await fakeEngine(page);
   await page.goto("/e2e/harness.html");
+  await page.getByRole("button", { name: en["setup.update.go"] }).click();
   await expect.poll(() => tauriCalls(page)).toContain("setup_install");
   await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: null, line: null, done: true, ok: true, reason: null }));
   const note = page.getByRole("status").filter({ hasText: "Updated to 0.5.0" });

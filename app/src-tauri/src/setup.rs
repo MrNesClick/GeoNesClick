@@ -108,6 +108,60 @@ fn older(version: &str, than: &str) -> bool {
     matches!((numbers(version), numbers(than)), (Some(a), Some(b)) if a < b)
 }
 
+/// A library an update would download: in the new version's list, not installed at that version.
+#[derive(Serialize, Debug, PartialEq)]
+pub struct Fetch {
+    name: String,
+    version: String,
+    /// Bytes; PyTorch for the processor has no size in the list (published by its index): the downloads list's.
+    size: u64,
+}
+
+/// A package name as pip compares them (PEP 503): "Pydantic_Core" and "pydantic-core" are the same.
+fn normalized(name: &str) -> String {
+    name.to_lowercase().replace(['_', '.'], "-")
+}
+
+/// The libraries installed in the engine, name → version, read from their *.dist-info folders.
+fn installed_packages(site: &Path) -> std::collections::HashMap<String, String> {
+    let Ok(entries) = site.read_dir() else { return Default::default() };
+    entries
+        .flatten()
+        .filter_map(|e| {
+            let name = e.file_name().to_string_lossy().into_owned();
+            let (package, version) = name.strip_suffix(".dist-info")?.rsplit_once('-')?;
+            Some((normalized(package), version.to_string()))
+        })
+        .collect()
+}
+
+/// What an update downloads: the libraries of the new version's list (packages-<variant>.json) missing or at another
+/// version in the installed engine. The engine's own wheels come with the AppImage and are never downloaded.
+fn update_fetches(packages: &Value, installed: &std::collections::HashMap<String, String>, cpu_torch_mb: u64) -> Vec<Fetch> {
+    packages
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(|p| {
+            let (name, version) = (p["name"].as_str()?, p["version"].as_str()?);
+            if installed.get(&normalized(name)).map(String::as_str) == Some(version) {
+                return None;
+            }
+            let size = match p["size"].as_u64() {
+                Some(0) | None => cpu_torch_mb * 1_000_000,
+                Some(bytes) => bytes,
+            };
+            Some(Fetch { name: name.to_string(), version: version.to_string(), size })
+        })
+        .collect()
+}
+
+/// The installed engine's site-packages folder (venv/lib/python3.x/site-packages).
+fn site_packages() -> Option<PathBuf> {
+    let lib = engine_home().join("venv/lib").read_dir().ok()?.flatten().next()?.path();
+    Some(lib.join("site-packages"))
+}
+
 #[derive(Serialize, Debug, PartialEq)]
 pub struct Release {
     version: String,
@@ -342,6 +396,8 @@ pub struct Status {
     copy_dir: String,
     /// For an update: what changed since the installed version (bundled CHANGELOG.md), newest first.
     whats_new: Vec<Release>,
+    /// For an update: the libraries it would download (empty when only GeoNesClick changes), shown before it starts.
+    update_fetches: Vec<Fetch>,
     gpu: bool,
     checks: Vec<Check>,
     package_manager: Option<PackageManager>,
@@ -365,6 +421,17 @@ pub fn setup_status(app: AppHandle) -> Status {
     Status {
         bundled: bundle.is_some(),
         needed: needed(&app),
+        update_fetches: match (&bundle, &installed_variant, site_packages()) {
+            (Some(b), Some(variant), Some(site)) if other && !older => {
+                let cpu_torch_mb = file("downloads.json")["download"]
+                    .as_array()
+                    .and_then(|d| d.iter().find(|x| x["id"] == "pytorch-cpu"))
+                    .and_then(|x| x["size_mb"].as_u64())
+                    .unwrap_or(0);
+                update_fetches(&read_json(&b.join(format!("packages-{variant}.json"))), &installed_packages(&site), cpu_torch_mb)
+            }
+            _ => Vec::new(),
+        },
         upgrade: other && !older && venv_python().is_file() && installed_variant.is_some(),
         installed_copy: installed_appimage().is_file(),
         whats_new: match (&bundle, &version, &installed) {
@@ -664,6 +731,26 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_update_downloads_only_the_libraries_missing_or_at_another_version() {
+        let site = std::env::temp_dir().join(format!("gnc-site-{}", std::process::id()));
+        for d in ["numpy-2.5.4.dist-info", "pydantic_core-2.41.0.dist-info", "torch-2.14.0+cpu.dist-info", "README"] {
+            std::fs::create_dir_all(site.join(d)).unwrap();
+        }
+        let installed = installed_packages(&site);
+        assert_eq!(installed.get("pydantic-core").map(String::as_str), Some("2.41.0"));
+        let packages = serde_json::json!([
+            {"name": "numpy", "version": "2.5.4", "size": 16},
+            {"name": "pydantic-core", "version": "2.41.0", "size": 2},
+            {"name": "torch", "version": "2.15.0+cpu", "size": 0, "note": "published_size"},
+            {"name": "hf-xet", "version": "1.2.0", "size": 4},
+        ]);
+        let fetched = update_fetches(&packages, &installed, 200);
+        assert_eq!(fetched.iter().map(|f| (f.name.as_str(), f.size)).collect::<Vec<_>>(),
+                   [("torch", 200_000_000), ("hf-xet", 4)]);
+        std::fs::remove_dir_all(&site).unwrap();
+    }
 
     #[test]
     fn an_update_shows_the_sections_since_the_installed_version() {

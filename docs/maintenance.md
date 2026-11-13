@@ -21,7 +21,10 @@ name without its version, through a temporary file renamed over the previous cop
 The applications-menu entry launches that copy, so the downloaded file can be renamed, moved or deleted. A launch
 that installs nothing puts the copy back if it went missing.
 
-Opening a newer AppImage over an installed version (`setup_status`: `upgrade`) updates without a question: the same
+Opening a newer AppImage over an installed version (`setup_status`: `upgrade`) first asks, with the CHANGELOG sections
+since the installed version and the libraries it would download (`update_fetches`: those of `packages-<variant>.json`
+missing from the installed engine or at another version; empty when only GeoNesClick changes); "Later" closes the
+window and changes nothing. Once accepted, it updates without another question: the same
 variant (`engine/VARIANT`, or PyTorch's `+cpu` suffix for an engine installed before 0.5.0), the choices and the key
 kept, then the new copy installed and the coach started. `install-engine.sh` starts `venv.new` from a copy of the
 installed engine when its Python version and variant are the same, then `uv pip sync`s it to the pinned

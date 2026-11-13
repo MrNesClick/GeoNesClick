@@ -61,7 +61,9 @@ L'interface existe en anglais et en français (au choix dès le premier lancemen
 
 ### Mettre à jour
 
-Téléchargez la nouvelle AppImage et ouvrez-la une fois. La mise à jour se fait toute seule, sans question :
+Téléchargez la nouvelle AppImage et ouvrez-la une fois. Elle demande d'abord : **Mettre à jour GeoNesClick 0.4.1 →
+0.5.0 ?**, avec ce qui a changé et ce qu'elle téléchargerait (souvent rien, quand seul GeoNesClick change) ; **Plus
+tard** garde la version installée et ferme la fenêtre. Une fois votre accord donné :
 
 - vos réglages, votre clé API et vos données sont gardés ; les réglages sont migrés en arrière-plan quand la nouvelle
   version le demande ;

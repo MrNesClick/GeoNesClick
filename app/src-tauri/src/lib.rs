@@ -116,6 +116,10 @@ pub fn run() {
             integration::remove_integration
         ])
         .setup(|app| {
+            // The version in the title bar: which one runs is seen at a glance (an older AppImage opened by mistake…).
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_title(&format!("GeoNesClick ({})", app.package_info().version));
+            }
             setup::ensure_installed_copy(app.handle());
             integration::refresh_menu_entry();
             integration::refresh_shortcuts(app.handle());

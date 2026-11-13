@@ -9,7 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { num } from "../engine";
 import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
-import type { Release } from "./WhatsNew.vue";
+import WhatsNew, { type Release } from "./WhatsNew.vue";
 
 // Language: English by default, chosen on the first screen, written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
@@ -39,6 +39,8 @@ interface Status {
   installed_copy: boolean; copy_dir: string;
   /** For an update: the CHANGELOG sections since the installed version, newest first. */
   whats_new: Release[];
+  /** For an update: the libraries it would download (setup.rs, update_fetches); empty when only GeoNesClick changes. */
+  update_fetches: { name: string; version: string; size: number }[];
 }
 
 const emit = defineEmits<{ done: [] }>();
@@ -60,7 +62,7 @@ async function load() {
   if (mode.value === "older") return;
   if (mode.value === "update") {
     variant.value = status.value.installed_variant ?? variant.value; // the same engine, updated
-    if (status.value.checks.every((c) => c.ok) && !installing.value) startInstall();
+    if (updateAccepted.value && status.value.checks.every((c) => c.ok) && !installing.value) startInstall();
     return;
   }
   restoreChoices();
@@ -313,6 +315,17 @@ async function placeApp() {
 
 // --- update: the installed choices and key are kept, the coach starts as soon as the engine is updated -----
 const updateError = ref("");
+/** An update is asked first, every time: what changed and what it would download; "Later" keeps the installed one. */
+const updateAccepted = ref(false);
+const fetchMb = computed(() => (status.value?.update_fetches ?? []).reduce((n, f) => n + f.size, 0) / 1e6);
+function acceptUpdate() {
+  updateAccepted.value = true;
+  if (status.value?.checks.every((c) => c.ok)) startInstall();
+}
+async function later() {
+  const { getCurrentWindow } = await import("@tauri-apps/api/window");
+  await getCurrentWindow().close(); // the installed version stays as it is
+}
 /** What the update does now, in one line: a library being downloaded is named with its size (uv: "Downloading torch
  * (199.8MiB)"), which tells why it takes time; otherwise only the version. */
 const updateNow = computed(() => {
@@ -355,6 +368,26 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
       {{ t("setup.older.open", { installed: status.installed ?? "" }) }}
     </button>
     <p v-if="updateError" class="text-alerte" role="alert">{{ updateError }}</p>
+  </main>
+
+  <main v-else-if="status && mode === 'update' && !updateAccepted" class="flex h-screen flex-col gap-4 bg-encre px-6 py-6 text-[1.05rem]">
+    <h1 class="text-[1.4rem] font-bold text-papier">{{ t("setup.update.ask_title", { from: status.installed ?? "", to: status.version ?? "" }) }}</h1>
+    <p class="text-courbe">{{ t("setup.update.intro") }}</p>
+    <p v-if="!status.update_fetches.length" class="text-papier">{{ t("setup.update.nothing") }}</p>
+    <details v-else>
+      <summary :class="disclosure">{{ t("setup.update.download", { size: mb(fetchMb) }) }}</summary>
+      <ul class="mt-2 max-h-40 overflow-y-auto pr-3 text-[0.95rem]">
+        <li v-for="f in status.update_fetches" :key="f.name" class="flex justify-between gap-2 border-t border-courbe-fonce/50 py-0.5">
+          <span class="text-papier">{{ f.name }} {{ f.version }}</span><span class="tabular-nums text-courbe">{{ mb(f.size / 1e6) }}</span>
+        </li>
+      </ul>
+    </details>
+    <WhatsNew v-if="status.whats_new.length" :releases="status.whats_new" :class="box" class="min-h-0 flex-1 overflow-y-auto pr-3" />
+    <div class="mt-auto flex flex-wrap items-center justify-end gap-2">
+      <span class="mr-auto text-[0.9rem] text-courbe">{{ t("setup.update.later_hint", { installed: status.installed ?? "" }) }}</span>
+      <button type="button" :class="secondary" @click="later">{{ t("setup.update.later") }}</button>
+      <button type="button" :class="primary" @click="acceptUpdate">{{ t("setup.update.go") }}</button>
+    </div>
   </main>
 
   <main v-else-if="status && mode === 'update'" class="flex h-screen flex-col gap-4 bg-encre px-6 py-6 text-[1.05rem]">

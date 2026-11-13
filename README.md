@@ -58,7 +58,9 @@ The interface is in English and French (chosen on first launch, changeable in th
 
 ### Update
 
-Download the new AppImage and open it once. The update runs on its own, without a question:
+Download the new AppImage and open it once. It asks first: **Update GeoNesClick 0.4.1 → 0.5.0?**, with what changed
+and what it would download (often nothing, when only GeoNesClick itself changes); **Later** keeps the installed version
+and closes the window. Once you accept:
 
 - your settings, your API key and your data are kept; the settings are migrated in the background when the new
   version needs it;

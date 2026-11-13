@@ -22,9 +22,10 @@ its release notes.
 
 ### Changed
 
-- Opening a newer AppImage now updates GeoNesClick without a question: your settings, your API key and your data are
-  kept (they were reset to the recommended choices, and the key asked again), and only the libraries that changed
-  are downloaded (a few MB instead of 3.1 GB with an NVIDIA card). While it runs, a single line says what it does,
+- Opening a newer AppImage now asks once whether to update, showing what changed and what it would download (often
+  nothing), with **Later** to keep the installed version. Your settings, your API key and your data are kept (they
+  were reset to the recommended choices, and the key asked again), and only the libraries that changed are
+  downloaded (a few MB instead of 3.1 GB with an NVIDIA card). While it runs, a single line says what it does,
   naming what it downloads and its size; then the coach offers, once, what changed since your version. Opening an
   older AppImage than the installed one changes nothing and offers to open the installed one.
 - GeoNesClick is now installed as `~/.local/share/geonesclick/GeoNesClick.AppImage` and launched from there by the
