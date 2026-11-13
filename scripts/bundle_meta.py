@@ -49,6 +49,20 @@ def blocks(text: str) -> list[tuple[str, str]]:
     return [(re.split(r"[=<>; \[]", b[0], maxsplit=1)[0].lower(), "\n".join(b)) for b in out]
 
 
+# The AppImage's target: a package whose marker excludes it (colorama on Windows, httpx2-jsfetch in a browser) is
+# never installed, so it is not listed as downloaded (the installer's list, an update's "what it would download").
+TARGET = {"sys_platform": "linux", "platform_system": "Linux", "platform_machine": "x86_64", "os_name": "posix",
+          "python_version": "3.12", "python_full_version": "3.12.12", "implementation_name": "cpython",
+          "platform_python_implementation": "CPython"}
+
+
+def installed_on_target(block: str) -> bool:
+    from packaging.markers import Marker
+
+    first = block.splitlines()[0].rstrip(" \\")
+    return ";" not in first or Marker(first.split(";", 1)[1]).evaluate(TARGET)
+
+
 def cpu_torch_line(version: str) -> str:
     """Pinned PyTorch CPU line, with the hash published by the PyTorch index (checked by uv at install time)."""
     with urllib.request.urlopen(CPU_INDEX, timeout=60) as resp:  # noqa: S310 (fixed address, https)
@@ -96,8 +110,8 @@ def main(out: Path) -> None:
     cpu = [b for name, b in exported if not CUDA_ONLY.match(name) and name != "torch"] + [cpu_torch_line(torch_version)]
     (out / "requirements-cuda.txt").write_text("\n".join(cuda) + "\n")
     (out / "requirements-cpu.txt").write_text("\n".join(cpu) + "\n")
-    for variant, names in (("cuda", [n for n, _ in exported]),
-                           ("cpu", [n for n, _ in exported if not CUDA_ONLY.match(n)])):
+    listed = [n for n, b in exported if installed_on_target(b)]
+    for variant, names in (("cuda", listed), ("cpu", [n for n in listed if not CUDA_ONLY.match(n)])):
         rows = [{"name": n, "version": sizes.get(n, ("?", 0))[0], "size": sizes.get(n, ("?", 0))[1],
                  "license": license_of(n)} for n in names]
         if variant == "cpu":
