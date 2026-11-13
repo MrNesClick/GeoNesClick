@@ -30,7 +30,9 @@ test("an update runs without a question, keeps the installed engine's variant, a
   await fakeEngine(page);
   await page.goto("/e2e/harness.html");
   await expect(page.getByRole("heading", { name: "Updating GeoNesClick 0.4.1 → 0.5.0" })).toBeVisible();
-  await expect(page.getByText("• A CHANGELOG line.")).toBeVisible(); // Markdown shown as text, the link's words kept
+  await expect(page.getByRole("status")).toHaveText("Updating to 0.5.0…"); // one line, the steps under Details
+  await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: "packages", line: "Downloading torch (199.8MiB)", done: false, ok: true, reason: null }));
+  await expect(page.getByRole("status")).toHaveText("Downloading torch (200 MB)…"); // why it takes time
   await expect.poll(() => tauriArgs(page, "setup_install")).toEqual([{ variant: "cpu" }]);
   expect(await tauriCalls(page)).not.toContain("setup_apply"); // the choices and the key stay as they are
   await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: null, line: null, done: true, ok: true, reason: null }));

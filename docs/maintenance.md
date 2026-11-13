@@ -26,7 +26,8 @@ variant (`engine/VARIANT`, or PyTorch's `+cpu` suffix for an engine installed be
 kept, then the new copy installed and the coach started. `install-engine.sh` starts `venv.new` from a copy of the
 installed engine when its Python version and variant are the same, then `uv pip sync`s it to the pinned
 requirements: only what changed is downloaded. The bundle carries `CHANGELOG.md`; the sections after the installed
-version are shown during the update and once in the coach. An older AppImage (`older`) changes nothing and offers
+version are offered once by the coach afterwards (Notices.vue); during the update, one line names what is being
+downloaded, the steps stay under Details. An older AppImage (`older`) changes nothing and offers
 to open the installed copy.
 
 ## Updates and data

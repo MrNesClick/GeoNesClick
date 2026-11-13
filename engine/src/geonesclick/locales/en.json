@@ -1107,5 +1107,8 @@
   "whats_new.removed": "Removed",
   "whats_new.fixed": "Fixed",
   "whats_new.security": "Security",
-  "whats_new.migration": "Migration"
+  "whats_new.migration": "Migration",
+  "setup.update.now": "Updating to {version}…",
+  "setup.update.downloading": "Downloading {name} ({size})…",
+  "setup.update.details": "Details"
 }

@@ -67,10 +67,10 @@ Télécharge la nouvelle AppImage et ouvre-la une fois. La mise à jour se fait 
   version le demande ;
 - seules les bibliothèques qui ont changé sont téléchargées (quelques Mo quand seul GeoNesClick a changé, au lieu de
   3,1 Go avec une carte NVIDIA) : il faut donc, un moment, la taille du moteur libre sur le disque ;
-- pendant ce temps, elle montre ce qui a changé depuis ta version (les entrées du [journal des
-  modifications](CHANGELOG.md), en anglais) ;
-- la nouvelle version remplace ensuite la copie installée, le menu l'ouvre désormais, et le coach te dit une fois que
-  le fichier téléchargé peut être supprimé.
+- pendant ce temps, une seule ligne dit ce qu'elle fait, en nommant ce qu'elle télécharge et sa taille ;
+- la nouvelle version remplace ensuite la copie installée et le menu l'ouvre désormais ; le coach affiche une fois une
+  ligne dont le bouton **Nouveautés** liste ce qui a changé depuis votre version (les entrées du [journal des
+  modifications](CHANGELOG.md), en anglais) et indique que le fichier téléchargé peut être supprimé.
 
 Ouvrir une AppImage plus ancienne que la version installée ne change rien : elle le dit et propose d'ouvrir celle
 qui est installée.

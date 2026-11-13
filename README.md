@@ -64,9 +64,10 @@ Download the new AppImage and open it once. The update runs on its own, without 
   version needs it;
 - only the libraries that changed are downloaded (a few MB when only GeoNesClick changed, instead of 3.1 GB with an
   NVIDIA card), so the engine's size must be free on the disk for a moment;
-- while it runs, it shows what changed since your version (the [changelog](CHANGELOG.md) entries, in English);
-- the new version then replaces the installed copy, the menu opens it from then on, and the coach tells you once that
-  the downloaded file can be deleted.
+- while it runs, a single line says what it does, naming what it downloads and its size;
+- the new version then replaces the installed copy and the menu opens it from then on; the coach shows once a line
+  whose **What's new** button lists what changed since your version (the [changelog](CHANGELOG.md) entries, in
+  English) and says that the downloaded file can be deleted.
 
 Opening an AppImage older than the installed version changes nothing: it says so and offers to open the installed
 one.

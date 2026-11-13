@@ -9,7 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { num } from "../engine";
 import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
-import WhatsNew, { type Release } from "./WhatsNew.vue";
+import type { Release } from "./WhatsNew.vue";
 
 // Language: English by default, chosen on the first screen, written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
@@ -313,6 +313,18 @@ async function placeApp() {
 
 // --- update: the installed choices and key are kept, the coach starts as soon as the engine is updated -----
 const updateError = ref("");
+/** What the update does now, in one line: a library being downloaded is named with its size (uv: "Downloading torch
+ * (199.8MiB)"), which tells why it takes time; otherwise only the version. */
+const updateNow = computed(() => {
+  const download = [...lines.value].reverse().map((l) => /^Downloading (\S+) \(([^)]+)\)/.exec(l.trim())).find(Boolean);
+  if (download && installDone.value !== true && phase.value === "packages") {
+    const size = /^([\d.]+)(KiB|MiB|GiB)$/.exec(download[2]);
+    const megabytes = size ? Number(size[1]) * { KiB: 1 / 1024, MiB: 1, GiB: 1024 }[size[2] as "KiB" | "MiB" | "GiB"] : 0;
+    return t("setup.update.downloading", { name: download[1], size: megabytes ? mb(megabytes) : download[2] });
+  }
+  return t("setup.update.now", { version: status.value?.version ?? "" });
+});
+const updateShare = computed(() => (installDone.value === true ? 100 : Math.max(5, Math.round((100 * Math.max(phaseIndex.value, 0)) / PHASES.length))));
 watch(installDone, async (done) => {
   if (mode.value !== "update" || done !== true) return;
   try {
@@ -359,31 +371,31 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         </button>
       </div>
     </div>
-    <ol v-else role="status" aria-live="polite" class="space-y-2">
-      <li v-for="(p, i) in PHASES" :key="p" class="flex items-center gap-3">
-        <span class="grid h-6 w-6 place-items-center rounded-full text-[0.85rem] font-bold"
-              :class="i < phaseIndex ? 'bg-foret text-encre'
-                : i === phaseIndex && installDone === false ? 'bg-alerte text-encre'
-                : i === phaseIndex ? 'border-2 border-papier border-t-transparent animate-spin'
-                : 'border border-courbe-fonce'">
-          {{ i < phaseIndex ? "✓" : i === phaseIndex && installDone === false ? "!" : "" }}
-        </span>
-        <span :class="i <= phaseIndex ? 'text-papier' : 'text-courbe'">{{ t(`setup.phase.${p}`) }}</span>
-      </li>
-    </ol>
+    <!-- One line and a bar: the steps of an installation are only details here (an update copies the engine and
+         downloads only what changed). What changed is offered by the coach afterwards (Notices.vue). -->
+    <div v-else role="status" aria-live="polite" class="space-y-2">
+      <p class="text-papier">{{ installDone === false ? t("setup.install.failed") : updateNow }}</p>
+      <div class="h-2 overflow-hidden rounded-full bg-relief" aria-hidden="true">
+        <div class="h-full rounded-full transition-[width] duration-500" :class="installDone === false ? 'bg-alerte' : 'bg-lac'"
+             :style="{ width: `${updateShare}%` }" />
+      </div>
+    </div>
     <div v-if="installDone === false" role="alert">
-      <p class="font-bold text-alerte">{{ t("setup.install.failed") }}</p>
-      <p v-if="failure" class="mt-1 text-papier">{{ failure }}</p>
+      <p v-if="failure" class="text-papier">{{ failure }}</p>
       <button type="button" :class="primary" class="mt-3" @click="startInstall">{{ t("setup.retry") }}</button>
     </div>
     <p v-if="updateError" class="text-alerte" role="alert">{{ updateError }}</p>
     <details v-if="lines.length" :open="installDone === false">
-      <summary :class="disclosure">{{ t("setup.install.log") }}</summary>
+      <summary :class="disclosure">{{ t("setup.update.details") }}</summary>
+      <ol class="mt-2 space-y-1 text-[0.95rem]">
+        <li v-for="(p, i) in PHASES" :key="p" :class="i <= phaseIndex ? 'text-papier' : 'text-courbe'">
+          {{ i < phaseIndex ? "✓" : i === phaseIndex ? "…" : "·" }} {{ t(`setup.phase.${p}`) }}
+        </li>
+      </ol>
       <div ref="logBox" class="mt-2 max-h-48 overflow-auto rounded-md border border-courbe-fonce bg-relief px-3 py-2">
         <p v-for="(l, i) in lines" :key="i" class="whitespace-pre font-mono text-[0.95rem] leading-relaxed text-courbe">{{ l }}</p>
       </div>
     </details>
-    <WhatsNew v-if="status.whats_new.length" :releases="status.whats_new" :class="box" class="min-h-0 flex-1 overflow-y-auto" />
   </main>
 
   <main v-else class="flex h-screen flex-col bg-encre text-[1.05rem]">
