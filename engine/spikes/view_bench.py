@@ -1,9 +1,9 @@
 """Does the coach read the view better without the browser around it, and without the game's interface?
 
 Three variants of every capture of the test set:
-- window: what the coach receives today (the whole browser window; the Claude in Chrome artefacts are cut, see
-  testset.py, so for those rounds part of the browser bar is gone too);
-- page: the game page only, the browser's bars removed (the page top is found as a manual calibration would);
+- window: what the coach receives today (the whole browser window; Claude in Chrome's rounds are the page alone,
+  see testset.py, so this variant is a mix);
+- page: the game page only, the browser's bars removed;
 - page + masks: the page with GeoGuessr's interface blacked out (logo, compass, score, controls, mini-map,
   Google attribution).
 For each: StreetCLIP right first, in the top 3, its "clear leader" from 70 % right or wrong; with --vision, the
@@ -18,7 +18,6 @@ import argparse
 import asyncio
 from collections import Counter
 
-import numpy as np
 from PIL import Image, ImageDraw
 
 from geonesclick.config import load_config
@@ -28,9 +27,8 @@ from geonesclick.vision import VisionClient, VisionError
 
 import testset  # spikes/testset.py
 
-# Page top in pixels, by browser layout: tabs + address + bookmarks bars (121), plus Chrome's debugging bar on the
-# rounds played by Claude in Chrome (181), or that bar alone in full screen (60).
-CHROME_ONLY, CHROME_AND_DEBUG, DEBUG_ONLY = 121, 181, 60
+# Page top in pixels on a player's window: tabs, address and bookmarks bars (Chrome at scale 1).
+CHROME_BARS = 121
 # GeoGuessr's interface, in fractions of the page [left, top, right, bottom].
 UI = {
     "logo": (0.0, 0.0, 0.09, 0.05),
@@ -42,28 +40,16 @@ UI = {
 }
 
 
-def page_top(img: Image.Image, claude: bool) -> int:
-    """Where the game page starts: the extension's orange border on Claude's rounds, the bookmarks bar otherwise."""
-    if not claude:
-        return CHROME_ONLY
-    a = np.asarray(img.convert("RGB"), dtype=int)[:, 0]
-    orange = (abs(a[:, 0] - 198) < 16) & (abs(a[:, 1] - 97) < 16) & (abs(a[:, 2] - 63) < 16)
-    return int(np.argmax(orange)) if orange.any() else DEBUG_ONLY
-
-
 def variants(item: dict) -> tuple[dict[str, Image.Image], tuple]:
-    """The three variants, and the layout (window size, page top) they were cut with."""
-    raw = Image.open(testset.DATASET / "images" / item["file"]).convert("RGB")
-    claude = item.get("source") == "claude"
-    w, h = raw.size
-    top = page_top(raw, claude)
-    edge = 4 if claude else 0  # the extension's border
-    page = raw.crop((edge, top + edge, w - edge, h - edge))
+    """The three variants, and the layout (source, page size) they were cut with."""
+    window = testset.image(item)
+    # Claude's rounds are already the page alone (testset.py): their "window" and "page" are the same image.
+    page = window if testset.is_claude(item) else window.crop((0, CHROME_BARS, window.width, window.height))
     masked = page.copy()
     draw, (pw, ph) = ImageDraw.Draw(masked), page.size
     for l, t, r, b in UI.values():
         draw.rectangle((l * pw, t * ph, r * pw, b * ph), fill=(0, 0, 0))
-    return {"window": testset.image(item), "page": page, "page + masks": masked}, (raw.size, top)
+    return {"window": window, "page": page, "page + masks": masked}, (item.get("source", ""), page.size)
 
 
 def conclusion(fiche: dict | None, known: set[str]) -> str:

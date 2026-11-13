@@ -74,7 +74,9 @@ async def main(with_vision: bool) -> None:
         frame = testset.image(item)
         truth = item["country"]
         print(f"\n=== {item['file']}  →  {code_to_name.get(truth, truth)} ({truth})")
-        views = {name: apply_crop_and_masks(frame, c, m) for name, (c, m) in VARIANTS.items()}
+        # Claude's rounds are already the page alone (testset.py): only a player's window loses its browser bars.
+        views = {name: apply_crop_and_masks(frame, [] if testset.is_claude(item) else c, m)
+                 for name, (c, m) in VARIANTS.items()}
         tasks = {name: asyncio.create_task(describe(img)) for name, img in views.items()} if vision else {}
         for name, img in views.items():
             scores, _ = clip.predict(img)
