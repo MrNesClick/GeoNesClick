@@ -17,6 +17,12 @@ its release notes.
   it, it cuts a fixed share of the top of the window and tells you under the capture. A zone set by hand in
   `config.toml` (`[capture] crop`) still takes precedence.
 
+### Fixed
+
+- A browser window resized after the screen sharing started is now analysed without the black bands around it.
+  GNOME keeps the shared image at its first size and fills the rest with black: the local AI and the vision model saw
+  those bands as part of the view.
+
 ## [0.4.0] - 2026-11-13
 
 ### Changed

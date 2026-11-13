@@ -23,6 +23,10 @@ the two edges found:
   that changed between two captures of the same size is the page. The lowest one found is kept per window size in
   `~/.config/geonesclick/page-top.json`; this way knows nothing of the browser or its theme.
 
+Before any of this, the black bands around the window are cut off: GNOME keeps the shared image at the size it had
+when the sharing started, so a window resized afterwards comes with pure black columns and rows (and its shadow is
+black too).
+
 If neither finds anything, it cuts 12 % of the top (144 px in a 1200 px high window, enough for Chrome's bars) and
 says so under the capture. A `crop` set by hand takes precedence.
 

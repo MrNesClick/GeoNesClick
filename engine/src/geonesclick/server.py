@@ -45,7 +45,8 @@ from pydantic import BaseModel, Field
 
 from .analysis_log import AnalysisLog
 from .borders import Borders
-from .capture import CaptureError, CaptureService, apply_crop_and_masks, data_url, new_id, prune_captures, save_png
+from .capture import (CaptureError, CaptureService, apply_crop_and_masks, data_url, new_id, prune_captures, save_png,
+                      trim_padding)
 from .locks_engine import LockRequest, LocksMixin, PlaceSearchRequest, RejectRequest
 from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
@@ -635,9 +636,10 @@ class Engine(MarksMixin, LocksMixin):
 
     # --- analysis --------------------------------------------------------------------------
     async def _grab(self) -> tuple[Image.Image | None, str]:
-        """Raw image of the shared window, or None and the error (already reported) if the sharing does not respond."""
+        """Image of the shared window (black padding trimmed), or None and the error (already reported) if the sharing
+        does not respond."""
         try:
-            return await asyncio.to_thread(self.capture.grab), ""
+            return await asyncio.to_thread(lambda: trim_padding(self.capture.grab())), ""
         except CaptureError as exc:
             await asyncio.to_thread(self.notifier.send, i18n.t("srv.capture_failed"), str(exc), error=True)
             await self.broadcast({"type": "error", "message": str(exc)})

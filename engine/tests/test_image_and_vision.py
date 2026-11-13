@@ -1,7 +1,7 @@
 import pytest
 from PIL import Image
 
-from geonesclick.capture import apply_crop_and_masks
+from geonesclick.capture import apply_crop_and_masks, trim_padding
 from geonesclick.vision import VisionError, parse_fiche
 
 
@@ -22,6 +22,20 @@ def test_masks_are_relative_to_the_cropped_view():
 def test_no_crop_no_mask_keeps_image():
     img = Image.new("RGB", (40, 30))
     assert apply_crop_and_masks(img, [], []).size == (40, 30)
+
+
+def test_the_black_padding_of_a_window_shrunk_during_the_sharing_goes():
+    stream = Image.new("RGB", (1920, 1200))  # the size the sharing started with, pure black
+    stream.paste((90, 120, 60), (15, 10, 1038, 1168))  # the window, after its shadow, at the top left
+    assert trim_padding(stream).size == (1023, 1158)
+
+
+def test_a_frame_without_padding_or_black_all_over_stays_as_it_is():
+    window = Image.new("RGB", (64, 40), (90, 120, 60))
+    window.paste((0, 0, 0), (20, 10, 40, 30))  # black inside the view is not padding
+    assert trim_padding(window) is window
+    black = Image.new("RGB", (64, 40))
+    assert trim_padding(black) is black
 
 
 def test_parse_fiche_ignores_surrounding_text():

@@ -45,12 +45,19 @@ class FakeVision:
         return {}, 0.1
 
 
-def analysed(tmp_path, settings: str = "") -> tuple[FakeClip, FakeVision, list[dict]]:
+def padded(img: Image.Image) -> Image.Image:
+    """The window shrunk during the sharing: GNOME keeps the stream's size, the rest pure black."""
+    stream = Image.new("RGB", (W + 200, H + 50))
+    stream.paste(img, (0, 0))
+    return stream
+
+
+def analysed(tmp_path, settings: str = "", frames=None) -> tuple[FakeClip, FakeVision, list[dict]]:
     user = tmp_path / "config.toml"
     user.write_text(f'[capture]\nnotify = false\nsave_to_disk = false\n{settings}')
     engine = create_app(load_config(user), user).state.engine
     engine.page_top = PageTop(tmp_path / "page-top.json")
-    frames = iter([window(1), window(2)])
+    frames = iter(frames or [window(1), window(2)])
     engine.capture.grab = lambda: next(frames)
     engine.streetclip, engine.vision = FakeClip(), FakeVision()
     sent = []
@@ -84,3 +91,9 @@ def test_a_crop_set_by_hand_wins(tmp_path):
     clip, vision, captures = analysed(tmp_path, "crop = [0.0, 0.5, 1.0, 1.0]\n")
     assert [c["guessed_crop"] for c in captures] == [False, False]
     assert [img.height for img in clip.seen] == [H // 2, H // 2]
+
+
+def test_a_window_shrunk_during_the_sharing_reaches_the_models_without_the_black_padding(tmp_path):
+    clip, vision, _ = analysed(tmp_path, frames=[padded(window(1)), padded(window(2))])
+    assert [img.size for img in vision.seen] == [(W, H - round(H * DEFAULT_SHARE)), (W, H - BARS)]
+    assert not any((np.asarray(img).max(axis=2) == 0).all(axis=0).any() for img in clip.seen + vision.seen)

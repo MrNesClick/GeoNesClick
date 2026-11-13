@@ -235,6 +235,19 @@ class CaptureService:
         return img.convert("RGB")
 
 
+PADDING_LEVEL = 2  # a padding pixel is pure black; video compression leaves at most this on each channel
+_NOT_PADDING = ([0] * (PADDING_LEVEL + 1) + [255] * (255 - PADDING_LEVEL)) * 3  # per channel: padding → 0
+
+
+def trim_padding(img: Image.Image) -> Image.Image:
+    """The shared window without the black padding around it: GNOME keeps the stream at the size it started with, so a
+    window shrunk during the sharing is drawn at the top left with the rest pure black, and the window's shadow comes
+    out black too (a maximised window leaves 32 black rows at the bottom). Whole black columns and rows go on every
+    side; a frame black all over is left as it is. About 10 ms on a 4K frame."""
+    box = (img if img.mode == "RGB" else img.convert("RGB")).point(_NOT_PADDING).getbbox()
+    return img if box is None or box == (0, 0, *img.size) else img.crop(box)
+
+
 THUMB_SIDE = 720  # thumbnail of a capture sent to the UI
 
 
