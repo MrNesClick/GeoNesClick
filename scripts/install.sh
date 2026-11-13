@@ -121,17 +121,23 @@ if ((SETUP_SHORTCUT)); then
   # dconf module and write to a file that GNOME never reads.
   gsettings() { /usr/bin/gsettings "$@"; }
   SCHEMA="org.gnome.settings-daemon.plugins.media-keys"
+  # A string as gsettings reads it (GVariant text): \ and ' escaped. Without it, a value that starts with a
+  # quote (the command below) is refused.
+  gvariant_str() { local s=${1//\\/\\\\}; s=${s//\'/\\\'}; printf "'%s'" "$s"; }
   add_shortcut() {  # identifier, name, trigger command, key combination
     local key_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$1/" current new
+    local rel="$SCHEMA.custom-keybinding:$key_path"
+    gsettings set "$rel" name "$(gvariant_str "$2")"
+    # GNOME splits the command like a shell (g_shell_parse_argv): the path goes in single quotes, a ' as '\''.
+    local python="$ROOT/engine/.venv/bin/python"
+    gsettings set "$rel" command "$(gvariant_str "'${python//\'/\'\\\'\'}' -m geonesclick.trigger $3")"
+    gsettings set "$rel" binding "$(gvariant_str "$4")"
+    # The list last: GNOME takes the shortcut once its keys are all written.
     current="$(gsettings get "$SCHEMA" custom-keybindings)"
     if [[ "$current" != *"$key_path"* ]]; then
       if [[ "$current" == "@as []" || "$current" == "[]" ]]; then new="['$key_path']"; else new="${current%]}, '$key_path']"; fi
       gsettings set "$SCHEMA" custom-keybindings "$new"
     fi
-    local rel="$SCHEMA.custom-keybinding:$key_path"
-    gsettings set "$rel" name "$2"
-    gsettings set "$rel" command "$ROOT/engine/.venv/bin/python -m geonesclick.trigger $3"
-    gsettings set "$rel" binding "$4"
     ok "shortcut $4 → $3"
   }
   add_shortcut geonesclick "GeoNesClick – capture" capture "${GNC_SHORTCUT:-<Super><Shift>g}"

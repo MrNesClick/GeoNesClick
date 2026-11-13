@@ -141,21 +141,42 @@ fn shortcuts_on(keys: &[String]) -> bool {
     SHORTCUTS.iter().all(|(id, ..)| keys.contains(&path_of(id)))
 }
 
+fn schema_of(id: &str) -> String {
+    format!("{MEDIA_KEYS}.custom-keybinding:{}", path_of(id))
+}
+
+/// A word of a shortcut's command, quoted for GNOME: gsd-media-keys doubles every `%` itself, then GIO splits the
+/// command with g_shell_parse_argv, so single quotes hold any character and a `'` is written `'\''`.
+fn shell_quote(word: &str) -> String {
+    format!("'{}'", word.replace('\'', r"'\''"))
+}
+
+/// The command a shortcut runs; None when the engine's path is not UTF-8 (a gsettings string cannot hold it).
+fn trigger_command(action: &str) -> Option<String> {
+    Some(format!("{} -m geonesclick.trigger {action}", shell_quote(venv_python().to_str()?)))
+}
+
+/// A string as `gsettings set` reads it: a GVariant text literal, `\` and `'` escaped by a backslash. Without it,
+/// a value that starts with a quote (our command) is refused ("expected end of input").
+fn gvariant_str(value: &str) -> String {
+    format!("'{}'", value.replace('\\', r"\\").replace('\'', r"\'"))
+}
+
 fn add_shortcuts(app: &AppHandle) -> Result<(), String> {
     if bundle_dir(app).is_none() {
         return Err("in development, use scripts/install.sh --setup-shortcut".into());
     }
-    let python = venv_python();
     let mut keys = parse_list(&gsettings(&["get", MEDIA_KEYS, "custom-keybindings"])?);
     for (id, name, action, binding) in SHORTCUTS {
+        let command = trigger_command(action).ok_or_else(|| i18n::tr("integration.error.shortcut_path", &[]))?;
         let path = path_of(id);
         if !keys.contains(&path) {
-            keys.push(path.clone());
+            keys.push(path);
         }
-        let schema = format!("{MEDIA_KEYS}.custom-keybinding:{path}");
-        gsettings(&["set", &schema, "name", &i18n::tr(name, &[])])?;
-        gsettings(&["set", &schema, "command", &format!("{} -m geonesclick.trigger {action}", python.display())])?;
-        gsettings(&["set", &schema, "binding", binding])?;
+        let schema = schema_of(id);
+        gsettings(&["set", &schema, "name", &gvariant_str(&i18n::tr(name, &[]))])?;
+        gsettings(&["set", &schema, "command", &gvariant_str(&command)])?;
+        gsettings(&["set", &schema, "binding", &gvariant_str(binding)])?;
     }
     gsettings(&["set", MEDIA_KEYS, "custom-keybindings", &format_list(&keys)])?;
     Ok(())
@@ -170,9 +191,25 @@ fn remove_shortcuts() -> Result<(), String> {
         gsettings(&["set", MEDIA_KEYS, "custom-keybindings", &format_list(&kept)])?;
     }
     for (id, ..) in SHORTCUTS {
-        gsettings(&["reset-recursively", &format!("{MEDIA_KEYS}.custom-keybinding:{}", path_of(id))])?;
+        gsettings(&["reset-recursively", &schema_of(id)])?;
     }
     Ok(())
+}
+
+/// At each launch, from the AppImage, in the background: the commands of our shortcuts present are written again (one
+/// written by 0.3.0 or older, unquoted, broke on a path with a space; the data folder may also have moved).
+pub fn refresh_shortcuts(app: &AppHandle) {
+    if bundle_dir(app).is_none() {
+        return;
+    }
+    std::thread::spawn(|| {
+        let Ok(list) = gsettings(&["get", MEDIA_KEYS, "custom-keybindings"]) else { return };
+        let keys = parse_list(&list);
+        for (id, _, action, _) in SHORTCUTS {
+            let (true, Some(command)) = (keys.contains(&path_of(id)), trigger_command(action)) else { continue };
+            let _ = gsettings(&["set", &schema_of(id), "command", &gvariant_str(&command)]);
+        }
+    });
 }
 
 #[derive(Serialize)]
@@ -244,6 +281,15 @@ mod tests {
         assert!(!desktop_file(&data).exists() && !icon_file(&data, "128x128").exists());
         remove_entry(&data).unwrap(); // nothing left: not an error
         std::fs::remove_dir_all(&data).unwrap();
+    }
+
+    #[test]
+    fn the_shortcut_command_quotes_the_engine_path() {
+        assert_eq!(shell_quote("/home/a b/.local/share/geonesclick/engine/venv/bin/python"),
+                   "'/home/a b/.local/share/geonesclick/engine/venv/bin/python'");
+        assert_eq!(shell_quote(r#"/l'été "x" $y \z 100%"#), r#"'/l'\''été "x" $y \z 100%'"#);
+        // Then as gsettings reads a string (GVariant text): \ and ' escaped.
+        assert_eq!(gvariant_str(r#"'/l'\''a' -m x"#), r#"'\'/l\'\\\'\'a\' -m x'"#);
     }
 
     #[test]

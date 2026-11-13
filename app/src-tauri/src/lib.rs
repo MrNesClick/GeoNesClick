@@ -114,6 +114,7 @@ pub fn run() {
         ])
         .setup(|app| {
             integration::refresh_menu_entry();
+            integration::refresh_shortcuts(app.handle());
             let child = spawn_engine(app.handle());
             app.manage(Engine(Mutex::new(child)));
             Ok(())

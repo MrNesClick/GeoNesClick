@@ -7,6 +7,11 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- The keyboard shortcuts did nothing when the path of the home folder (or of `XDG_DATA_HOME`) holds a space. The
+  shortcuts already added are repaired at the next launch, with nothing to do.
+
 ## [0.3.0] - 2026-11-12
 
 ### Added

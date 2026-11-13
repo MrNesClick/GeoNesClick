@@ -706,6 +706,7 @@
   "integration.menu.comment": "Coach de géolocalisation assisté par IA pour l'OSINT et l'entraînement à GeoGuessr",
   "integration.error.appimage": "Seule l'AppImage peut être ajoutée au menu des applications.",
   "integration.error.path": "Le chemin de l'AppImage ne peut pas figurer dans une entrée de menu : renomme son dossier ou son fichier.",
+  "integration.error.shortcut_path": "Le chemin du dossier des données ne peut pas figurer dans un raccourci clavier : il contient des caractères hors UTF-8.",
   "group.integration": "Intégration GNOME",
   "settings.integration.appimage_only": "Disponible quand GeoNesClick est lancé depuis son AppImage.",
   "settings.integration.unreadable": "Impossible de lire les réglages de GNOME (gsettings est absent).",
