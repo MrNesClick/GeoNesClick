@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-13
+
 ### Fixed
 
 - The keyboard shortcuts did nothing when the path of the home folder (or of `XDG_DATA_HOME`) holds a space. The
@@ -177,7 +179,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.5...v0.3.0
 [0.2.5]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.4...v0.2.5
 [0.2.4]: https://github.com/MrNesClick/GeoNesClick/compare/v0.2.3...v0.2.4
