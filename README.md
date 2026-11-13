@@ -133,7 +133,7 @@ before anything is downloaded. Options can be turned off in the Settings.
 - Your captures leave your machine only for the NVIDIA vision model, and only if you gave an API key (see the
   table above). The browser's bars (tab titles, address, bookmarks) are cut off first.
 - The update check, if you keep it, sends GitHub your IP address and the app's version, at most once a day; nothing
-  is downloaded on its own. Settings › Version and updates turns it off.
+  is downloaded on its own. Settings › General turns it off.
 - Your API key is stored in a file readable by you only.
 - Settings › Storage › **Erase everything** removes all your data, and the engine if you wish.
 

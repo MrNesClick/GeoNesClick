@@ -88,8 +88,8 @@ function summary(g: Group): string {
   if (!v) return "";
   switch (g.id) {
     case "general":
-      return [t("settings.sum.level", { n: Number(v.coach.help_level) }), t(v.coach.trust_proof ? "settings.sum.proof_settles" : "settings.sum.percent_only"),
-              language(v.coach.language)].join(" · ");
+      return [engine.updates.latest ? "" : engine.updates.current, t("settings.sum.level", { n: Number(v.coach.help_level) }), t(v.coach.trust_proof ? "settings.sum.proof_settles" : "settings.sum.percent_only"),
+              language(v.coach.language)].filter(Boolean).join(" · ");
     case "analysis": {
       const all = Object.keys((v.streetclip.countries ?? {}) as object).length;
       const active = all - ((v.streetclip.exclude_countries ?? []) as string[]).length;
@@ -145,13 +145,17 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
     <p v-if="!s" class="mt-4 text-courbe">{{ t("settings.loading") }}</p>
 
     <div v-else class="mt-3">
-      <UpdatesBlock />
       <datalist id="nvidia-models">
         <option v-for="m in models" :key="m" :value="m" />
       </datalist>
 
       <Section v-for="g in GROUPS" :id="`setting-${g.id}`" :key="g.id" :title="groupTitle(g)" :summary="summary(g)" :open="false" tone="papier">
+        <!-- A newer version waiting shows on the folded group, after its banner was closed. -->
+        <template v-if="g.id === 'general' && engine.updates.latest" #summary>
+          <span class="text-alerte">{{ t("settings.sum.update", { latest: engine.updates.latest }) }}</span> · {{ summary(g) }}
+        </template>
         <div class="space-y-5 py-1">
+          <UpdatesBlock v-if="g.id === 'general'" />
           <div v-if="g.id === 'capture'" class="flex flex-wrap items-center gap-3">
             <button type="button" :class="[button, 'border-courbe hover:bg-papier/10']"
                     :disabled="!engine.connected || engine.busy || engine.capture.starting" @click="reselectWindow">

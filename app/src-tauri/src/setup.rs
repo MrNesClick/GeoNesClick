@@ -588,8 +588,9 @@ fn copy_executable(from: &Path, to: &Path) -> Result<(), String> {
     copied.map_err(|e| i18n::tr("setup.error.copy", &[("error", &e.to_string())]))
 }
 
-/// Installs the AppImage being run as the application's copy (installed_appimage). Returns the downloaded file, as
-/// shown, which the player may now delete; None when the installed copy is the one running, or in development.
+/// Installs the AppImage being run as the application's copy (installed_appimage), then points the menu entry, if
+/// there is one, to it: at this launch the entry was written for the downloaded file, which the player may now delete.
+/// Returns that file, as shown; None when the installed copy is the one running, or in development.
 #[tauri::command]
 pub fn place_appimage() -> Result<Option<String>, String> {
     let Some(running) = running_appimage() else { return Ok(None) };
@@ -598,6 +599,7 @@ pub fn place_appimage() -> Result<Option<String>, String> {
         return Ok(None);
     }
     copy_executable(&running, &target)?;
+    crate::integration::refresh_menu_entry();
     Ok(Some(shown(&running)))
 }
 

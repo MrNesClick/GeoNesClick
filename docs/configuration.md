@@ -61,11 +61,12 @@ The screen shows them read-only with their reason:
 | `[rules]` places_url, detail_url, regions_url | a source downloaded then read on your machine: it must not be diverted |
 | folders and files (`[capture]` and `[dataset]` directory, `[metas]` user_file, `[plonkit]` data_dir, `[rules]` places_dir) | a request must not be able to make the engine write elsewhere on the disk |
 
-**Update check** (top of the Settings, `[updates] check`, on by default and offered in the installer): at most once a
-day, and on demand with **Check now**, the engine asks `api.github.com` for the latest release's tag
+**Update check** (Settings › General, `[updates] check`, on by default and offered in the installer): at most once a
+day, and on demand with **Check**, the engine asks `api.github.com` for the latest release's tag
 (`engine/src/geonesclick/updates.py`). GitHub receives the IP address and the app's version (User-Agent), nothing
 else; nothing is downloaded: a newer version shows a banner, closed for that version with **Later** (a newer one
-brings it back once), and stays shown at the top of the Settings with a button that opens its release page. The state
+brings it back once), and stays shown in Settings › General (also on the folded group's summary line) with a button that opens its release
+page. The state
 (last check, latest version seen, banner closed) is `~/.config/geonesclick/updates.json`, removed by Erase everything.
 
 **Debug mode** (Settings › Engine, `[debug] enabled`, off by default): next to each capture, the engine writes a

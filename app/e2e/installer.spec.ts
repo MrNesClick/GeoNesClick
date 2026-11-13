@@ -37,9 +37,11 @@ test("an update runs without a question, keeps the installed engine's variant, a
   await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
   const calls = await tauriCalls(page);
   expect(calls.indexOf("setup_finish_update")).toBeLessThan(calls.indexOf("restart_engine"));
-  // The coach: once, the update, the installed folder and the downloaded file that can go.
-  const note = page.getByRole("status").filter({ hasText: "GeoNesClick has been updated to 0.5.0." });
-  await expect(note).toContainText("~/Téléchargements/GeoNesClick_0.5.0_amd64.AppImage");
+  // The coach: one line, whose panel says what changed and that the downloaded file can go.
+  const note = page.getByRole("status").filter({ hasText: "Updated to 0.5.0" });
+  await note.getByRole("button", { name: en["app.notice.whats_new"] }).click();
+  await expect(page.getByRole("dialog")).toContainText("~/Téléchargements/GeoNesClick_0.5.0_amd64.AppImage");
+  await page.getByRole("button", { name: en["app.notice.close_panel"] }).click();
   await note.getByRole("button", { name: en["app.notice.close"] }).click();
   await expect(note).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("geonesclick.notice"))).toBeNull(); // never shown again
@@ -51,9 +53,9 @@ test("an update whose copy could not be made still says once what changed", asyn
   await page.goto("/e2e/harness.html");
   await expect.poll(() => tauriCalls(page)).toContain("setup_install");
   await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: null, line: null, done: true, ok: true, reason: null }));
-  const note = page.getByRole("status").filter({ hasText: "GeoNesClick has been updated to 0.5.0." });
-  await expect(note).toBeVisible();
-  await expect(note).not.toContainText("You can delete");
+  const note = page.getByRole("status").filter({ hasText: "Updated to 0.5.0" });
+  await note.getByRole("button", { name: en["app.notice.whats_new"] }).click();
+  await expect(page.getByRole("dialog")).not.toContainText("You can delete");
 });
 
 test("an older AppImage touches nothing and opens the installed version", async ({ page }) => {

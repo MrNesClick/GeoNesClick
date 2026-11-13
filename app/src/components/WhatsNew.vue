@@ -2,7 +2,7 @@
 // What an update brings: the CHANGELOG.md sections since the installed version (setup.rs, releases_between).
 // The Markdown is read line by line into headings, items and paragraphs, shown as text (never as HTML).
 import { computed } from "vue";
-import { t } from "../i18n";
+import { t, type Key } from "../i18n";
 
 export interface Release { version: string; text: string }
 const props = defineProps<{ releases: Release[] }>();
@@ -10,6 +10,12 @@ const props = defineProps<{ releases: Release[] }>();
 type Block = { kind: "heading" | "item" | "text"; text: string };
 
 /** Links keep their words, code its letters: "[CHANGELOG](https://…)" → "CHANGELOG", "`crop`" → "crop". */
+/** Keep a Changelog's headings in the UI's language; the entries stay as the CHANGELOG writes them (English). */
+const HEADINGS: Record<string, Key> = {
+  Added: "whats_new.added", Changed: "whats_new.changed", Deprecated: "whats_new.deprecated", Removed: "whats_new.removed",
+  Fixed: "whats_new.fixed", Security: "whats_new.security", Migration: "whats_new.migration",
+};
+const heading = (s: string) => (s in HEADINGS ? t(HEADINGS[s]) : s);
 const plain = (s: string) => s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/`([^`]*)`/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1");
 
 function blocks(text: string): Block[] {
@@ -17,7 +23,7 @@ function blocks(text: string): Block[] {
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (!line) continue;
-    if (line.startsWith("#")) out.push({ kind: "heading", text: plain(line.replace(/^#+\s*/, "")) });
+    if (line.startsWith("#")) out.push({ kind: "heading", text: heading(plain(line.replace(/^#+\s*/, ""))) });
     else if (line.startsWith("- ")) out.push({ kind: "item", text: plain(line.slice(2)) });
     else if (out.length && out[out.length - 1].kind !== "heading") out[out.length - 1].text += ` ${plain(line)}`;
     else out.push({ kind: "text", text: plain(line) });

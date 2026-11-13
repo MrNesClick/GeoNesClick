@@ -13,9 +13,9 @@ its release notes.
 
 - GeoNesClick tells you when a newer version is out: at most once a day, it asks GitHub which version is the latest
   (your IP address and the app's version leave, nothing else; nothing is downloaded on its own). A banner offers the
-  release page; **Later** closes it for that version, and the top of the Settings keeps saying it, with **Check now**
-  and the option to turn the check off. The installer offers it, ticked; if you update from an earlier version, the
-  coach tells you once that it is on.
+  release page; **Later** closes it for that version, and Settings › General keeps saying it, with **Check** and the
+  option to turn the check off. The installer offers it, ticked; if you update from an earlier version, the coach
+  tells you once that it is on.
 - A capture that is nearly a single colour (black, a loading screen) or the same image as the previous capture (a
   frozen screen sharing) is still analysed, but comes with a note under the capture and in its summary line, so a
   worthless answer does not pass for a real one.
@@ -25,7 +25,7 @@ its release notes.
 - Opening a newer AppImage now updates GeoNesClick without a question: your settings, your API key and your data are
   kept (they were reset to the recommended choices, and the key asked again), and only the libraries that changed
   are downloaded (a few MB instead of 3.1 GB with an NVIDIA card). While it runs, the update shows what changed since
-  your version, and the coach shows it once afterwards. Opening an older AppImage than the installed one changes
+  your version, and the coach offers it once afterwards. Opening an older AppImage than the installed one changes
   nothing and offers to open the installed one.
 - GeoNesClick is now installed as `~/.local/share/geonesclick/GeoNesClick.AppImage` and launched from there by the
   applications menu: the file you downloaded can be renamed, moved or deleted (the coach tells you so once), and
