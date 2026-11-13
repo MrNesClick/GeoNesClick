@@ -172,16 +172,17 @@ onBeforeUnmount(() => unlisten?.());
 
 // --- options: Accept / Skip, recommendation pre-ticked ---------------------------------------------
 // Label and detail: setup.option.<id> and setup.option.<id>.detail in the catalogs.
-interface Option { id: "places" | "plonkit" | "map" | "plonk"; recommended: boolean; settings: Record<string, Record<string, unknown>> }
+interface Option { id: "places" | "plonkit" | "map" | "plonk" | "updates"; recommended: boolean; settings: Record<string, Record<string, unknown>> }
 const OPTIONS: Option[] = [
   { id: "places", recommended: true, settings: { rules: { places: true, detail: true } } },
   { id: "plonkit", recommended: true, settings: { plonkit: { enabled: true } } },
   { id: "map", recommended: true, settings: { map: { enabled: true } } },
   { id: "plonk", recommended: false, settings: { plonk: { enabled: true } } },
+  { id: "updates", recommended: true, settings: { updates: { check: true } } },
 ];
 const OFF: Record<string, Record<string, Record<string, unknown>>> = {
   places: { rules: { places: false, detail: false } }, plonkit: { plonkit: { enabled: false } },
-  map: { map: { enabled: false } }, plonk: { plonk: { enabled: false } },
+  map: { map: { enabled: false } }, plonk: { plonk: { enabled: false } }, updates: { updates: { check: false } },
 };
 const chosen = ref<Record<string, boolean>>(Object.fromEntries(OPTIONS.map((o) => [o.id, o.recommended])));
 const key = ref("");
@@ -274,6 +275,7 @@ async function finish() {
     }
     await invoke("restart_engine");
     try {
+      localStorage.setItem("geonesclick.updates_told", "1"); // the update check was a choice here (Notices.vue)
       localStorage.removeItem(SAVED);
     } catch {
       /* nothing to forget */

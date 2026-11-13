@@ -95,6 +95,15 @@ when = "continuous"
 required = false
 option = "map.enabled"
 
+[[download]]
+id = "updates"
+hosts = ["api.github.com"]
+size_mb = 0
+license = "GitHub terms of service"
+when = "continuous"
+required = false
+option = "updates.check"
+
 # Addresses written in the code but NEVER contacted by the app: displayed links (sources of a rule,
 # attributions, help pages), links you paste (read, never opened), or install.sh development tools.
 [shown]

@@ -400,6 +400,8 @@ export const engine = reactive({
   leader: { min: 0.7, margin: 0.15 }, // the engine's defaults, until its first state message
   /** "Erase everything" done: the engine is waiting to be restarted. */
   erased: false,
+  /** The update check (engine updates.py): latest is a newer version than current, or empty. */
+  updates: { enabled: false, current: "", latest: "", url: "", dismissed: false, checked: "", error: "" },
   /** The engine was removed by "Erase everything": only closing is left. */
   uninstalled: false,
   busy: false,
@@ -424,6 +426,7 @@ type Message =
       map: typeof engine.map;
       countries: string[];
       erased: boolean;
+      updates?: typeof engine.updates;
       help_level: number;
       /** UI language: coach.language when it has a catalog, en otherwise. */
       language: string;
@@ -475,6 +478,7 @@ function handle(msg: Message) {
       engine.map = msg.map;
       engine.countries = msg.countries;
       engine.erased = msg.erased ?? false;
+      if (msg.updates) engine.updates = msg.updates;
       engine.helpLevel = msg.help_level;
       setLanguage(msg.language); // a change in the Settings applies right away
       engine.trustProof = msg.trust_proof;
@@ -733,6 +737,28 @@ export const categoryLabel = (c: string) => (isCategory(c) ? t(`category.${c}`) 
 /** Opens a Plonk It page in the browser (only these addresses are allowed by Tauri). */
 export async function openPlonkit(url: string) {
   if (!url.startsWith("https://www.plonkit.net/")) return;
+  try {
+    await openUrl(url);
+  } catch {
+    engine.error = t("engine.no_browser");
+  }
+}
+
+/** "Check now" in Settings: asked on demand, the automatic check on or off. */
+export async function checkUpdates() {
+  const res = await request("/updates/check");
+  if (res?.ok) engine.updates = await res.json();
+}
+
+/** The banner of a version closed: it does not come back for that version. */
+export async function dismissUpdate(version: string) {
+  engine.updates.dismissed = true;
+  await request("/updates/dismiss", { version });
+}
+
+/** Opens a release's page on GitHub in the browser (only these addresses are allowed by Tauri). */
+export async function openRelease(url: string) {
+  if (!url.startsWith("https://github.com/MrNesClick/GeoNesClick/releases/")) return;
   try {
     await openUrl(url);
   } catch {

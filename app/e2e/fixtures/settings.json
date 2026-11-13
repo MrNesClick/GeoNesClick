@@ -189,6 +189,9 @@
     "prompt": "A Street View photo in {}.",
     "top_k": 5
   },
+  "updates": {
+    "check": true
+  },
   "vision": {
     "enabled": true,
     "max_side_px": 1280,

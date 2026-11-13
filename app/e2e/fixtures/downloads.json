@@ -111,6 +111,17 @@
       "required": false,
       "size_mb": 0,
       "when": "continuous"
+    },
+    {
+      "hosts": [
+        "api.github.com"
+      ],
+      "id": "updates",
+      "license": "GitHub terms of service",
+      "option": "updates.check",
+      "required": false,
+      "size_mb": 0,
+      "when": "continuous"
     }
   ],
   "shown": {

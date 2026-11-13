@@ -155,6 +155,15 @@
   },
   "trust_proof": true,
   "type": "state",
+  "updates": {
+    "checked": "",
+    "current": "0.1.0",
+    "dismissed": false,
+    "enabled": true,
+    "error": "",
+    "latest": "",
+    "url": ""
+  },
   "vision": {
     "enabled": true,
     "key": null,

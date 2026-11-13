@@ -9,6 +9,11 @@ its release notes.
 
 ### Added
 
+- GeoNesClick tells you when a newer version is out: at most once a day, it asks GitHub which version is the latest
+  (your IP address and the app's version leave, nothing else; nothing is downloaded on its own). A banner offers the
+  release page; **Later** closes it for that version, and the top of the Settings keeps saying it, with **Check now**
+  and the option to turn the check off. The installer offers it, ticked; if you update from an earlier version, the
+  coach tells you once that it is on.
 - A capture that is nearly a single colour (black, a loading screen) or the same image as the previous capture (a
   frozen screen sharing) is still analysed, but comes with a note under the capture and in its summary line, so a
   worthless answer does not pass for a real one.

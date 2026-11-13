@@ -23,6 +23,7 @@ from typing import Any
 
 from . import paths
 from .pagetop import FILE as PAGE_TOP_FILE
+from .updates import FILE as UPDATES_FILE
 from .i18n import t
 from .places import ARCHIVE, DB_NAME, OLD_DBS, REGIONS
 
@@ -140,8 +141,9 @@ def touch(path: Path) -> None:
 MODEL_ID = re.compile(r"[\w.\-]+/[\w.\-]+")  # "geolocal/StreetCLIP": never a ".." or an extra "/"
 
 def account_files(config_dir: Path, settings: Path, metas: Path) -> list[Path]:
-    """API key, settings, your metas, screen-sharing permission and where its page starts (known files only)."""
-    named = [settings, metas, config_dir / "screencast.token", config_dir / PAGE_TOP_FILE]
+    """API key, settings, your metas, screen-sharing permission, where its page starts and the update check's state
+    (known files only)."""
+    named = [settings, metas, config_dir / "screencast.token", config_dir / PAGE_TOP_FILE, config_dir / UPDATES_FILE]
     return sorted({p for p in named if p.is_file() and not p.is_symlink()} | set(files_of(config_dir, ["*.key", "*.tmp"])))
 
 

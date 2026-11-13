@@ -53,6 +53,7 @@ from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, coords_of, progress
 from .marks import DeleteRequest, FrameRequest, MarksRequest, uses
 from .pagetop import FILE as PAGE_TOP_FILE, PageTop
+from .updates import FILE as UPDATES_FILE, Updates
 from .places import Places
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
 from .settings import RESTART, SettingsError, current, file_only, save
@@ -96,6 +97,10 @@ class TruthRequest(BaseModel):
     link: str = Field(min_length=3, max_length=2000)
 
 
+class DismissRequest(BaseModel):
+    version: str = Field(max_length=20)
+
+
 class EraseRequest(BaseModel):
     confirm: Literal["ERASE"]  # sent once the player typed the word shown: nothing goes on a stray click
     models: bool = False  # also the downloaded models (nothing personal)
@@ -123,6 +128,8 @@ class Engine(MarksMixin, LocksMixin):
         self.notifier = Notifier(cfg.capture.notify, cfg.capture.sound)
         self.capture = CaptureService(on_state=self._on_capture_state, source=cfg.capture.source)
         self.page_top = PageTop(paths.CONFIG_DIR / PAGE_TOP_FILE)  # where the page starts below the browser's bars
+        self.updates = Updates(paths.CONFIG_DIR / UPDATES_FILE)
+        self.updates_task: asyncio.Task | None = None
         self.capture_message = i18n.t("srv.sharing_starting")
         self.capture_starting = True  # GNOME picker possibly open: neither active nor cut off
         self.streetclip: StreetClip | None = None
@@ -212,6 +219,8 @@ class Engine(MarksMixin, LocksMixin):
                 self.schedule_pretranslate()
             if new.rules.places and self.places is None:
                 self.schedule_places()
+            if new.updates.check and not old.updates.check:  # turned on: asked now if it is due
+                self.schedule_updates()
             if new.storage.max_cache_mb < old.storage.max_cache_mb:
                 await self.evict_caches()
         await self.broadcast(self.state())
@@ -264,6 +273,7 @@ class Engine(MarksMixin, LocksMixin):
             },
             "countries": sorted(self.cfg.streetclip.countries.values()),
             "erased": self.erased,  # "Erase everything" done: the engine is waiting to be restarted
+            "updates": self.updates.status(self.cfg.updates.check),
         }
 
     async def broadcast(self, message: dict[str, Any]) -> None:
@@ -301,9 +311,27 @@ class Engine(MarksMixin, LocksMixin):
             self.schedule_plonkit(check=self.plonkit_due())
         if self.cfg.rules.places:
             self.schedule_places()
+        self.schedule_updates()
+
+    def schedule_updates(self) -> None:
+        if self.updates_task is None or self.updates_task.done():
+            self.updates_task = asyncio.create_task(self._watch_updates())
+
+    async def _watch_updates(self) -> None:
+        """Asks GitHub for the latest version when [updates] check is on, at most once a day (also for a coach left
+        open for days); ends when the setting is turned off."""
+        while self.cfg.updates.check:
+            if self.updates.due():
+                await self.check_updates()
+            await asyncio.sleep(3600)
+
+    async def check_updates(self) -> dict[str, Any]:
+        await asyncio.to_thread(self.updates.check)
+        await self.broadcast(self.state())
+        return self.updates.status(self.cfg.updates.check)
 
     async def stop(self) -> None:
-        for task in (self.plonkit_task, self.plonk_task, self.pretranslate_task, self.places_task,
+        for task in (self.plonkit_task, self.plonk_task, self.pretranslate_task, self.places_task, self.updates_task,
                      *self.detail_tasks.values()):
             if task:
                 task.cancel()
@@ -1002,6 +1030,18 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
             engine.capture_starting = True
             await engine.broadcast(engine.state())
             await asyncio.to_thread(engine.capture.restart, forget_window)
+        return {"ok": True}
+
+    @app.post("/updates/check")
+    async def updates_check() -> dict[str, Any]:
+        """"Check now" in Settings: asked on demand, the setting on or off (the click is the consent)."""
+        return await engine.check_updates()
+
+    @app.post("/updates/dismiss")
+    async def updates_dismiss(req: DismissRequest) -> dict[str, Any]:
+        """The banner of a version was closed: it does not come back for that version."""
+        engine.updates.dismiss(req.version)
+        await engine.broadcast(engine.state())
         return {"ok": True}
 
     @app.post("/capture/reselect")

@@ -352,6 +352,12 @@ propose_city = true
 # Plonk It guides) never goes on its own; your test set, your metas and your config are never touched.
 max_cache_mb = 500
 
+[updates]
+# At most once a day, ask GitHub which version of GeoNesClick is the latest, and say when a newer one is out (a banner
+# you can close, and Settings). Your IP address and the app's version leave your machine, nothing else. Nothing is
+# downloaded or installed: the button opens the release page.
+check = true
+
 [debug]
 # Debug mode: a JSON log of each analysis (StreetCLIP countries, zones, what the AI read, marks and their
 # crops mark-<id>-<n>.png, "Where was it?" label) is written next to its capture, capture-<id>.json,

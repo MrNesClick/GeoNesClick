@@ -18,7 +18,7 @@ os.environ.pop("HF_HUB_CACHE", None)
 
 import pytest  # noqa: E402
 
-from geonesclick import paths, places, plonkit, vision  # noqa: E402
+from geonesclick import paths, places, plonkit, updates, vision  # noqa: E402
 
 assert str(paths.DATA_DIR).startswith(_SANDBOX) and str(paths.CONFIG_DIR).startswith(_SANDBOX)
 
@@ -76,3 +76,13 @@ def english_after_each_test():
     from geonesclick import i18n
 
     i18n.set_language("en")
+
+
+@pytest.fixture(autouse=True)
+def no_update_check(monkeypatch):
+    """No test asks GitHub for the latest version: the tests give their own answer."""
+
+    def blocked():
+        raise OSError("update check forbidden during the tests")  # handled like GitHub not answering
+
+    monkeypatch.setattr(updates, "fetch_latest", blocked)

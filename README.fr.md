@@ -129,6 +129,7 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
 | Modèle PLONK | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 Mo | MIT | une fois, si tu l'acceptes | — |
 | Modèle de vision NVIDIA (API en ligne) | `integrate.api.nvidia.com` | — | conditions de l'API NVIDIA ; ta clé | à chaque usage | tes captures sans les barres du navigateur (réduites à 1 280 px), les découpes de tes marques, les astuces Plonk It à classer et à traduire |
 | Tuiles de carte OpenStreetMap | `tile.openstreetmap.org` | — | ODbL ; politique des tuiles de l'OSMF | à chaque usage | ton adresse IP et les zones de carte affichées |
+| Vérification des mises à jour | `api.github.com` | — | conditions d'utilisation de GitHub | une fois par jour au plus, si tu la gardes | ton adresse IP et la version de l'app |
 
 ## Confidentialité
 
@@ -136,6 +137,8 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
   peut le joindre.
 - Tes captures ne quittent ta machine que vers le modèle de vision NVIDIA, et seulement si tu as donné une clé API
   (voir le tableau ci-dessus). Les barres du navigateur (onglets, adresse, favoris) en sont coupées avant.
+- La vérification des mises à jour, si tu la gardes, envoie à GitHub ton adresse IP et la version de l'app, une fois
+  par jour au plus ; rien n'est téléchargé tout seul. Réglages › Version et mises à jour la désactive.
 - Ta clé API est rangée dans un fichier lisible par toi seul.
 - Réglages › Stockage › **Tout effacer** supprime toutes tes données, et le moteur si tu le souhaites.
 

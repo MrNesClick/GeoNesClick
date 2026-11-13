@@ -279,6 +279,12 @@ class StorageConfig(BaseModel):
     max_cache_mb: int = Field(ge=50, le=100000)
 
 
+class UpdatesConfig(BaseModel):
+    # Asks GitHub, at most once a day, which version is the latest (updates.py): your IP address and the app's version
+    # leave, nothing else.
+    check: bool
+
+
 class DebugConfig(BaseModel):
     # Debug mode: JSON log of each analysis next to its capture, to replay a round afterwards.
     enabled: bool
@@ -299,6 +305,7 @@ class Config(BaseModel):
     rules: RulesConfig
     locks: LocksConfig
     storage: StorageConfig
+    updates: UpdatesConfig
     debug: DebugConfig
 
 

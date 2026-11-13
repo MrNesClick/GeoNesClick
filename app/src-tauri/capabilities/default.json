@@ -18,6 +18,9 @@
         },
         {
           "url": "https://www.openstreetmap.org/copyright"
+        },
+        {
+          "url": "https://github.com/MrNesClick/GeoNesClick/releases/*"
         }
       ]
     }

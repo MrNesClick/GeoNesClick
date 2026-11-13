@@ -125,12 +125,15 @@ before anything is downloaded. Options can be turned off in the Settings.
 | PLONK model | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 MB | MIT | once, if you accept it | — |
 | NVIDIA vision model (online API) | `integrate.api.nvidia.com` | — | NVIDIA API terms; your key | on every use | your captures without the browser's bars (shrunk to 1,280 px), the crops of your marks, the Plonk It tips to classify and translate |
 | OpenStreetMap map tiles | `tile.openstreetmap.org` | — | ODbL; OSMF tile policy | on every use | your IP address and the map areas shown |
+| Update check | `api.github.com` | — | GitHub terms of service | at most once a day, if you keep it | your IP address and the app's version |
 
 ## Privacy
 
 - The engine runs on your machine and only answers the coach window: no website or other computer can reach it.
 - Your captures leave your machine only for the NVIDIA vision model, and only if you gave an API key (see the
   table above). The browser's bars (tab titles, address, bookmarks) are cut off first.
+- The update check, if you keep it, sends GitHub your IP address and the app's version, at most once a day; nothing
+  is downloaded on its own. Settings › Version and updates turns it off.
 - Your API key is stored in a file readable by you only.
 - Settings › Storage › **Erase everything** removes all your data, and the engine if you wish.
 

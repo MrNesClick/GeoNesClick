@@ -128,6 +128,9 @@ test("the menu entry is added only when ticked; the shortcuts are ticked by defa
   await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
   expect(await tauriArgs(page, "set_shortcuts")).toEqual([{ on: true }]);
   expect(await tauriArgs(page, "set_menu_entry")).toEqual([{ on: true }]);
+  const [apply] = (await tauriArgs(page, "setup_apply")) as { choices: { updates: { check: boolean } } }[];
+  expect(apply.choices.updates).toEqual({ check: true }); // the update check, ticked by default
+  expect(await page.evaluate(() => localStorage.getItem("geonesclick.updates_told"))).toBe("1"); // chosen: no note
   const calls = await tauriCalls(page);
   expect(calls).toContain("place_appimage");
   expect(calls.indexOf("place_appimage")).toBeLessThan(calls.indexOf("set_menu_entry")); // the entry points to the copy

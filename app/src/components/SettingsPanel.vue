@@ -12,6 +12,7 @@ import { t } from "../i18n";
 import Section from "./Section.vue";
 import SettingField from "./SettingField.vue";
 import IntegrationSection from "./IntegrationSection.vue";
+import UpdatesBlock from "./UpdatesBlock.vue";
 import StoragePanel from "./StoragePanel.vue";
 
 const s = ref<Settings | null>(null);
@@ -144,6 +145,7 @@ const button = "rounded-md border px-3 py-1.5 text-papier disabled:opacity-50";
     <p v-if="!s" class="mt-4 text-courbe">{{ t("settings.loading") }}</p>
 
     <div v-else class="mt-3">
+      <UpdatesBlock />
       <datalist id="nvidia-models">
         <option v-for="m in models" :key="m" :value="m" />
       </datalist>

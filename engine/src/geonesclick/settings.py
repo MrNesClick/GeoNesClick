@@ -43,6 +43,7 @@ EDITABLE: dict[str, tuple[str, ...]] = {
     "rules": ("scripts", "letters", "places", "place_min_len", "place_max_spread_km", "prior_min", "detail"),
     "locks": ("enabled", "auto_country", "auto_region", "propose_city", "region_radius_km", "region_places_km"),
     "storage": ("max_cache_mb",),
+    "updates": ("check",),
     "debug": ("enabled",),
 }
 
