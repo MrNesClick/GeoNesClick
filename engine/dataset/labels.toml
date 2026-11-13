@@ -612,3 +612,432 @@ lat = 43.568783
 lon = 21.589355
 region = "RS.SE"
 source = "claude"
+
+[[capture]]
+file = "capture-20261113-125110-350.png"
+country = "EE"
+mode = "classique"
+layout = "Chrome maximised, bookmarks bar, dark theme"
+found = false
+predicted = "EE"
+guessed = "FI"
+lat = 58.930546
+lon = 24.391565
+region = "EE.13"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125250-572.png"
+country = "GB"
+mode = "classique"
+layout = "Chrome maximised, bookmarks bar, dark theme"
+found = true
+predicted = "IE"
+guessed = "GB"
+lat = 50.806164
+lon = -2.41233
+region = "GB.ENG"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125332-931.png"
+country = "SG"
+mode = "classique"
+layout = "Chrome maximised, bookmarks bar, dark theme"
+predicted = "SG"
+lat = 1.340227
+lon = 103.885857
+region = "SG.00"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125411-213.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, bookmarks bar, dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 35.660408
+lon = -88.118729
+region = "US.TN"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125508-840.png"
+country = "AU"
+mode = "classique"
+layout = "Chrome maximised, bookmarks bar, dark theme"
+found = true
+predicted = "AU"
+guessed = "AU"
+lat = -33.666443
+lon = 150.641846
+region = "AU.02"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125816-116.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, no bookmarks bar, dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 33.080845
+lon = -104.531433
+region = "US.NM"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-125941-522.png"
+country = "FR"
+mode = "classique"
+layout = "Chrome maximised, no bookmarks bar, dark theme"
+found = true
+predicted = "FR"
+guessed = "FR"
+lat = 49.526264
+lon = 0.726168
+region = "FR.28"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-130045-209.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, no bookmarks bar, dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 37.61911
+lon = -77.562225
+region = "US.VA"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-130146-160.png"
+country = "JO"
+mode = "classique"
+layout = "Chrome maximised, no bookmarks bar, dark theme"
+found = true
+predicted = "JO"
+guessed = "JO"
+lat = 30.485806
+lon = 35.525627
+region = "JO.19"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-130249-844.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, no bookmarks bar, dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 38.930317
+lon = -94.183617
+region = "US.MO"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-130801-471.png"
+country = "KE"
+mode = "classique"
+layout = "Chrome full screen (F11), dark theme"
+found = true
+predicted = "KE"
+guessed = "KE"
+lat = -1.168553
+lon = 36.968353
+region = "KE.22"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-130917-997.png"
+country = "JP"
+mode = "classique"
+layout = "Chrome full screen (F11), dark theme"
+found = true
+predicted = "JP"
+guessed = "JP"
+lat = 34.039665
+lon = 131.863739
+region = "JP.45"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-131033-407.png"
+country = "US"
+mode = "classique"
+layout = "Chrome full screen (F11), dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 40.934475
+lon = -74.231239
+region = "US.NJ"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-131146-243.png"
+country = "AT"
+mode = "classique"
+layout = "Chrome full screen (F11), dark theme"
+found = true
+predicted = "LU"
+guessed = "AT"
+lat = 48.245285
+lon = 14.224179
+region = "AT.04"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-131302-465.png"
+country = "US"
+mode = "classique"
+layout = "Chrome full screen (F11), dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 33.595776
+lon = -117.872093
+region = "US.CA"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-132119-043.png"
+country = "RU"
+mode = "classique"
+layout = "Chrome maximised, page zoom 125 %, dark theme"
+found = true
+predicted = "LV"
+guessed = "RU"
+lat = 59.210957
+lon = 39.715511
+region = "RU.85"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-132237-780.png"
+country = "GB"
+mode = "classique"
+layout = "Chrome maximised, page zoom 125 %, dark theme"
+found = true
+predicted = "GB"
+guessed = "GB"
+lat = 52.392361
+lon = -0.720583
+region = "GB.ENG"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-132351-164.png"
+country = "MY"
+mode = "classique"
+layout = "Chrome maximised, page zoom 125 %, dark theme"
+found = true
+predicted = "LK"
+guessed = "MY"
+lat = 5.343585
+lon = 116.207634
+region = "MY.16"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-132502-112.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, page zoom 125 %, dark theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 32.512875
+lon = -92.064064
+region = "US.LA"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-132608-048.png"
+country = "TR"
+mode = "classique"
+layout = "Chrome maximised, page zoom 125 %, dark theme"
+predicted = "JO"
+lat = 37.150326
+lon = 37.009422
+region = "TR.83"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-133049-664.png"
+country = "CO"
+mode = "classique"
+layout = "Chrome half screen, resized during sharing, page zoom 125 %, dark theme"
+found = false
+predicted = "PA"
+guessed = "KE"
+lat = 5.742959
+lon = -75.972221
+region = "CO.02"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-133221-696.png"
+country = "FR"
+mode = "classique"
+layout = "Chrome half screen, resized during sharing, page zoom 125 %, dark theme"
+found = true
+predicted = "FR"
+guessed = "FR"
+lat = 48.633816
+lon = 2.178238
+region = "FR.11"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-133330-975.png"
+country = "AU"
+mode = "classique"
+layout = "Chrome half screen, resized during sharing, page zoom 125 %, dark theme"
+found = false
+predicted = "PT"
+guessed = "UY"
+lat = -35.496647
+lon = 139.502045
+region = "AU.05"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-133432-333.png"
+country = "IE"
+mode = "classique"
+layout = "Chrome half screen, resized during sharing, page zoom 125 %, dark theme"
+found = true
+predicted = "FR"
+guessed = "IE"
+lat = 54.65638
+lon = -8.095005
+region = "IE.U"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-133546-559.png"
+country = "JP"
+mode = "classique"
+layout = "Chrome half screen, resized during sharing, page zoom 125 %, dark theme"
+found = false
+predicted = "KR"
+guessed = "KR"
+lat = 35.286381
+lon = 133.861252
+region = "JP.31"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-134158-535.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, light theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 36.705223
+lon = -105.59343
+region = "US.NM"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-134300-572.png"
+country = "MY"
+mode = "classique"
+layout = "Chrome maximised, light theme"
+found = true
+predicted = "TW"
+guessed = "MY"
+lat = 3.420469
+lon = 101.7911
+region = "MY.06"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-134405-432.png"
+country = "FR"
+mode = "classique"
+layout = "Chrome maximised, light theme"
+found = true
+predicted = "FR"
+guessed = "FR"
+lat = 48.166077
+lon = 7.301726
+region = "FR.44"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-134509-577.png"
+country = "US"
+mode = "classique"
+layout = "Chrome maximised, light theme"
+found = true
+predicted = "US"
+guessed = "US"
+lat = 42.516872
+lon = -70.947929
+region = "US.MA"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-134628-504.png"
+country = "RU"
+mode = "classique"
+layout = "Chrome maximised, light theme"
+found = true
+predicted = "CA"
+guessed = "RU"
+lat = 55.134583
+lon = 158.993454
+region = "RU.92"
+
+source = "claude"
+
+[[capture]]
+file = "capture-20261113-135007-310.png"
+country = "GB"
+mode = "classique"
+layout = "Chrome window two thirds of the screen, resized during sharing, light theme"
+found = true
+predicted = "FR"
+guessed = "GB"
+lat = 52.528973
+lon = -0.148114
+region = "GB.ENG"
+source = "claude"
