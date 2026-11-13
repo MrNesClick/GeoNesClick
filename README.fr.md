@@ -2,9 +2,9 @@
 
 # GeoNesClick
 
-Coach de géolocalisation assisté par IA, pour s'entraîner à l'OSINT et à GeoGuessr. Appuie sur un raccourci pendant
-une manche : le coach regarde la vue affichée à l'écran et te guide vers les indices utiles, avec autant d'aide que
-tu le souhaites.
+Coach de géolocalisation assisté par IA, pour s'entraîner à GeoGuessr et aux bases de la géolocalisation d'images
+(OSINT). Appuie sur un raccourci pendant une manche : le coach regarde la vue affichée à l'écran et te guide vers
+les indices utiles, avec autant d'aide que tu le souhaites.
 
 > **Pour l'entraînement uniquement.** Le coach ne lit que l'image affichée, jamais les données du jeu. Les
 > [règles de la communauté](https://www.geoguessr.com/community-rules) de GeoGuessr comptent comme triche tout outil
@@ -13,7 +13,8 @@ tu le souhaites.
 
 ## Fonctionnalités
 
-- **Quatre niveaux d'aide**, de « où regarder » à la réponse complète avec sa preuve.
+- **Quatre niveaux d'aide**, de « où regarder » à une réponse argumentée, avec sa preuve quand un texte lu en
+  fournit une.
 - **IA locale** (StreetCLIP) pour les pays probables, en 60 ms environ avec une carte NVIDIA (1,6 s sur un
   processeur à 4 cœurs), plus un modèle de vision distant qui lit le texte de la vue.
 - **Marques** : encadre un panneau ou une enseigne ; le coach le lit et en tire des conclusions locales et sourcées.

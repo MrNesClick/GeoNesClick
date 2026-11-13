@@ -705,7 +705,7 @@
   "setup.menu": "Menu des applications",
   "setup.menu.detail": "GeoNesClick dans le menu, et sa propre icône dans le dock au lieu d'une icône générique.",
   "setup.menu_failed": "Entrée de menu non ajoutée : {error}",
-  "integration.menu.comment": "Coach de géolocalisation assisté par IA pour l'OSINT et l'entraînement à GeoGuessr",
+  "integration.menu.comment": "Coach de géolocalisation assisté par IA, pour s'entraîner à GeoGuessr et aux bases de la géolocalisation d'images (OSINT)",
   "integration.error.appimage": "Seule l'AppImage peut être ajoutée au menu des applications.",
   "integration.error.path": "Le chemin de l'AppImage ne peut pas figurer dans une entrée de menu : renomme son dossier ou son fichier.",
   "integration.error.shortcut_path": "Le chemin du dossier des données ne peut pas figurer dans un raccourci clavier : il contient des caractères hors UTF-8.",

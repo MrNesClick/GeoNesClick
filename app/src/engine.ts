@@ -72,7 +72,7 @@ export interface Conclusion {
   region: string;
   proof: string;
   certainty: string;
-  /** Confirmed by a local rule (word, domain, dialling code…). Measured: the model alone is sometimes wrong
+  /** Confirmed by the local rules (alphabet, letters of a language, place names: evidence.py). Measured: the model alone is sometimes wrong
    * with "strong certainty" (Slovakia on a misread "utca"); without confirmation, never "certain". */
   confirmed: boolean;
 }

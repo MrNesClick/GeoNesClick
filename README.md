@@ -2,8 +2,9 @@
 
 # GeoNesClick
 
-AI-assisted geolocation coach for OSINT and GeoGuessr training. Press a shortcut during a round: the coach looks at
-the view on your screen and points you to the useful clues, with as much help as you choose.
+AI-assisted geolocation coach to train at GeoGuessr and at the basics of image geolocation (OSINT). Press a shortcut
+during a round: the coach looks at the view on your screen and points you to the useful clues, with as much help as
+you choose.
 
 > **For practice only.** The coach only reads the image on your screen, never the game's data. GeoGuessr's
 > [community rules](https://www.geoguessr.com/community-rules) count third-party tools that give an unfair advantage
@@ -11,7 +12,7 @@ the view on your screen and points you to the useful clues, with as much help as
 
 ## Features
 
-- **Four help levels**, from "where to look" to the full answer with its proof.
+- **Four help levels**, from "where to look" to a reasoned answer, with its proof when a text read gives one.
 - **Local AI** (StreetCLIP) for the likely countries, in about 60 ms with an NVIDIA card (1.6 s on a 4-core
   processor), plus a remote vision model that reads the text in the view.
 - **Marks**: draw a box around a sign or a shop front; the coach reads it and draws local, sourced conclusions.

@@ -1,6 +1,6 @@
 """Country › region › city locks: what is set for the current capture, and who set it.
 
-OSINT approach: pin down what is certain, then narrow down.
+The approach of image geolocation: pin down what is certain, then narrow down.
 - the COACH locks on its own the "certain" country and the region of a sharp point; a city, it only SUGGESTS
   (a "Pau 40 km" sign names a place where you are not); its locks follow the proofs (a removed mark
   can undo them);

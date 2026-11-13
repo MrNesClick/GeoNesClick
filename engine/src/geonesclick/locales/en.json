@@ -705,7 +705,7 @@
   "setup.menu": "Applications menu",
   "setup.menu.detail": "GeoNesClick in the menu, and its own icon in the dock instead of a generic one.",
   "setup.menu_failed": "Menu entry not added: {error}",
-  "integration.menu.comment": "AI-assisted geolocation coach for OSINT and GeoGuessr training",
+  "integration.menu.comment": "AI-assisted geolocation coach to train at GeoGuessr and at the basics of image geolocation (OSINT)",
   "integration.error.appimage": "Only the AppImage can be added to the applications menu.",
   "integration.error.path": "The AppImage's path cannot go in a menu entry: rename its folder or its file.",
   "integration.error.shortcut_path": "The data folder's path cannot go in a keyboard shortcut: it holds characters that are not UTF-8.",

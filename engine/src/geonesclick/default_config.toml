@@ -40,7 +40,7 @@ trust_proof = true
 language = "en"
 # Without proof read, a country is given as the answer only if it stands out: a probability of at least leader_min
 # AND a leader_margin lead over the 2nd. Otherwise: "Hesitation" between the first ones (e.g. 22 %, 21 %, 16 %).
-# Measured on the test set (spikes/coach_bench.py): 18 leaders out of 18 right from 70 %, 3 wrong out of 8 below.
+# Measured on the test set (spikes/view_bench.py, 89 rounds): StreetCLIP's first from 70 % right 57 times, wrong 2.
 # From a leader_min of 0.58 the lead always holds (the 2nd has at most 1 - leader_min): leader_margin only acts
 # below. It also tells, when you lock a country, whether StreetCLIP's first stands out enough to be pointed out.
 leader_min = 0.70

@@ -115,8 +115,9 @@ vision model sheet and leader thresholds as the engine):
   | 40 to 70 % | 5 | 3 |
 
   Hence a `leader_min` of **70 %**: no wrong clear leader on the set; the 5 right ones below become a hesitation
-  between the first countries, where the player looks for the clue that settles it. 30 rounds are few: to measure
-  again as the set grows.
+  between the first countries, where the player looks for the clue that settles it. On the 89-round set
+  (`spikes/view_bench.py`, StreetCLIP alone on the page as the engine crops it), the first country from 70 % is
+  right 57 times and wrong 2: the threshold holds, but a clear leader is not a proof.
 
 ## Cropping and masking the game's UI
 
