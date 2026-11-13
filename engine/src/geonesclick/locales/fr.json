@@ -56,7 +56,7 @@
   "app.country_locked": "pays verrouillé",
   "app.country_locked.detail": "Pays verrouillé ({country}) : plus rien à départager entre pays. Rejette le verrou si tu en doutes.",
   "app.capture_alt": "Vue analysée",
-  "app.crop_guessed": "Le haut de la fenêtre a été coupé d'une part fixe, pour laisser de côté les barres du navigateur (onglets, adresse, favoris). Dès la prochaine capture à cette taille de fenêtre, le coach coupe exactement où la page commence.",
+  "app.crop_guessed": "Le haut de la fenêtre a été coupé d'une part fixe, pour laisser de côté les barres du navigateur (onglets, adresse, favoris). Dès la prochaine capture à cette taille de fenêtre, le coach coupe exactement où la page commence, en comparant les deux.",
   "app.welcome.title": "Une vue, quelques indices.",
   "app.welcome.capture_before": "Pendant une manche, appuie sur",
   "app.welcome.capture_after": " : le coach affiche tout seul l'aide du niveau choisi ci-dessus, de « Regarder » (où chercher, sans rien dévoiler) à « Réponse » (le pays et la preuve).",

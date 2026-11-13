@@ -20,8 +20,9 @@ save_to_disk = true      # keeps a PNG copy of each capture
 directory = ""           # empty = ~/.local/share/geonesclick/captures/
 keep_last = 200          # number of captures kept on disk (0 = unlimited)
 # Analysed zone, as fractions of the captured image: [left, top, right, bottom].
-# Empty = the window without the browser's bars: the coach finds where the page starts by comparing two captures,
-# remembers it per window size (~/.config/geonesclick/page-top.json), and cuts 12 % of the top until then.
+# Empty = the window without the browser's bars: the coach finds where the page starts from the line drawn under
+# them and by comparing captures (remembered per window size in ~/.config/geonesclick/page-top.json); if neither
+# finds it, it cuts 12 % of the top.
 crop = []
 # Masked zones (rectangles as fractions, relative to the analysed zone), e.g. the answer mini-map.
 masks = []

@@ -13,9 +13,13 @@ from geonesclick.streetclip import CountryScore
 W, H, BARS = 400, 300, 30  # the bars fit in the default share, as Chrome's 121 px in 1200
 
 
+BAR_PIXELS = np.random.default_rng(0).integers(230, 256, (BARS, W, 3), dtype=np.uint8)
+
+
 def window(seed: int) -> Image.Image:
+    """A window whose bars (the same in every round) end on no plain line: the first capture cannot tell."""
     a = np.random.default_rng(seed).integers(0, 200, (H, W, 3), dtype=np.uint8)
-    a[:BARS] = 230  # the browser's bars, the same in every round
+    a[:BARS] = BAR_PIXELS
     return Image.fromarray(a)
 
 
@@ -66,7 +70,7 @@ def analysed(tmp_path, settings: str = "") -> tuple[FakeClip, FakeVision, list[d
 
 
 def has_bars(img: Image.Image) -> bool:
-    return bool((np.asarray(img)[:, :, :] == 230).all(axis=(1, 2)).any())
+    return bool((np.asarray(img) >= 230).all(axis=(1, 2)).any())
 
 
 def test_without_a_crop_set_the_bars_are_cut_from_the_first_capture_then_exactly(tmp_path):

@@ -10,21 +10,45 @@ from geonesclick.pagetop import DEFAULT_SHARE, PageTop
 W, H, BARS = 400, 300, 40
 
 
-def window(seed: int, bars: int = BARS, size: tuple[int, int] = (W, H)) -> Image.Image:
-    """A browser window: the same bars on top (with "text"), then a view that changes with each round."""
+BAR_PIXELS = np.random.default_rng(0).integers(200, 256, (H, 600, 3), dtype=np.uint8)  # the same in every round
+
+
+def window(seed: int, bars: int = BARS, size: tuple[int, int] = (W, H), line: bool = False) -> Image.Image:
+    """A browser window: the same bars on top, then a view that changes with each round. With `line`, the browser
+    draws a plain line under its bars (Chrome); without, nothing in one capture tells where they end."""
     w, h = size
-    a = np.random.default_rng(seed).integers(0, 256, (h, w, 3), dtype=np.uint8)
-    a[:bars] = 230
-    a[10:20, 20:200] = 30  # tab titles and address, the same in every round
+    a = np.random.default_rng(seed).integers(0, 200, (h, w, 3), dtype=np.uint8)
+    a[:bars] = BAR_PIXELS[:bars, :w]
+    if line:
+        a[bars - 1] = 180
     return Image.fromarray(a)
 
 
 def is_bar(img: Image.Image) -> bool:
     """The first row of the image is still the browser's."""
-    return bool((np.asarray(img)[0] == 230).all())
+    return bool((np.asarray(img)[0] >= 180).all())
 
 
-def test_cuts_a_share_of_the_height_until_two_captures_of_this_size_were_compared(tmp_path):
+def test_the_line_under_the_bars_gives_the_edge_from_the_first_capture(tmp_path):
+    pages = PageTop(tmp_path / "page-top.json")
+    first = window(1, line=True)
+    pages.learn(first)
+    page, guessed = pages.crop(first)
+    assert not guessed and page.height == H - BARS and not is_bar(page)
+
+
+def test_a_line_found_too_high_never_lets_the_learnt_bars_through(tmp_path):
+    pages = PageTop(tmp_path / "page-top.json")
+    pages.learn(window(1))
+    pages.learn(window(2))  # learnt: 40
+    a = np.array(window(3))
+    a[20] = 180  # a plain row inside the bars (between two of them): the line found is higher than the edge
+    pages.learn(Image.fromarray(a))
+    page, _ = pages.crop(Image.fromarray(a))
+    assert page.height == H - BARS
+
+
+def test_without_a_line_cuts_a_share_of_the_height_until_two_captures_were_compared(tmp_path):
     pages = PageTop(tmp_path / "page-top.json")
     pages.learn(window(1))
     page, guessed = pages.crop(window(1))

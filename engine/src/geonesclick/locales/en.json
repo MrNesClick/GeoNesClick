@@ -56,7 +56,7 @@
   "app.country_locked": "country locked",
   "app.country_locked.detail": "Country locked ({country}): nothing left to tell apart between countries. Reject the lock if you doubt it.",
   "app.capture_alt": "Analysed view",
-  "app.crop_guessed": "The top of the window was cut by a fixed share, to leave out the browser's bars (tabs, address, bookmarks). From the next capture of this window size, the coach cuts exactly where the page starts.",
+  "app.crop_guessed": "The top of the window was cut by a fixed share, to leave out the browser's bars (tabs, address, bookmarks). From the next capture of this window size, the coach cuts exactly where the page starts, by comparing the two.",
   "app.welcome.title": "One view, a few clues.",
   "app.welcome.capture_before": "During a round, press",
   "app.welcome.capture_after": ": the coach shows on its own the help of the level chosen above, from “Look” (where to search, revealing nothing) to “Answer” (the country and the proof).",

@@ -10,9 +10,10 @@ its release notes.
 ### Security
 
 - The browser's bars (tab titles, address, bookmarks) no longer leave with your captures for the NVIDIA vision
-  model, nor reach the local AI. The coach finds where the game page starts by comparing two captures, remembers it
-  for each window size, and until then cuts a fixed share of the top of the window, which it tells you under the
-  capture. A zone set by hand in `config.toml` (`[capture] crop`) still takes precedence.
+  model, nor reach the local AI. The coach finds where the game page starts from the first capture, by the line the
+  browser draws under its bars, and also by comparing captures, which works whatever the browser. If neither finds
+  it, it cuts a fixed share of the top of the window and tells you under the capture. A zone set by hand in
+  `config.toml` (`[capture] crop`) still takes precedence.
 
 ## [0.4.0] - 2026-11-13
 
