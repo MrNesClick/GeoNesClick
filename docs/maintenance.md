@@ -4,14 +4,15 @@
 
 ## Shared window
 
-The coach window starts the Python engine and stops it when closed. The first time, GNOME asks which window to
+The coach window starts the Python engine and stops it when closed. Nothing is shared when the coach opens: the
+**Share the game window** button starts the sharing (`/capture/start`). The first time, GNOME asks which window to
 share: choose the browser window where you play. The permission is remembered
 (`~/.config/geonesclick/screencast.token`). To change it (another browser, screen or resolution), open the
 **Settings** tab and click **Change window** (Capture section): the GNOME picker opens again. If you stop the
 sharing from GNOME's indicator, the coach says so and offers **Restart sharing**, which also opens the picker; only
-the app's start resumes the remembered window without asking. If that window no longer exists, the coach forgets it
-and opens the picker. A capture that is the same image as the previous one is analysed with a note: if the game view
-changed in between, the sharing is frozen; restart it.
+**Share the game window** resumes the remembered window without asking. If that window no longer exists, the coach
+forgets it and opens the picker. A capture that is the same image as the previous one is analysed with a note: if the
+game view changed in between, the sharing is frozen; restart it.
 
 ## Installed copy and updates (AppImage)
 

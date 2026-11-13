@@ -15,7 +15,7 @@ import PlonkitTips from "./components/PlonkitTips.vue";
 import Section from "./components/Section.vue";
 import SettingsPanel from "./components/SettingsPanel.vue";
 import Summary from "./components/Summary.vue";
-import { countryName, engine, flag, lockedCountry, requestCapture, requestFreeze, reselectWindow, tipsByCountry } from "./engine";
+import { countryName, engine, flag, lockedCountry, requestCapture, requestFreeze, reselectWindow, shareWindow, tipsByCountry } from "./engine";
 import { t } from "./i18n";
 import * as sum from "./summaries";
 
@@ -68,9 +68,9 @@ const tabs = computed(() => [
         type="button"
         class="shrink-0 rounded-md border border-alerte/60 px-3 py-1.5 text-[0.9rem] text-papier hover:bg-alerte/10 disabled:opacity-50"
         :disabled="engine.busy"
-        @click="reselectWindow"
+        @click="engine.capture.idle ? shareWindow() : reselectWindow()"
       >
-        {{ t("app.restart_sharing") }}
+        {{ t(engine.capture.idle ? "app.share" : "app.restart_sharing") }}
       </button>
       <template v-else>
         <button

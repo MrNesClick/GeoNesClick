@@ -154,3 +154,14 @@ test("a single mark that nothing seconds stays very likely, and the coach asks f
   await expect(answer).toContainText(en["proof.marks_certain"]);
   await expect(answer).not.toContainText(en["summary.second_mark"]);
 });
+
+test("nothing is shared at the start: the coach offers to share the game window, then restarting reopens the picker", async ({ page }) => {
+  const engine = await fakeEngine(page); // the engine's own state at its start (fixture): not shared, idle
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByRole("status").first()).toHaveText(en["srv.sharing_off"]);
+  await page.getByRole("button", { name: en["app.share"] }).click();
+  await expect.poll(() => engine.posts.map((p) => p.path)).toEqual(["/capture/start"]);
+  engine.send({ type: "state", ...fixture("state.json"), capture: { alive: false, starting: false, idle: false, message: "cut" } });
+  await page.getByRole("button", { name: en["app.restart_sharing"] }).click();
+  await expect.poll(() => engine.posts.map((p) => p.path)).toEqual(["/capture/start", "/capture/reselect"]);
+});

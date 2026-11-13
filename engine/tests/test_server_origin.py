@@ -23,7 +23,7 @@ def client(tmp_path):
     return TestClient(create_app(load_config(user)), base_url="http://127.0.0.1:47615")
 
 
-@pytest.mark.parametrize("path", ["/capture", "/capture/reselect"])
+@pytest.mark.parametrize("path", ["/capture", "/capture/reselect", "/capture/start"])
 def test_foreign_origin_cannot_trigger_actions(client, path):
     assert client.post(path, headers={"Origin": EVIL_ORIGIN}).status_code == 403
 
@@ -75,3 +75,22 @@ def test_restarting_the_sharing_reopens_the_gnome_picker(client):
     assert client.post("/capture/reselect", headers={"Origin": APP_ORIGIN}).status_code == 200
     assert calls == [True]
     assert client.post("/capture/restart", headers={"Origin": APP_ORIGIN}).status_code in (404, 405)  # route removed
+
+
+def test_nothing_is_shared_until_the_player_shares_the_game_window(client):
+    """The coach open is not a consent to share a window: the start shares nothing; the button resumes the remembered
+    window (no dialog), unlike "Restart sharing" which reopens the picker."""
+    import asyncio
+
+    engine = client.app.state.engine
+    started, restarts = [], []
+    engine.capture.start = lambda: started.append(True)
+    engine.capture.restart = lambda forget_window=False: restarts.append(forget_window)
+    engine.cfg.streetclip.enabled = engine.cfg.plonk.enabled = engine.cfg.plonkit.enabled = False
+    engine.cfg.rules.places = engine.cfg.updates.check = False
+    asyncio.run(engine.start())
+    state = engine.state()["capture"]
+    assert started == [] and (state["alive"], state["starting"], state["idle"]) == (False, False, True)
+    assert client.post("/capture/start", headers={"Origin": APP_ORIGIN}).status_code == 200
+    assert restarts == [False]  # the remembered window is kept
+    assert engine.state()["capture"]["idle"] is False

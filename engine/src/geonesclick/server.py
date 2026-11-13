@@ -130,8 +130,11 @@ class Engine(MarksMixin, LocksMixin):
         self.page_top = PageTop(paths.CONFIG_DIR / PAGE_TOP_FILE)  # where the page starts below the browser's bars
         self.updates = Updates(paths.CONFIG_DIR / UPDATES_FILE)
         self.updates_task: asyncio.Task | None = None
-        self.capture_message = i18n.t("srv.sharing_starting")
-        self.capture_starting = True  # GNOME picker possibly open: neither active nor cut off
+        # Nothing is shared at the start: the player starts the sharing ("Share the game window"), with the remembered
+        # window when there is one, so no window is shared while the coach is only open.
+        self.capture_message = i18n.t("srv.sharing_off")
+        self.capture_starting = False  # True while GNOME's picker may be open: neither active nor cut off
+        self.capture_idle = True  # not started in this session (not cut off midway)
         self.streetclip: StreetClip | None = None
         self.streetclip_message = i18n.t("srv.model_loading")
         self.vision = VisionClient(cfg.vision)
@@ -235,6 +238,7 @@ class Engine(MarksMixin, LocksMixin):
             "capture": {
                 "alive": self.capture.alive,
                 "starting": self.capture_starting,
+                "idle": self.capture_idle,
                 "message": self.capture_message,
             },
             "streetclip": {"ready": self.streetclip is not None, "message": self.streetclip_message},
@@ -295,7 +299,6 @@ class Engine(MarksMixin, LocksMixin):
     # --- lifecycle -------------------------------------------------------------------------
     async def start(self) -> None:
         self.loop = asyncio.get_running_loop()
-        self.capture.start()
         if self.cfg.streetclip.enabled:
             try:
                 self.streetclip = await asyncio.to_thread(StreetClip, self.cfg.streetclip)
@@ -1027,10 +1030,16 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def _restart(message: str, forget_window: bool) -> dict[str, Any]:
         async with restart_lock:
             engine.capture_message = message
-            engine.capture_starting = True
+            engine.capture_starting, engine.capture_idle = True, False
             await engine.broadcast(engine.state())
             await asyncio.to_thread(engine.capture.restart, forget_window)
         return {"ok": True}
+
+    @app.post("/capture/start")
+    async def share() -> dict[str, Any]:
+        """"Share the game window": the remembered window without a dialog, GNOME's picker otherwise. Nothing is shared
+        before this click (nor at the app's start)."""
+        return await _restart(i18n.t("srv.sharing_starting"), forget_window=False)
 
     @app.post("/updates/check")
     async def updates_check() -> dict[str, Any]:
@@ -1048,8 +1057,8 @@ def create_app(cfg: Config | None = None, settings_path: Path = USER_CONFIG) -> 
     async def reselect() -> dict[str, Any]:
         """"Restart sharing" and "Change window": forgets the remembered window and reopens the GNOME picker.
         Stopping the sharing from GNOME is deliberate, often to change window, and a
-        remembered window that no longer exists ("target not found") must not block the restart. Only the app's start
-        resumes the remembered window without asking."""
+        remembered window that no longer exists ("target not found") must not block the restart. Only "Share the game
+        window" (/capture/start) resumes the remembered window without asking."""
         return await _restart(i18n.t("srv.pick_window"), forget_window=True)
 
     @app.post("/label")

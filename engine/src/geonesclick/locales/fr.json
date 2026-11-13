@@ -949,7 +949,7 @@
   "capture.unavailable": "capture indisponible : {error}",
   "capture.stopped": "partage d'écran arrêté",
   "capture.interrupted": "partage d'écran interrompu ({error})",
-  "capture.inactive": "partage d'écran inactif : relancez-le depuis le coach",
+  "capture.inactive": "partage d'écran coupé : partagez la fenêtre du jeu depuis le coach",
   "capture.no_image": "aucune image reçue pour l'instant",
   "capture.window_gone": "la fenêtre mémorisée n'existe plus : choisissez la fenêtre du jeu à partager…",
   "capture.buffer": "lecture du tampon vidéo impossible",
@@ -1116,5 +1116,7 @@
   "setup.update.download": "À télécharger : {size} (PyPI, PyTorch)",
   "setup.update.go": "Mettre à jour",
   "setup.update.later": "Plus tard",
-  "setup.update.later_hint": "Plus tard : la {installed} reste installée telle quelle, et cette fenêtre se ferme."
+  "setup.update.later_hint": "Plus tard : la {installed} reste installée telle quelle, et cette fenêtre se ferme.",
+  "srv.sharing_off": "partage d'écran coupé : partagez la fenêtre du jeu pour commencer",
+  "app.share": "Partager la fenêtre du jeu"
 }

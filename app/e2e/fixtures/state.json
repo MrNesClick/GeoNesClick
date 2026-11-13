@@ -1,8 +1,9 @@
 {
   "capture": {
     "alive": false,
-    "message": "starting the screen sharing…",
-    "starting": true
+    "idle": true,
+    "message": "screen sharing off: share the game window to start",
+    "starting": false
   },
   "countries": [
     "AD",

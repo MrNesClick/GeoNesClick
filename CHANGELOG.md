@@ -31,6 +31,8 @@ its release notes.
 - GeoNesClick is now installed as `~/.local/share/geonesclick/GeoNesClick.AppImage` and launched from there by the
   applications menu: the file you downloaded can be renamed, moved or deleted (the coach tells you so once), and
   the menu entry no longer breaks when you do. Erase everything removes that copy with the engine.
+- The coach no longer shares the game window as soon as it opens: nothing is shared until you click **Share the
+  game window**, which then shares the remembered window without GNOME's dialog.
 - A country read in your marks is "certain" (put first, the others ruled out, locked by the coach) only when a
   second source seconds the reading: a second mark, or the look of the view (StreetCLIP giving that country 10 % or
   more). One mark alone is otherwise "very likely", and the answer says that a second mark would settle it: a single

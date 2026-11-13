@@ -100,8 +100,9 @@ Clavier › Raccourcis personnalisés.
 
 ## Utiliser
 
-1. Ouvrez une partie GeoGuessr dans votre navigateur et lancez GeoNesClick. La première fois, GNOME demande quelle
-   fenêtre partager : choisissez celle du navigateur.
+1. Ouvrez une partie GeoGuessr dans votre navigateur, lancez GeoNesClick et cliquez sur **Partager la fenêtre du
+   jeu** : rien n'est partagé avant. La première fois, GNOME demande quelle fenêtre partager : choisissez celle du
+   navigateur. Ensuite, le bouton partage cette même fenêtre sans redemander.
 2. Pendant une manche, appuyez sur **Super+Maj+G** : le coach affiche l'aide du niveau choisi.
 3. Pour lire un panneau, appuyez sur **Super+Maj+Z** et encadrez-le.
 

@@ -44,7 +44,7 @@ flowchart LR
 | Interface → engine | HTTP, `http://127.0.0.1:47615` | settings, marks, locks, storage, "Where was it?" | the engine listens on `127.0.0.1` only and refuses any other `Origin` |
 | Engine → interface | WebSocket `/ws` | the state, then each event of a round (`capture`, `streetclip`, `vision`, `cloud`, `freeze`…; the full list is the `Message` type in `app/src/engine.ts`) | same origin check; the window's CSP only allows this address |
 | GNOME → engine | Unix socket `$XDG_RUNTIME_DIR/geonesclick.sock` | `capture` or `mark`, sent by `python -m geonesclick.trigger` | socket readable and writable by you only (0600) |
-| Portal → engine | PipeWire stream | the shared window, kept open; a frame is taken at each capture | GNOME asks which window to share; the permission is remembered |
+| Portal → engine | PipeWire stream | the shared window, kept open once the player shares it; a frame is taken at each capture | GNOME asks which window to share; the permission is remembered |
 
 ## A capture, step by step
 

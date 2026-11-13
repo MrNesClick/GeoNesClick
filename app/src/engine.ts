@@ -378,7 +378,8 @@ export interface Analysis {
 
 export const engine = reactive({
   connected: false,
-  capture: { alive: false, starting: true, message: t("engine.connecting") },
+  /** idle: not shared yet in this session (the "Share the game window" button), as opposed to cut off midway. */
+  capture: { alive: false, starting: true, idle: false, message: t("engine.connecting") },
   streetclip: { ready: false, message: "" },
   /** key: where the API key comes from and its last 4 characters (never the key), null if missing. */
   vision: { enabled: false, ready: false, model: "", key: null as { source: string; end: string } | null },
@@ -647,6 +648,8 @@ export const requestFreeze = () => request("/marks/freeze");
 export const removeMark = (id: string, n: number) => request("/marks/remove", { id, n });
 /** "Restart sharing" and "Change window": the GNOME picker opens (the remembered window is forgotten). */
 export const reselectWindow = () => request("/capture/reselect");
+/** "Share the game window": nothing is shared before it; the remembered window without a dialog. */
+export const shareWindow = () => request("/capture/start");
 /** "Where was it?": real country, and answered country (empty if you no longer know) or a simple "found?". */
 export const labelCapture = (id: string, country: string, guessed: string, found: boolean | null = null, link = "") =>
   request("/label", { id, country, guessed, found, link });

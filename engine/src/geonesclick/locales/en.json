@@ -949,7 +949,7 @@
   "capture.unavailable": "capture unavailable: {error}",
   "capture.stopped": "screen sharing stopped",
   "capture.interrupted": "screen sharing interrupted ({error})",
-  "capture.inactive": "screen sharing inactive: restart it from the coach",
+  "capture.inactive": "screen sharing off: share the game window from the coach",
   "capture.no_image": "no image received so far",
   "capture.window_gone": "the remembered window is gone: choose the game window to share…",
   "capture.buffer": "the video buffer could not be read",
@@ -1116,5 +1116,7 @@
   "setup.update.download": "To download: {size} (PyPI, PyTorch)",
   "setup.update.go": "Update",
   "setup.update.later": "Later",
-  "setup.update.later_hint": "Later: {installed} stays installed as it is, and this window closes."
+  "setup.update.later_hint": "Later: {installed} stays installed as it is, and this window closes.",
+  "srv.sharing_off": "screen sharing off: share the game window to start",
+  "app.share": "Share the game window"
 }

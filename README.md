@@ -97,8 +97,9 @@ Custom Shortcuts.
 
 ## Use
 
-1. Open a GeoGuessr game in your browser and start GeoNesClick. The first time, GNOME asks which window to share:
-   choose your browser window.
+1. Open a GeoGuessr game in your browser, start GeoNesClick and click **Share the game window**: nothing is shared
+   before that. The first time, GNOME asks which window to share: choose your browser window. Afterwards the button
+   shares that same window without asking again.
 2. During a round, press **Super+Shift+G**: the coach shows the help of the chosen level.
 3. To read a sign, press **Super+Shift+Z** and draw a box around it.
 
