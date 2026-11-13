@@ -9,7 +9,8 @@ share: choose the browser window where you play. The permission is remembered
 (`~/.config/geonesclick/screencast.token`). To change it (another browser, screen or resolution), open the
 **Settings** tab and click **Change window** (Capture section): the GNOME picker opens again. If you stop the
 sharing from GNOME's indicator, the coach says so and offers **Restart sharing**, which also opens the picker; only
-the app's start resumes the remembered window without asking.
+the app's start resumes the remembered window without asking. If that window no longer exists, the coach forgets it
+and opens the picker.
 
 ## Updates and data
 

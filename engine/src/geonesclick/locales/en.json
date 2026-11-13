@@ -936,6 +936,7 @@
   "capture.interrupted": "screen sharing interrupted ({error})",
   "capture.inactive": "screen sharing inactive: restart it from the coach",
   "capture.no_image": "no image received so far",
+  "capture.window_gone": "the remembered window is gone: choose the game window to share…",
   "capture.buffer": "the video buffer could not be read",
   "vision.no_key": "API key missing: enter it in Settings › Analysis",
   "vision.no_json": "unreadable answer from the model (no JSON)",

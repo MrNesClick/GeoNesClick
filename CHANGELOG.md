@@ -7,6 +7,12 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- When the window shared last time no longer exists, the coach no longer shows "screen sharing active" at its start
+  with no image coming: it forgets that window and opens the GNOME picker so you can choose the game window. The
+  sharing counts as active from its first image only.
+
 ## [0.4.1] - 2026-11-13
 
 ### Security

@@ -272,10 +272,10 @@ class Engine(MarksMixin, LocksMixin):
             except Exception:
                 self.clients.discard(ws)
 
-    def _on_capture_state(self, alive: bool, message: str, interrupted: bool) -> None:
-        """Called from the GLib thread: we go back into the asyncio loop."""
+    def _on_capture_state(self, alive: bool, message: str, interrupted: bool, starting: bool) -> None:
+        """Called from the capture threads: we go back into the asyncio loop."""
         self.capture_message = message
-        self.capture_starting = False
+        self.capture_starting = starting
         if interrupted:
             self.notifier.send(i18n.t("srv.sharing_stopped"), i18n.t("srv.sharing_restart"), error=True)
         if self.loop:

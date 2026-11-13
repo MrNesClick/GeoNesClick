@@ -120,8 +120,8 @@ class CaptureService:
 
     SOURCES = {"window": SOURCE_WINDOW, "monitor": SOURCE_MONITOR, "both": SOURCE_WINDOW | SOURCE_MONITOR}
 
-    def __init__(self, on_state: Callable[[bool, str, bool], None], source: str = "window") -> None:
-        # Called from the GLib thread: (stream active?, message, cut off midway?)
+    def __init__(self, on_state: Callable[[bool, str, bool, bool], None], source: str = "window") -> None:
+        # Called from the capture threads: (stream active?, message, cut off midway?, picker about to open?)
         self._on_state = on_state
         self._source_types = self.SOURCES[source]
         self._lock = threading.Lock()
@@ -131,6 +131,9 @@ class CaptureService:
         self._loop: GLib.MainLoop | None = None
         self._pipeline: Gst.Pipeline | None = None
         self._portal: _Portal | None = None
+        self._stopping = False
+        self._got_frame = False  # the current stream has delivered an image
+        self._error: str | None = None  # why the current stream died
         Gst.init(None)
 
     @property
@@ -140,6 +143,7 @@ class CaptureService:
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
+        self._stopping = False
         self._thread = threading.Thread(target=self._run, name="glib-capture", daemon=True)
         self._thread.start()
 
@@ -151,31 +155,46 @@ class CaptureService:
         self.start()
 
     def stop(self) -> None:
-        if self._loop:
+        self._stopping = True
+        if loop := self._loop:
             # The request must go through the capture thread's GLib context: GLib.idle_add()
-            # would target the default context, which nobody runs.
+            # would target the default context, which nobody runs. The loop is held here: self._loop is cleared below
+            # even when the thread outlives the join.
             source = GLib.idle_source_new()
-            source.set_callback(lambda *_: self._shutdown())
-            source.attach(self._loop.get_context())
+            source.set_callback(lambda *_: loop.quit())
+            source.attach(loop.get_context())
         if self._thread:
             self._thread.join(timeout=5)
         self._thread = None
         self._loop = self._pipeline = self._portal = None
-
-    def _shutdown(self) -> bool:
-        if self._pipeline:
-            self._pipeline.set_state(Gst.State.NULL)
-        if self._portal:
-            self._portal.close()
-        if self._loop:
-            self._loop.quit()
-        return False
 
     def _run(self) -> None:
         ctx = GLib.MainContext.new()
         ctx.push_thread_default()
         try:
             self._loop = GLib.MainLoop.new(ctx, False)
+            message, interrupted = self._share()
+        finally:
+            ctx.pop_thread_default()
+        if message or self._alive:
+            self._set_alive(False, message or t("capture.stopped"), interrupted)
+
+    def _share(self) -> tuple[str | None, bool]:
+        """Shares the remembered window, or the one picked in GNOME. A remembered window that no longer exists is
+        accepted by GNOME, then its stream dies before its first image ("target not found"): it is forgotten and the
+        picker opens, once. Returns how the sharing ended: (error message or None if stopped, cut off midway?)."""
+        resumed = TOKEN_FILE.exists()
+        ended = self._stream()
+        if resumed and ended[0] and not self._got_frame:  # a sharing stopped by the app ends without error
+            TOKEN_FILE.unlink(missing_ok=True)
+            self._on_state(False, t("capture.window_gone"), False, True)
+            ended = self._stream()
+        return ended
+
+    def _stream(self) -> tuple[str | None, bool]:
+        """One sharing, from the portal to the end of its stream (see _share for the result)."""
+        self._got_frame, self._error, self._portal = False, None, None
+        try:
             self._portal = _Portal(self._loop)
             fd, node_id = self._portal.open(self._source_types)
             self._pipeline = Gst.parse_launch(
@@ -188,36 +207,46 @@ class CaptureService:
             bus.add_signal_watch()
             bus.connect("message::error", self._on_error)
             self._pipeline.set_state(Gst.State.PLAYING)
-            self._set_alive(True, t("capture.active"))
             self._loop.run()
-        except Exception as exc:  # portal refused, PipeWire missing…
-            self._set_alive(False, t("capture.unavailable", error=exc))
+        except Exception as exc:  # portal refused, PipeWire missing… (or the picker closed by stop())
+            return (None, False) if self._stopping else (t("capture.unavailable", error=exc), False)
         finally:
-            if self._alive:
-                self._set_alive(False, t("capture.stopped"))
-            ctx.pop_thread_default()
+            if self._pipeline:
+                self._pipeline.set_state(Gst.State.NULL)  # no image arrives once this returns
+                self._pipeline.get_bus().remove_signal_watch()  # a second stream runs in the same GLib context
+                self._pipeline = None
+            if self._portal:
+                self._portal.close()
+        return (None, False) if self._stopping or self._error is None else (self._error, True)
 
     def _set_alive(self, alive: bool, message: str, interrupted: bool = False) -> None:
         with self._lock:
             self._alive = alive
             if not alive:
                 self._latest = None  # never return a stale image
-        self._on_state(alive, message, interrupted)
+        self._on_state(alive, message, interrupted, False)
 
     def _on_sample(self, sink) -> Gst.FlowReturn:
+        """Called from GStreamer's streaming thread. The sharing is announced active with its first image only: a
+        stream that the portal accepted can still die before showing anything."""
         sample = sink.emit("pull-sample")
         with self._lock:
             self._latest = sample
+            first = not self._got_frame
+            self._got_frame = True
+        if first:
+            self._set_alive(True, t("capture.active"))
         return Gst.FlowReturn.OK
 
     def _on_error(self, _bus, msg) -> None:
         err, _dbg = msg.parse_error()
-        self._set_alive(False, t("capture.interrupted", error=err.message), interrupted=True)
+        self._error = t("capture.interrupted", error=err.message)
+        self._loop.quit()
 
     def grab(self) -> Image.Image:
         with self._lock:
             sample, alive = self._latest, self._alive
-        if not alive:
+        if not alive and not (self._thread and self._thread.is_alive()):
             raise CaptureError(t("capture.inactive"))
         if sample is None:
             raise CaptureError(t("capture.no_image"))

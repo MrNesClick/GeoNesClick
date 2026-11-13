@@ -936,6 +936,7 @@
   "capture.interrupted": "partage d'écran interrompu ({error})",
   "capture.inactive": "partage d'écran inactif : relance-le depuis le coach",
   "capture.no_image": "aucune image reçue pour l'instant",
+  "capture.window_gone": "la fenêtre mémorisée n'existe plus : choisis la fenêtre du jeu à partager…",
   "capture.buffer": "lecture du tampon vidéo impossible",
   "vision.no_key": "clé API absente : saisis-la dans Réglages › Analyse",
   "vision.no_json": "réponse du modèle illisible (pas de JSON)",
