@@ -30,7 +30,8 @@ its release notes.
   the menu entry no longer breaks when you do. Erase everything removes that copy with the engine.
 - A country read in your marks is "certain" (put first, the others ruled out, locked by the coach) only when a
   second source seconds the reading: a second mark, or the look of the view (StreetCLIP giving that country 10 % or
-  more). One mark alone is otherwise "very likely": a single blurry crop can be made up whole and still be coherent.
+  more). One mark alone is otherwise "very likely", and the answer says that a second mark would settle it: a single
+  blurry crop can be made up whole and still be coherent.
 
 ### Fixed
 

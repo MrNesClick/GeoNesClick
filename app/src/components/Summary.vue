@@ -36,6 +36,9 @@ const rejected = computed(() => rejectedVision(props.analysis));
          class="mt-2 border-l-2 border-alerte/70 pl-3 text-[0.9rem] text-papier">
         {{ t("summary.mark_against", { mark: circled(a.n), country: `${flag(a.country)} ${countryName(a.country)}`, items: quote(a.items.join(", ")) }) }}
       </p>
+      <p v-if="conclusion.source === 'marks' && verdict?.unseconded" class="mt-2 border-l-2 border-lac/60 pl-3 text-[0.9rem] text-papier">
+        {{ t("summary.second_mark") }}
+      </p>
       <p class="mt-2 text-[0.85rem] text-courbe">
         <template v-if="clipOn(conclusion.country)">
           {{ t("summary.clip_too", { pct: pct(clipOn(conclusion.country)!.probability) }) }}

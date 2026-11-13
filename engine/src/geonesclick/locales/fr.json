@@ -193,6 +193,7 @@
   "summary.ai_read": "Ce que l'IA a lu",
   "summary.label_colon": "{label} :",
   "summary.mark_against": "{mark} désigne {country} ({items}) : lecture douteuse ? Si elle est fausse, retire-la dans « Marques » et la réponse pourra devenir certaine.",
+  "summary.second_mark": "Une marque seule ne suffit pas pour être certain : un recadrage flou peut être mal lu de bout en bout. Encadre un deuxième texte : s'il concorde, le pays devient certain.",
   "summary.clip_too": "StreetCLIP le voyait aussi ({pct}).",
   "summary.clip_other": "StreetCLIP penchait pour {country} ({pct}) : la preuve lue l'emporte.",
   "summary.check_text": " Vérifie le texte toi-même : le modèle se trompe parfois en le lisant.",

@@ -193,6 +193,7 @@
   "summary.ai_read": "What the AI read",
   "summary.label_colon": "{label}:",
   "summary.mark_against": "{mark} points to {country} ({items}): a doubtful reading? If it is wrong, remove it in “Marks” and the answer can become certain.",
+  "summary.second_mark": "One mark alone is not enough to be certain: a blurry crop can be misread from start to end. Draw a box around a second text: if it agrees, the country becomes certain.",
   "summary.clip_too": "StreetCLIP saw it too ({pct}).",
   "summary.clip_other": "StreetCLIP leaned towards {country} ({pct}): the proof read wins.",
   "summary.check_text": " Check the text yourself: the model sometimes misreads it.",

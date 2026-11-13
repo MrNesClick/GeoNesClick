@@ -118,12 +118,13 @@ def test_places_and_letters_that_agree_are_certain_when_the_view_seconds_them(ga
 def test_one_mark_that_the_view_does_not_second_is_only_very_likely(gazetteer, prior):
     """A blurry crop can be made up whole and coherent: one reading alone never makes a country certain."""
     v = verdict([(1, evidence(MARK_1, gazetteer))], prior)
-    assert (v.country, v.level) == ("BG", "probable")
+    assert (v.country, v.level, v.unseconded) == ("BG", "probable", True)  # the coach asks for a second mark
 
 
 def test_two_marks_that_agree_are_certain_without_the_view(gazetteer):
     v = verdict([(1, evidence(MARK_1, gazetteer)), (2, evidence(["София"], gazetteer))])
     assert (v.country, v.level) == ("BG", "certain") and [c["n"] for c in v.cites] == [1, 2]
+    assert not v.unseconded
 
 
 def test_a_contradicting_mark_prevents_certainty(gazetteer):

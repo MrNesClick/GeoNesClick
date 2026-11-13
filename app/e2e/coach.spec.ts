@@ -135,3 +135,22 @@ test("the GNOME integration group shows what is in place and adds the menu entry
   await expect(group).toContainText(en["settings.sum.menu_on"]);
   expect(await tauriArgs(page, "set_menu_entry")).toEqual([{ on: true }]);
 });
+
+test("a single mark that nothing seconds stays very likely, and the coach asks for a second one", async ({ page }) => {
+  const engine = await fakeEngine(page, { state: sharing() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  const messages = round() as { type: string; id?: string }[];
+  messages.forEach((message) => engine.send(message));
+  const id = messages.find((m) => m.type === "capture")?.id;
+  const verdict = { type: "verdict", id, country: "SE", level: "probable", allowed: null, scripts: [], against: [],
+                    cites: [{ n: 1, items: ["Göteborg", "Borås"] }], conflict: "", location: null, ignored: [],
+                    unconfirmed: [], unseconded: true };
+  engine.send(verdict);
+  const answer = page.getByRole("region", { name: new RegExp(`^${en["app.section.answer"]}`) });
+  await expect(answer).toContainText(en["proof.marks_likely"]);
+  await expect(answer).toContainText(en["summary.second_mark"]);
+  engine.send({ ...verdict, cites: [{ n: 1, items: ["Göteborg"] }, { n: 2, items: ["Borås"] }], level: "certain", unseconded: false });
+  await expect(answer).toContainText(en["proof.marks_certain"]);
+  await expect(answer).not.toContainText(en["summary.second_mark"]);
+});

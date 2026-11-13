@@ -210,6 +210,7 @@ class Verdict:
     against: list[dict[str, Any]] = field(default_factory=list)  # [{n, country, items}]: contrary marks
     conflict: str = ""  # incompatible alphabets between marks
     unconfirmed: list[dict[str, Any]] = field(default_factory=list)  # [{n, value, country}]: lone places, clues
+    unseconded: bool = False  # would be certain with a second source: another mark, or the look of the view
 
 
 def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | None = None,
@@ -267,7 +268,9 @@ def verdict(marks: list[tuple[int, list[Evidence]]], prior: dict[str, float] | N
     # A second source that the model's reading does not control: another mark, or the look of the view (StreetCLIP).
     # One blurry crop can be made up whole, and coherent ("Город, Казань" on a Bulgarian view).
     seconded = len(v.cites) >= 2 or (prior or {}).get(country, 0.0) >= prior_min
-    v.level = "certain" if has_place and len(support) >= 2 and not v.against and seconded else "probable"
+    proven = has_place and len(support) >= 2 and not v.against
+    v.level = "certain" if proven and seconded else "probable"
+    v.unseconded = proven and not seconded  # the coach says that a second mark would settle it
     return v
 
 

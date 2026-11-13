@@ -166,6 +166,8 @@ export interface Verdict {
   ignored: { n: number; value: string; label: string; countries: string[] }[];
   /** Lone places, unconfirmed (2nd place, letter or word, StreetCLIP): mere clues. */
   unconfirmed: { n: number; value: string; country: string }[];
+  /** Would be certain with a second source (another mark, or the look of the view): the coach asks for a mark. */
+  unseconded?: boolean;
   /** Places read that your choices rule out (outside your country or region): greyed out on the map. */
   outside?: { n: number; name: string; label: string; lat: number; lon: number }[];
 }

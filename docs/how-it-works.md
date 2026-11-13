@@ -60,7 +60,7 @@ Why so cautious? Measured on a Bulgarian round: mark ① ("Гърмен 3, Го�
 the analysis of the whole view had made up French ("Gare, Centre-ville, Mairie"). With both marks, the coach answers
 "Bulgaria, very likely" and flags ②; once ② is removed, "Bulgaria, certain" if the view also looks Bulgarian to
 StreetCLIP. A single crop can be made up whole and still be coherent, as ② was: one mark alone is only "very likely"
-unless a 2nd mark or the look of the view seconds it. A common word can also name a place ("Gare": districts in
+unless a 2nd mark or the look of the view seconds it; the answer then asks for a second mark. A common word can also name a place ("Gare": districts in
 France and Luxembourg), hence the required agreement. Only the candidate countries count
 (Moldova does not prevent "ș" from pointing to Romania).
 
