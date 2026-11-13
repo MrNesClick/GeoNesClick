@@ -18,7 +18,8 @@ export function answer(a: Analysis): string {
 }
 
 export function capture(a: Analysis): string {
-  return `${new Date(a.at).toLocaleTimeString(i18n.lang)} · ${a.captureMs} ms`;
+  const time = `${new Date(a.at).toLocaleTimeString(i18n.lang)} · ${a.captureMs} ms`;
+  return a.guessedCrop ? `${time} · ${t("sum.crop_guessed")}` : time;
 }
 
 export function countries(a: Analysis): string {

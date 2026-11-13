@@ -19,7 +19,7 @@ def data_home() -> Path:
     return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
 
-CONFIG_DIR = config_home() / APP  # config.toml, my-metas.toml, screencast.token
+CONFIG_DIR = config_home() / APP  # config.toml, my-metas.toml, screencast.token, page-top.json
 DATA_DIR = data_home() / APP  # places/ (GeoNames), plonkit/ (guides and translations)
 SOCKET_PATH = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / f"{APP}.sock"
 

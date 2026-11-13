@@ -343,6 +343,8 @@ export interface Analysis {
   receivedAt: number;
   thumbnail: string;
   captureMs: number;
+  /** The browser's bars were cut by a fixed share: their exact edge is learnt from the next capture. */
+  guessedCrop: boolean;
   scores: CountryScore[] | null;
   lookfor: LookFor[] | null;
   similar: Record<string, SimilarTip[]> | null;
@@ -424,7 +426,7 @@ type Message =
       trust_proof: boolean;
       leader: { min: number; margin: number };
     }
-  | { type: "capture"; id: string; at: string; thumbnail: string; ms: number }
+  | { type: "capture"; id: string; at: string; thumbnail: string; ms: number; guessed_crop: boolean }
   | {
       type: "streetclip";
       id: string;
@@ -481,6 +483,7 @@ function handle(msg: Message) {
         receivedAt: Date.now(),
         thumbnail: msg.thumbnail,
         captureMs: msg.ms,
+        guessedCrop: msg.guessed_crop,
         scores: null,
         lookfor: null,
         similar: null,

@@ -130,7 +130,8 @@ Measured on the 30 captures (`spikes/compare_views.py --no-vision`):
 
 Capturing the **window** (not the screen) is enough: no clear gain from cropping or masking (one round more in the top
 3, one less in first place). On the 5 captures measured with the vision model, it copied no country name from the
-game's mini-map. Cropping and masks stay available in the configuration.
+game's mini-map. Masks stay available in the configuration; the browser's bars are cut by default, for privacy
+(see [configuration.md](configuration.md)).
 
 ## Vision model prompts
 

@@ -86,7 +86,7 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
 | Villages du pays en tête (GeoNames) | `download.geonames.org` | 8 Mo | CC BY 4.0 | à la demande | — |
 | Guides Plonk It | `www.plonkit.net` | 2 Mo | pour ton usage personnel, jamais redistribués | si tu l'acceptes : une fois, puis les guides modifiés tous les 30 jours | — |
 | Modèle PLONK | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 Mo | MIT | une fois, si tu l'acceptes | — |
-| Modèle de vision NVIDIA (API en ligne) | `integrate.api.nvidia.com` | — | conditions de l'API NVIDIA ; ta clé | à chaque usage | tes captures (réduites à 1 280 px), les découpes de tes marques, les astuces Plonk It à classer et à traduire |
+| Modèle de vision NVIDIA (API en ligne) | `integrate.api.nvidia.com` | — | conditions de l'API NVIDIA ; ta clé | à chaque usage | tes captures sans les barres du navigateur (réduites à 1 280 px), les découpes de tes marques, les astuces Plonk It à classer et à traduire |
 | Tuiles de carte OpenStreetMap | `tile.openstreetmap.org` | — | ODbL ; politique des tuiles de l'OSMF | à chaque usage | ton adresse IP et les zones de carte affichées |
 
 ## Confidentialité
@@ -94,7 +94,7 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
 - Le moteur tourne sur ta machine et ne répond qu'à la fenêtre du coach : aucun site web ni autre ordinateur ne
   peut le joindre.
 - Tes captures ne quittent ta machine que vers le modèle de vision NVIDIA, et seulement si tu as donné une clé API
-  (voir le tableau ci-dessus).
+  (voir le tableau ci-dessus). Les barres du navigateur (onglets, adresse, favoris) en sont coupées avant.
 - Ta clé API est rangée dans un fichier lisible par toi seul.
 - Réglages › Stockage › **Tout effacer** supprime toutes tes données, et le moteur si tu le souhaites.
 

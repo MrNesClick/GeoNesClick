@@ -15,6 +15,13 @@ sound = false
 crop = [0.0, 0.13, 1.0, 0.98]   # analysed zone as fractions [left, top, right, bottom]
 ```
 
+Without `crop`, the analysed zone is the window without the browser's bars (tab titles, address, bookmarks), so they
+never reach the models or the NVIDIA API. The bars stay the same from one round to the next while the view changes:
+comparing two captures of the same size, the coach finds the first row that changed, and keeps the lowest one found
+per window size in `~/.config/geonesclick/page-top.json`. Until a size has been captured twice, it cuts 12 % of the
+top (144 px in a 1200 px high window, enough for Chrome's bars) and says so under the capture. A `crop` set by hand
+takes precedence.
+
 Each kind of help can be turned off: level 2, seed, "Look…" instructions, "Right" / "Wrong" buttons, answered
 country, confusions, notifications, capture copies (sections `[coach]`, `[vision]`, `[metas]`, `[dataset]`,
 `[capture]` of the default file). To remove candidate countries: untick them in Settings › Analysis, or

@@ -83,14 +83,14 @@ before anything is downloaded. Options can be turned off in the Settings.
 | Villages of the leading country (GeoNames) | `download.geonames.org` | 8 MB | CC BY 4.0 | on demand | — |
 | Plonk It guides | `www.plonkit.net` | 2 MB | for your personal use, never redistributed | if you accept it: once, then the changed guides every 30 days | — |
 | PLONK model | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 MB | MIT | once, if you accept it | — |
-| NVIDIA vision model (online API) | `integrate.api.nvidia.com` | — | NVIDIA API terms; your key | on every use | your captures (shrunk to 1,280 px), the crops of your marks, the Plonk It tips to classify and translate |
+| NVIDIA vision model (online API) | `integrate.api.nvidia.com` | — | NVIDIA API terms; your key | on every use | your captures without the browser's bars (shrunk to 1,280 px), the crops of your marks, the Plonk It tips to classify and translate |
 | OpenStreetMap map tiles | `tile.openstreetmap.org` | — | ODbL; OSMF tile policy | on every use | your IP address and the map areas shown |
 
 ## Privacy
 
 - The engine runs on your machine and only answers the coach window: no website or other computer can reach it.
 - Your captures leave your machine only for the NVIDIA vision model, and only if you gave an API key (see the
-  table above).
+  table above). The browser's bars (tab titles, address, bookmarks) are cut off first.
 - Your API key is stored in a file readable by you only.
 - Settings › Storage › **Erase everything** removes all your data, and the engine if you wish.
 

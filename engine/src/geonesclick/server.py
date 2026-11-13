@@ -51,6 +51,7 @@ from .marks_engine import MarksMixin
 from .config import USER_CONFIG, Config, load_config
 from .dataset import Dataset, DatasetError, coords_of, progress
 from .marks import DeleteRequest, FrameRequest, MarksRequest, uses
+from .pagetop import FILE as PAGE_TOP_FILE, PageTop
 from .places import Places
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
 from .settings import RESTART, SettingsError, current, file_only, save
@@ -120,6 +121,7 @@ class Engine(MarksMixin, LocksMixin):
         self.loop: asyncio.AbstractEventLoop | None = None
         self.notifier = Notifier(cfg.capture.notify, cfg.capture.sound)
         self.capture = CaptureService(on_state=self._on_capture_state, source=cfg.capture.source)
+        self.page_top = PageTop(paths.CONFIG_DIR / PAGE_TOP_FILE)  # where the page starts below the browser's bars
         self.capture_message = i18n.t("srv.sharing_starting")
         self.capture_starting = True  # GNOME picker possibly open: neither active nor cut off
         self.streetclip: StreetClip | None = None
@@ -653,7 +655,13 @@ class Engine(MarksMixin, LocksMixin):
         self.last_id = capture_id
         while len(self.recent) > RECENT_FRAMES:
             self.recent.popitem(last=False)
-        view = apply_crop_and_masks(frame, self.cfg.capture.crop, self.cfg.capture.masks)
+        guessed_crop = False
+        if self.cfg.capture.crop:  # set by hand in config.toml
+            view = apply_crop_and_masks(frame, self.cfg.capture.crop, self.cfg.capture.masks)
+        else:  # the browser's bars (tab titles, address, bookmarks) never go to the models or the NVIDIA API
+            await asyncio.to_thread(self.page_top.learn, frame)
+            page, guessed_crop = self.page_top.crop(frame)
+            view = apply_crop_and_masks(page, [], self.cfg.capture.masks)
         saved = None
         if self.cfg.capture.save_to_disk:
             saved = await asyncio.to_thread(save_png, view, self.cfg.capture.path, f"capture-{capture_id}")
@@ -667,6 +675,7 @@ class Engine(MarksMixin, LocksMixin):
         await self.broadcast({
             "type": "capture", "id": capture_id, "at": datetime.now().isoformat(timespec="seconds"),
             "thumbnail": await asyncio.to_thread(data_url, view), "ms": round(capture_ms),
+            "guessed_crop": guessed_crop,
         })
 
         if self.cfg.vision.enabled:  # level 2 in parallel: it is slow, we do not wait for it

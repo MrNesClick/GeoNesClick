@@ -35,6 +35,19 @@ test("a capture shows the likely countries; below the leader threshold, the answ
   await expect(answer.getByRole("list", { name: en["summary.hesitation_aria"] })).toContainText("Sweden");
 });
 
+test("a capture cut by a fixed share until the browser's bars are located says so", async ({ page }) => {
+  const engine = await fakeEngine(page, { state: sharing() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  const messages = round() as { type: string; id?: string; guessed_crop?: boolean }[];
+  messages.forEach((message) => engine.send(message)); // the first capture of this window size: guessed
+  const capture = page.getByRole("region", { name: new RegExp(`^${en["app.section.capture"]}`) });
+  await expect(capture).toContainText(en["sum.crop_guessed"]);
+  const next = { ...messages.find((m) => m.type === "capture"), id: "cap2", guessed_crop: false };
+  engine.send(next); // the edge is learnt: no more note
+  await expect(capture).not.toContainText(en["sum.crop_guessed"]);
+});
+
 test("a country above the leader threshold is given as the answer, from the look of the view", async ({ page }) => {
   const state = { ...sharing(), leader: { min: 0.5, margin: 0.15 } }; // Sweden's 57 % now stands out
   const engine = await fakeEngine(page, { state });

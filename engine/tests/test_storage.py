@@ -117,6 +117,7 @@ def test_erase_everything_personal_but_only_known_files(tmp_path, monkeypatch):
         f'[rules]\nplaces_dir = "{d / "places"}"\n')
     apikey.save("NVAPI", "nvapi-secret-1234")
     gone = [settings, touch(paths.CONFIG_DIR / "mes-metas.toml"), touch(paths.CONFIG_DIR / "screencast.token"),
+            touch(paths.CONFIG_DIR / "page-top.json"),
             touch(d / "shots" / "capture-1.png"), touch(d / "shots" / "capture-1.json"), touch(d / "ds" / "labels.toml"),
             touch(d / "ds" / "images" / "capture-1.png"), touch(d / "ds" / "rounds" / "1.json"),
             touch(d / "pk" / "plonkit.sqlite"), touch(d / "places" / "places-v4.sqlite"),
