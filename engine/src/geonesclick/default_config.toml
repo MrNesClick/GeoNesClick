@@ -38,7 +38,8 @@ trust_proof = true
 language = "en"
 # Without proof read, a country is given as the answer only if it stands out: a probability of at least leader_min
 # AND a leader_margin lead over the 2nd. Otherwise: "Hesitation" between the first ones (e.g. 22 %, 21 %, 16 %).
-leader_min = 0.40
+# Measured on the test set (spikes/coach_bench.py): 18 leaders out of 18 right from 70 %, 3 wrong out of 8 below.
+leader_min = 0.70
 leader_margin = 0.15
 
 [dataset]

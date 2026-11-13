@@ -22,16 +22,28 @@ test("the Settings opened while the engine is still starting load once it answer
   await expect(page.getByRole("button", { name: en["group.general"] })).toBeVisible({ timeout: 10_000 });
 });
 
-test("a capture shows the likely countries and the answer", async ({ page }) => {
+test("a capture shows the likely countries; below the leader threshold, the answer is a hesitation", async ({ page }) => {
+  // Sweden first at 57 %, under leader_min (0.7): no country is given as the answer without written proof.
   const engine = await fakeEngine(page, { state: sharing() });
   await page.goto("/e2e/harness.html");
   await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
   round().forEach((message) => engine.send(message));
   const countries = page.getByRole("region", { name: new RegExp(`^${en["app.section.countries"]}`) });
-  await expect(countries.getByRole("paragraph").filter({ hasText: "Sweden" })).toBeVisible(); // the leading country
   await expect(countries.getByText("57%", { exact: true })).toBeVisible();
   const answer = page.getByRole("region", { name: new RegExp(`^${en["app.section.answer"]}`) });
+  await expect(answer.getByText(en["summary.hesitation"], { exact: true })).toBeVisible();
+  await expect(answer.getByRole("list", { name: en["summary.hesitation_aria"] })).toContainText("Sweden");
+});
+
+test("a country above the leader threshold is given as the answer, from the look of the view", async ({ page }) => {
+  const state = { ...sharing(), leader: { min: 0.5, margin: 0.15 } }; // Sweden's 57 % now stands out
+  const engine = await fakeEngine(page, { state });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  round().forEach((message) => engine.send(message));
+  const answer = page.getByRole("region", { name: new RegExp(`^${en["app.section.answer"]}`) });
   await expect(answer.getByText(en["summary.from_look"])).toBeVisible();
+  await expect(answer.getByText(en["summary.hesitation"], { exact: true })).toHaveCount(0);
 });
 
 test("while the Plonk It tips are prepared, the coach shows the progress", async ({ page }) => {

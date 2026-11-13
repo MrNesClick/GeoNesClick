@@ -7,6 +7,13 @@ its release notes.
 
 ## [Unreleased]
 
+### Changed
+
+- Without a proof read on the view, the coach names a country as the answer only when the look of the view
+  (StreetCLIP) gives it at least 70 % (40 % until now). On the test set, every answer above 70 % was right, while 3
+  out of 8 between 40 and 70 % were wrong; below 70 %, the coach talks of hesitation between the first countries. The
+  threshold can still be changed in the Settings.
+
 ## [0.3.2] - 2026-11-13
 
 ### Fixed

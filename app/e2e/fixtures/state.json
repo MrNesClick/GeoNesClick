@@ -99,7 +99,7 @@
   "language": "en",
   "leader": {
     "margin": 0.15,
-    "min": 0.4
+    "min": 0.7
   },
   "locks": {
     "enabled": true

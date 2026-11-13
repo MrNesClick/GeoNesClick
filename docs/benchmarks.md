@@ -97,6 +97,27 @@ Following the country keeps the same hits on a zone 2.7 times smaller. The misse
 zones of the right country are more than 800 km from the place (Indonesia twice, Russia). The map is a lead toward a
 region, right about 6 times out of 10.
 
+## What the coach answers without marks
+
+The coach's answer at level 4 on the 30 captures, without marks (`spikes/coach_bench.py`: same crop, StreetCLIP,
+vision model sheet and leader thresholds as the engine):
+
+- **The vision model concludes on 1 capture out of 30** (right, "medium"): its prompt fills the conclusion only
+  when a text read names the place, and random rounds rarely show one. It never claimed "strong" on this set. Without
+  marks, no local rule confirms a reading, so the coach is never "certain".
+- **The answer is then StreetCLIP's "clear leader"**: with a `leader_min` of 40 % and a `leader_margin` of 15 points
+  ahead of the second, right 23 times, wrong 3 times (Ecuador read as Indonesia at 48 %, Turkey as Spain at 54 %, Latvia
+  as Estonia at 69 %). By StreetCLIP's own probability:
+
+  | First country's probability | Clear leader right | Clear leader wrong |
+  |---|---|---|
+  | 70 % and more | 18 | 0 |
+  | 40 to 70 % | 5 | 3 |
+
+  Hence a `leader_min` of **70 %**: no wrong clear leader on the set; the 5 right ones below become a hesitation
+  between the first countries, where the player looks for the clue that settles it. 30 rounds are few: to measure
+  again as the set grows.
+
 ## Cropping and masking the game's UI
 
 Measured on the 30 captures (`spikes/compare_views.py --no-vision`):
@@ -144,6 +165,7 @@ the new rounds in `~/.local/share/geonesclick/dataset/`. The benches are in `eng
 | `search_bench.py` | search engines on the Plonk It tips | `uv run --with tantivy==0.26.2 python spikes/search_bench.py` |
 | `plonk_bench.py` | PLONK GPS cloud, countries, spread, distance to the true place, cost | see below |
 | `map_bench.py` | zones drawn on the coach's map against the true place | `.venv/bin/python spikes/map_bench.py` |
+| `coach_bench.py` | the coach's answer without marks: clear leader, the AI's conclusion | `.venv/bin/python spikes/coach_bench.py [--json]` |
 | `prompt_bench.py` | vision and marks prompts compared: words read, false conclusions, driving side | `.venv/bin/python spikes/prompt_bench.py [--repeats 3] [--only …]` |
 | `geonesclick.bench` | marks rules replayed on your rounds: false certainties, region, km | `.venv/bin/python -m geonesclick.bench [--json]` |
 
