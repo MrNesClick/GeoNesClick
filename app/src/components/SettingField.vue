@@ -154,8 +154,9 @@ const TONE = { ok: "text-foret", error: "text-alerte", busy: "text-courbe" };
     </div>
 
     <!-- Simple fields -->
+    <!-- The label on its own line: a narrow control (a number) never sits glued after it, hint or not. -->
     <label v-else class="block">
-      <span>{{ label }}</span>
+      <span class="block">{{ label }}</span>
       <span v-if="hint" class="block text-[0.85rem] text-courbe">{{ hint }}</span>
       <select v-if="f.kind === 'select'" :id="inputId" :class="input" :value="value" :disabled="disabled"
               @change="save(($event.target as HTMLSelectElement).value)">
