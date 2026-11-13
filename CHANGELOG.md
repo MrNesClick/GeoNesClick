@@ -42,9 +42,6 @@ its release notes.
   sharing counts as active from its first image only.
 - The local AI starts on a capture without waiting for its copy on disk to be written: its answer comes about 0.35 s
   sooner on a 1920-pixel-wide screen, 1.3 s in 4K. The "capture taken" notification comes once the copy is written.
-- The app's description no longer promises more than it does: it trains at GeoGuessr and at the basics of image
-  geolocation (OSINT), and its highest help level gives a reasoned answer, with its proof only when a text read
-  gives one.
 
 ## [0.4.1] - 2026-11-13
 

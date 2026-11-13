@@ -29,8 +29,10 @@ These rules apply to every change, whoever (or whatever) writes it. The rest is 
 
 ## Changelog
 
-- Every change visible to the people who use the app adds a line to `## [Unreleased]` in
-  [CHANGELOG.md](CHANGELOG.md), in the same commit, written for them (what changes for them, not how it is coded).
+- Every change to what the application does adds a line to `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), in
+  the same commit, written for the people who use it (what changes for them, not how it is coded).
+- Only the application itself goes in it: a feature, a behaviour, a fix, a setting, what it sends or stores. Not the
+  repository's rules or process (branches, reviews), the documentation, the wording or tone of texts, tests or tools.
 - A release moves those lines under `## [x.y.z] - YYYY-MM-DD`, in the order Added, Changed, Deprecated, Removed,
   Fixed, Security (then Migration if needed), and updates the comparison links at the bottom of the file.
 - Each section becomes the release notes on GitHub: links in it are absolute (`https://github.com/...`), since
