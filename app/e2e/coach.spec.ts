@@ -165,3 +165,32 @@ test("nothing is shared at the start: the coach offers to share the game window,
   await page.getByRole("button", { name: en["app.restart_sharing"] }).click();
   await expect.poll(() => engine.posts.map((p) => p.path)).toEqual(["/capture/start", "/capture/reselect"]);
 });
+
+test("a wide window lays the coach out in two columns, the capture open in the evidence column", async ({ page }) => {
+  const engine = await fakeEngine(page, { state: sharing() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  round().forEach((message) => engine.send(message));
+  const region = (key: keyof typeof en) => page.getByRole("region", { name: new RegExp(`^${en[key]}`) });
+  const expanded = (key: keyof typeof en) => region(key).getByRole("button").first();
+  // The coach window's own size: one column, the capture under the answer and collapsed.
+  await expect(expanded("app.section.capture")).toHaveAttribute("aria-expanded", "false");
+  const narrow = { capture: await region("app.section.capture").boundingBox(), countries: await region("app.section.countries").boundingBox() };
+  expect(narrow.capture!.y).toBeLessThan(narrow.countries!.y);
+  expect(narrow.capture!.x).toBe(narrow.countries!.x);
+  // Wide: the capture moves to the right of the countries, open by default.
+  await page.setViewportSize({ width: 1280, height: 940 });
+  await expect(expanded("app.section.capture")).toHaveAttribute("aria-expanded", "true");
+  const capture = await region("app.section.capture").boundingBox();
+  const countries = await region("app.section.countries").boundingBox();
+  expect(capture!.x).toBeGreaterThan(countries!.x + countries!.width);
+  // Collapsing it wide leaves the narrow layout's state as it was, and is remembered when the window widens again.
+  await expanded("app.section.capture").click();
+  await page.setViewportSize({ width: 460, height: 940 });
+  await expect(expanded("app.section.capture")).toHaveAttribute("aria-expanded", "false");
+  await expanded("app.section.capture").click();
+  await page.setViewportSize({ width: 1280, height: 940 });
+  await expect(expanded("app.section.capture")).toHaveAttribute("aria-expanded", "false");
+  await page.setViewportSize({ width: 460, height: 940 });
+  await expect(expanded("app.section.capture")).toHaveAttribute("aria-expanded", "true");
+});

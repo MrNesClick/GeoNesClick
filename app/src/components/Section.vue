@@ -4,11 +4,13 @@
 import { onBeforeUnmount, ref, watch } from "vue";
 
 const props = withDefaults(
-  defineProps<{ id: string; title: string; summary?: string; open?: boolean; tone?: "foret" | "lac" | "papier" }>(),
-  { summary: "", open: true, tone: "foret" },
+  defineProps<{ id: string; title: string; summary?: string; open?: boolean; tone?: "foret" | "lac" | "papier"; memory?: string }>(),
+  { summary: "", open: true, tone: "foret", memory: "" },
 );
 
 const KEY = "geonesclick.sections";
+// The name its state is remembered under: the id, unless one section is remembered apart in another layout.
+const remembered = props.memory || props.id;
 function saved(): Record<string, boolean> {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "{}");
@@ -16,11 +18,11 @@ function saved(): Record<string, boolean> {
     return {};
   }
 }
-const isOpen = ref<boolean>(saved()[props.id] ?? props.open);
+const isOpen = ref<boolean>(saved()[remembered] ?? props.open);
 function toggle() {
   isOpen.value = !isOpen.value;
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...saved(), [props.id]: isOpen.value }));
+    localStorage.setItem(KEY, JSON.stringify({ ...saved(), [remembered]: isOpen.value }));
   } catch {
     /* storage unavailable: the state will simply not be remembered */
   }

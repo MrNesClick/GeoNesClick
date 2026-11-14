@@ -7,6 +7,13 @@ its release notes.
 
 ## [Unreleased]
 
+### Changed
+
+- In a wide window (1024 pixels and more), the coach shows two columns: what helps you decide (locks, answer, marks,
+  where to look or the countries, what tells them apart, Plonk It tips) on the left, the evidence (the capture, what
+  the AI sees, after the round) on the right. There the capture is open by default; whether you open or collapse it
+  is remembered apart from the narrow window. A narrower window keeps the single column.
+
 ## [0.5.0] - 2026-11-13
 
 ### Added

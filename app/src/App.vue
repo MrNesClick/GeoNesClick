@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import Activity from "./components/Activity.vue";
+import CaptureShot from "./components/CaptureShot.vue";
 import CoachMap from "./components/CoachMap.vue";
 import Countries from "./components/Countries.vue";
 import HelpLevel from "./components/HelpLevel.vue";
@@ -46,6 +47,16 @@ watch(
 watch(view, (v) => {
   if (v === "map") mapUnseen.value = false;
 });
+// A wide window (64rem, Tailwind's lg) lays the coach out in two columns: deciding on the left, evidence on the right.
+const wideQuery = window.matchMedia("(min-width: 64rem)");
+const wide = ref(wideQuery.matches);
+const onWidth = (e: MediaQueryListEvent) => (wide.value = e.matches);
+wideQuery.addEventListener("change", onWidth);
+onBeforeUnmount(() => wideQuery.removeEventListener("change", onWidth));
+const width = computed(() => {
+  if (view.value === "map") return "max-w-none";
+  return wide.value && view.value === "coach" && engine.current ? "max-w-6xl" : "max-w-xl";
+});
 // Bottom tab bar: navigation; the help levels, at the top, set how much help is given.
 const tabs = computed(() => [
   { id: "coach" as const, label: t("app.tab.coach"), disabled: false, hint: "" },
@@ -58,8 +69,8 @@ const tabs = computed(() => [
 </script>
 
 <template>
-  <!-- The map uses the full width when the window is maximised; the coach stays a readable column. -->
-  <div class="mx-auto flex min-h-screen flex-col px-4 pt-4" :class="view === 'map' ? 'max-w-none' : 'max-w-xl'">
+  <!-- The map uses the full width when the window is maximised; the coach is one readable column, two when wide. -->
+  <div class="mx-auto flex min-h-screen flex-col px-4 pt-4" :class="width">
     <header class="flex items-center gap-3 border-b border-courbe-fonce pb-3">
       <span class="size-2.5 shrink-0 rounded-full" :class="status.tone" aria-hidden="true" />
       <p class="min-w-0 flex-1 truncate text-[0.9rem] text-courbe" role="status">{{ status.text }}</p>
@@ -110,62 +121,73 @@ const tabs = computed(() => [
       <CoachMap :key="engine.current.id" :analysis="engine.current" :level="level" />
     </main>
 
-    <main v-else-if="engine.current" class="flex-1">
-      <!-- Locks: at the top, outside the collapsible sections (they narrow down everything that follows). -->
-      <Locks v-if="engine.locks.enabled" :analysis="engine.current" />
+    <!-- Sections in order of usefulness; each one's summary stays readable when it is collapsed.
+         Narrow, the two columns stack in that order; wide, they sit side by side (deciding, then evidence) and the
+         capture moves to the evidence column. -->
+    <main v-else-if="engine.current" class="flex-1" :class="wide ? 'grid grid-cols-2 items-start gap-x-8' : ''">
+      <div>
+        <!-- Locks: at the top, outside the collapsible sections (they narrow down everything that follows). -->
+        <Locks v-if="engine.locks.enabled" :analysis="engine.current" />
+        <Transition name="arrival" appear mode="out-in">
+          <div :key="engine.current.id" class="pt-2">
+            <Section v-if="level >= 4" id="answer" :title="t('app.section.answer')" tone="papier" :summary="sum.answer(engine.current)">
+              <Summary :analysis="engine.current" />
+            </Section>
+
+            <!-- The marks are your proof: right after the answer, at every level (they name no country). -->
+            <Section v-if="engine.current.marks.length" id="marks" :title="t('app.section.marks')" tone="papier" :summary="sum.marks(engine.current)">
+              <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
+            </Section>
+
+            <Section v-if="!wide" id="capture" :title="t('app.section.capture')" :open="false" tone="papier" :summary="sum.capture(engine.current)">
+              <CaptureShot :analysis="engine.current" />
+            </Section>
+
+            <Section v-if="level < 3" id="look-here" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">
+              <LookHere :lookfor="engine.current.lookfor" />
+            </Section>
+
+            <template v-else>
+              <Section id="countries" :title="t('app.section.countries')" :summary="sum.countries(engine.current)">
+                <Countries :analysis="engine.current" />
+              </Section>
+              <Section id="tiebreak" :title="t('app.section.tiebreak')"
+                       :summary="lockedCountry(engine.current) ? t('app.country_locked') : sum.metas(engine.current)">
+                <p v-if="lockedCountry(engine.current)" class="text-[0.9rem] text-courbe">
+                  {{ t("app.country_locked.detail", { country: `${flag(lockedCountry(engine.current)!)} ${countryName(lockedCountry(engine.current)!)}` }) }}
+                </p>
+                <MetaHints v-else :lookfor="engine.current.lookfor" />
+              </Section>
+              <Section
+                v-if="tipsByCountry(engine.current).length"
+                id="tips"
+                :title="t('app.section.tips')"
+                :open="false"
+                :summary="sum.tips(engine.current)"
+              >
+                <PlonkitTips :analysis="engine.current" />
+              </Section>
+              <!-- First launch on a processor: the tips are still being encoded (minutes); say so instead of nothing. -->
+              <Section
+                v-else-if="engine.plonkit.enabled && engine.plonkit.status === 'busy'"
+                id="tips"
+                :title="t('app.section.tips')"
+                :open="false"
+                :summary="engine.plonkit.message"
+              >
+                <p class="text-[0.9rem] text-courbe" role="status">{{ t("tips.preparing") }}</p>
+              </Section>
+            </template>
+          </div>
+        </Transition>
+      </div>
+
       <Transition name="arrival" appear mode="out-in">
         <div :key="engine.current.id" class="pt-2">
-          <!-- Sections in order of usefulness; each one's summary stays readable when it is collapsed. -->
-          <Section v-if="level >= 4" id="answer" :title="t('app.section.answer')" tone="papier" :summary="sum.answer(engine.current)">
-            <Summary :analysis="engine.current" />
+          <!-- Wide, the capture opens by default, its state remembered apart from the narrow layout's. -->
+          <Section v-if="wide" id="capture" memory="capture.wide" :title="t('app.section.capture')" tone="papier" :summary="sum.capture(engine.current)">
+            <CaptureShot :analysis="engine.current" />
           </Section>
-
-          <!-- The marks are your proof: right after the answer, at every level (they name no country). -->
-          <Section v-if="engine.current.marks.length" id="marks" :title="t('app.section.marks')" tone="papier" :summary="sum.marks(engine.current)">
-            <Marks :marks="engine.current.marks" :analysis-id="engine.current.id" :verdict="engine.current.verdict" />
-          </Section>
-
-          <Section id="capture" :title="t('app.section.capture')" :open="false" tone="papier" :summary="sum.capture(engine.current)">
-            <img :src="engine.current.thumbnail" :alt="t('app.capture_alt')" class="w-full rounded-md border border-courbe-fonce" />
-            <p v-if="engine.current.guessedCrop" class="mt-1 text-[0.85rem] text-courbe">{{ t("app.crop_guessed") }}</p>
-            <p v-for="w in engine.current.warnings" :key="w" class="mt-1 text-[0.85rem] text-alerte">{{ t(sum.WARNING_TEXT[w]) }}</p>
-          </Section>
-
-          <Section v-if="level < 3" id="look-here" :title="t('app.section.look_here')" :summary="sum.metas(engine.current)">
-            <LookHere :lookfor="engine.current.lookfor" />
-          </Section>
-
-          <template v-else>
-            <Section id="countries" :title="t('app.section.countries')" :summary="sum.countries(engine.current)">
-              <Countries :analysis="engine.current" />
-            </Section>
-            <Section id="tiebreak" :title="t('app.section.tiebreak')"
-                     :summary="lockedCountry(engine.current) ? t('app.country_locked') : sum.metas(engine.current)">
-              <p v-if="lockedCountry(engine.current)" class="text-[0.9rem] text-courbe">
-                {{ t("app.country_locked.detail", { country: `${flag(lockedCountry(engine.current)!)} ${countryName(lockedCountry(engine.current)!)}` }) }}
-              </p>
-              <MetaHints v-else :lookfor="engine.current.lookfor" />
-            </Section>
-            <Section
-              v-if="tipsByCountry(engine.current).length"
-              id="tips"
-              :title="t('app.section.tips')"
-              :open="false"
-              :summary="sum.tips(engine.current)"
-            >
-              <PlonkitTips :analysis="engine.current" />
-            </Section>
-            <!-- First launch on a processor: the tips are still being encoded (minutes); say so instead of nothing. -->
-            <Section
-              v-else-if="engine.plonkit.enabled && engine.plonkit.status === 'busy'"
-              id="tips"
-              :title="t('app.section.tips')"
-              :open="false"
-              :summary="engine.plonkit.message"
-            >
-              <p class="text-[0.9rem] text-courbe" role="status">{{ t("tips.preparing") }}</p>
-            </Section>
-          </template>
 
           <Section v-if="level >= 2" id="vision" :title="t('app.section.vision')" tone="lac" :open="level === 2" :summary="sum.vision(engine.current)">
             <Observations :vision="engine.current.vision" />
