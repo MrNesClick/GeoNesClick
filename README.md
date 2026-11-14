@@ -10,6 +10,9 @@ you choose.
 > [community rules](https://www.geoguessr.com/community-rules) count third-party tools that give an unfair advantage
 > as cheating: never use it in multiplayer or competitive play, or wherever your score is compared with others.
 
+> **Made for GeoGuessr.** On other images, the coach does not work as well. The game window must stay visible on
+> screen while you capture; a more practical way to capture the game is being studied.
+
 ## Features
 
 - **Four help levels**, from "where to look" to a reasoned answer, with its proof when a text read gives one.
