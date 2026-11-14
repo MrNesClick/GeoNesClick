@@ -69,7 +69,7 @@ and closes the window. Once you accept:
 - while it runs, a single line says what it does, naming what it downloads and its size;
 - the new version then replaces the installed copy and the menu opens it from then on; the coach shows once a line
   whose **What's new** button lists what changed since your version (the [changelog](CHANGELOG.md) entries, in
-  English) and says that the downloaded file can be deleted.
+  the interface's language) and says that the downloaded file can be deleted.
 
 Opening an AppImage older than the installed version changes nothing: it says so and offers to open the installed
 one.

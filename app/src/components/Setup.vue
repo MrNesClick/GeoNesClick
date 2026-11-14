@@ -9,7 +9,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { num } from "../engine";
 import { hasKey, i18n, LANGS, setLanguage, t, uiLanguage, type Key, type Lang } from "../i18n";
-import WhatsNew, { type Release } from "./WhatsNew.vue";
+import WhatsNew, { inLanguage, type WhatsNewByLang } from "./WhatsNew.vue";
 
 // Language: English by default, chosen on the first screen, written to
 // coach.language with the other choices; each catalog names its own language ("Français", "English").
@@ -37,8 +37,8 @@ interface Status {
   installed_variant: "cuda" | "cpu" | null;
   /** The installed copy of the application (setup.rs, installed_appimage) exists; copy_dir: its folder, as shown. */
   installed_copy: boolean; copy_dir: string;
-  /** For an update: the CHANGELOG sections since the installed version, newest first. */
-  whats_new: Release[];
+  /** For an update: the CHANGELOG sections since the installed version, newest first, by language. */
+  whats_new: WhatsNewByLang;
   /** For an update: the libraries it would download (setup.rs, update_fetches); empty when only GeoNesClick changes. */
   update_fetches: { name: string; version: string; size: number }[];
 }
@@ -294,8 +294,8 @@ async function finish() {
  * and for an update what changed. */
 const NOTICE = "geonesclick.notice";
 function notice(file: string | null) {
-  const whatsNew = mode.value === "update" ? status.value?.whats_new ?? [] : [];
-  if (!status.value || (!file && !whatsNew.length)) return;
+  const whatsNew = mode.value === "update" ? status.value?.whats_new ?? {} : {};
+  if (!status.value || (!file && !inLanguage(whatsNew).length)) return;
   try {
     localStorage.setItem(NOTICE, JSON.stringify({ version: status.value.version, dir: status.value.copy_dir, file, whats_new: whatsNew }));
   } catch {
@@ -382,7 +382,7 @@ const check = "mt-1 h-5 w-5 shrink-0 cursor-pointer accent-lac";
         </li>
       </ul>
     </details>
-    <WhatsNew v-if="status.whats_new.length" :releases="status.whats_new" :class="box" class="min-h-0 flex-1 overflow-y-auto pr-3" />
+    <WhatsNew v-if="inLanguage(status.whats_new).length" :releases="status.whats_new" :class="box" class="min-h-0 flex-1 overflow-y-auto pr-3" />
     <div class="mt-auto flex flex-wrap items-center justify-end gap-2">
       <span class="mr-auto text-[0.9rem] text-courbe">{{ t("setup.update.later_hint", { installed: status.installed ?? "" }) }}</span>
       <button type="button" :class="secondary" @click="later">{{ t("setup.update.later") }}</button>

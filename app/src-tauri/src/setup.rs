@@ -8,7 +8,7 @@
 //! applications-menu entry are in integration.rs.
 //! In development (no engine-bundle), none of this: the engine comes from engine/.venv.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
@@ -192,6 +192,28 @@ fn releases_between(changelog: &str, installed: &str, version: &str) -> Vec<Rele
     }
     out.retain(|r| !r.text.is_empty());
     out
+}
+
+/// The language a bundled changelog is written in: CHANGELOG.md in English, CHANGELOG.<lang>.md in that language.
+fn changelog_language(name: &str) -> Option<&str> {
+    match name.strip_prefix("CHANGELOG")?.strip_suffix(".md")? {
+        "" => Some("en"),
+        lang => lang.strip_prefix('.').filter(|l| !l.is_empty() && l.chars().all(|c| c.is_ascii_lowercase())),
+    }
+}
+
+/// What an update brings in every language the bundle has a changelog for (the UI shows its own, English otherwise).
+fn whats_new(bundle: &Path, installed: &str, version: &str) -> BTreeMap<String, Vec<Release>> {
+    let Ok(dir) = bundle.read_dir() else { return BTreeMap::new() };
+    dir.flatten()
+        .filter_map(|entry| {
+            let name = entry.file_name().into_string().ok()?;
+            let lang = changelog_language(&name)?.to_string();
+            let text = std::fs::read_to_string(entry.path()).ok()?;
+            Some((lang, releases_between(&text, installed, version)))
+        })
+        .filter(|(_, releases)| !releases.is_empty())
+        .collect()
 }
 
 /// The installed copy of the application: the newest AppImage opened is copied there under a name without its
@@ -394,8 +416,8 @@ pub struct Status {
     installed_copy: bool,
     /// Where the installed copy goes, as shown.
     copy_dir: String,
-    /// For an update: what changed since the installed version (bundled CHANGELOG.md), newest first.
-    whats_new: Vec<Release>,
+    /// For an update: what changed since the installed version, newest first, by language (bundled CHANGELOG*.md).
+    whats_new: BTreeMap<String, Vec<Release>>,
     /// For an update: the libraries it would download (empty when only GeoNesClick changes), shown before it starts.
     update_fetches: Vec<Fetch>,
     gpu: bool,
@@ -435,10 +457,8 @@ pub fn setup_status(app: AppHandle) -> Status {
         upgrade: other && !older && venv_python().is_file() && installed_variant.is_some(),
         installed_copy: installed_appimage().is_file(),
         whats_new: match (&bundle, &version, &installed) {
-            (Some(b), Some(v), Some(i)) => {
-                releases_between(&std::fs::read_to_string(b.join("CHANGELOG.md")).unwrap_or_default(), i, v)
-            }
-            _ => Vec::new(),
+            (Some(b), Some(v), Some(i)) => whats_new(b, i, v),
+            _ => BTreeMap::new(),
         },
         copy_dir: shown(&data_dir()),
         older,
@@ -762,6 +782,24 @@ mod tests {
         assert_eq!(found[0].text, "### Fixed\n\n- b");
         assert_eq!(releases_between(changelog, "0.5.0", "0.5.0"), Vec::new());
         assert_eq!(releases_between(changelog, "0.4.1", "0.5.0").len(), 1); // a newer section is not this version's
+    }
+
+    #[test]
+    fn each_changelog_is_read_in_its_language() {
+        assert_eq!(changelog_language("CHANGELOG.md"), Some("en"));
+        assert_eq!(changelog_language("CHANGELOG.fr.md"), Some("fr"));
+        for other in ["CHANGELOG..md", "CHANGELOG.FR.md", "CHANGELOG.fr.md.bak", "README.fr.md", "CHANGELOG-fr.md"] {
+            assert_eq!(changelog_language(other), None, "{other}");
+        }
+        let dir = std::env::temp_dir().join(format!("geonesclick-changelogs-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("CHANGELOG.md"), "## [0.6.0] - 2026-12-01\n\n### Added\n\n- a\n").unwrap();
+        std::fs::write(dir.join("CHANGELOG.fr.md"), "## [0.6.0] - 2026-12-01\n\n### Ajouté\n\n- a\n").unwrap();
+        std::fs::write(dir.join("VERSION"), "0.6.0\n").unwrap();
+        let found = whats_new(&dir, "0.5.0", "0.6.0");
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(found.keys().collect::<Vec<_>>(), ["en", "fr"]);
+        assert!(found["fr"][0].text.contains("### Ajouté"));
     }
 
     #[test]

@@ -54,6 +54,7 @@ test("the Settings block checks on demand and turns the automatic check off", as
 });
 
 test("after an update, one line opens what changed over the coach, then the update check is told", async ({ page }) => {
+  // A note saved by the 0.5.0 installer: one English list, before the changelogs by language.
   await page.addInitScript(() => localStorage.setItem("geonesclick.notice", JSON.stringify({
     version: "0.5.0", dir: "~/.local/share/geonesclick", file: "~/Téléchargements/GeoNesClick_0.5.0_amd64.AppImage",
     whats_new: [{ version: "0.5.0", text: "### Added\n\n- A banner says when a newer version is out." }],

@@ -7,9 +7,9 @@
 import { computed, nextTick, ref } from "vue";
 import { dismissUpdate, engine, openRelease } from "../engine";
 import { t } from "../i18n";
-import WhatsNew, { type Release } from "./WhatsNew.vue";
+import WhatsNew, { inLanguage, type Release, type WhatsNewByLang } from "./WhatsNew.vue";
 
-interface Installed { version: string; dir: string; file: string | null; whats_new?: Release[] }
+interface Installed { version: string; dir: string; file: string | null; whats_new?: WhatsNewByLang | Release[] }
 const NOTICE = "geonesclick.notice";
 /** Set by the installer, where the option was shown: the note is for those who never saw it. */
 const TOLD = "geonesclick.updates_told";
@@ -17,7 +17,7 @@ const TOLD = "geonesclick.updates_told";
 function read(): Installed | null {
   try {
     const saved = JSON.parse(localStorage.getItem(NOTICE) ?? "null");
-    return saved && typeof saved.dir === "string" && (typeof saved.file === "string" || saved.whats_new?.length) ? saved : null;
+    return saved && typeof saved.dir === "string" && (typeof saved.file === "string" || inLanguage(saved.whats_new).length) ? saved : null;
   } catch {
     return null; // storage unavailable or damaged: no note
   }
@@ -32,7 +32,7 @@ function remember(key: string, value: string | null) {
 }
 
 const installed = ref(read());
-const updated = computed(() => !!installed.value?.whats_new?.length);
+const updated = computed(() => inLanguage(installed.value?.whats_new).length > 0);
 const panel = ref(false);
 const closeButton = ref<HTMLButtonElement | null>(null);
 async function openPanel() {
@@ -95,7 +95,7 @@ const quiet = "rounded border border-courbe-fonce px-2 text-courbe hover:text-pa
       </div>
       <!-- pr-3: the text keeps away from the scroll bar; pb-6: the last line does not touch the bottom edge. -->
       <div class="min-h-0 flex-1 overflow-y-auto pt-3 pr-3 pb-6 text-[0.95rem]">
-        <WhatsNew v-if="installed.whats_new?.length" :releases="installed.whats_new" />
+        <WhatsNew v-if="updated" :releases="installed.whats_new!" />
         <div class="mt-5 space-y-3 border-t border-courbe-fonce pt-4 text-papier">
           <p>{{ t("app.notice.installed_in", { dir: installed.dir }) }}</p>
           <div v-if="installed.file">

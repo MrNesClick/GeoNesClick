@@ -6,7 +6,9 @@
 
 Rules (CLAUDE.md, "Versions"): one step from the previous version; Added, Changed or Deprecated need at least a MINOR;
 Removed needs a MAJOR (a MINOR before 1.0.0); only Fixed or Security allow a PATCH. Exit code 1 with the expected
-number when the rule is broken. Used by the release workflow before anything is built.
+number when the rule is broken. Also checks that CHANGELOG.fr.md translates the version's section (same headings,
+same number of entries): the What's new panel shows it in the French interface. Used by the release workflow before
+anything is built.
 """
 from __future__ import annotations
 
@@ -38,13 +40,40 @@ def previous_tag(version: Version) -> Version | None:
     return older[-1] if older else None
 
 
+# CHANGELOG.fr.md's headings, Keep a Changelog's French ones, by their English name.
+FRENCH = {"Ajouté": "Added", "Modifié": "Changed", "Obsolète": "Deprecated", "Supprimé": "Removed", "Corrigé": "Fixed",
+          "Sécurité": "Security", "Migration": "Migration"}
+
+
+def entries(version: Version, file: str = "CHANGELOG.md") -> dict[str, int]:
+    """The ### headings of the version's section in a CHANGELOG (Added, Changed…), with how many entries each has."""
+    text = (ROOT / file).read_text(encoding="utf-8")
+    match = re.search(rf"^## \[{re.escape(show(version))}\][^\n]*\n(.*?)(?=^## \[|^\[[^]]+\]: |\Z)", text, re.M | re.S)
+    if not match:
+        raise ValueError(f"{file} has no section for {show(version)}")
+    out: dict[str, int] = {}
+    heading = None
+    for line in match.group(1).splitlines():
+        if line.startswith("### "):
+            heading = line[4:].strip()
+            out[heading] = 0
+        elif heading and line.startswith("- "):
+            out[heading] += 1
+    return out
+
+
 def sections(version: Version) -> set[str]:
     """The ### headings of the version's CHANGELOG section (Added, Changed…)."""
-    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    match = re.search(rf"^## \[{re.escape(show(version))}\][^\n]*\n(.*?)(?=^## \[|\Z)", text, re.M | re.S)
-    if not match:
-        raise ValueError(f"CHANGELOG.md has no section for {show(version)}")
-    return set(re.findall(r"^### (\w+)", match.group(1), re.M))
+    return set(entries(version))
+
+
+def untranslated(version: Version) -> str | None:
+    """None if CHANGELOG.fr.md has the version's section with the same headings and entries, otherwise what differs."""
+    english = entries(version)
+    french = {FRENCH.get(h, h): n for h, n in entries(version, "CHANGELOG.fr.md").items()}
+    if french != english:
+        return f"CHANGELOG.fr.md's {show(version)} section differs from CHANGELOG.md's: {french} instead of {english}"
+    return None
 
 
 def expected(previous: Version, kinds: set[str]) -> Version:
@@ -75,6 +104,10 @@ def main() -> int:
     args.add_argument("--previous")
     a = args.parse_args()
     version = parse(a.version)
+    gap = untranslated(version)
+    if gap:
+        print(f"error: {gap}", file=sys.stderr)
+        return 1
     previous = parse(a.previous) if a.previous else previous_tag(version)
     if previous is None:
         print(f"{show(version)}: first release, nothing to compare")

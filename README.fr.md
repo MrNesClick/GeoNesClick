@@ -72,7 +72,7 @@ tard** garde la version installée et ferme la fenêtre. Une fois votre accord d
 - pendant ce temps, une seule ligne dit ce qu'elle fait, en nommant ce qu'elle télécharge et sa taille ;
 - la nouvelle version remplace ensuite la copie installée et le menu l'ouvre désormais ; le coach affiche une fois une
   ligne dont le bouton **Nouveautés** liste ce qui a changé depuis votre version (les entrées du [journal des
-  modifications](CHANGELOG.md), en anglais) et indique que le fichier téléchargé peut être supprimé.
+  modifications](CHANGELOG.fr.md), en français) et indique que le fichier téléchargé peut être supprimé.
 
 Ouvrir une AppImage plus ancienne que la version installée ne change rien : elle le dit et propose d'ouvrir celle
 qui est installée.
@@ -157,7 +157,7 @@ La documentation détaillée est en anglais :
 - [Maintenance](docs/maintenance.md) : mises à jour, emplacement des données, outils et licences
 - [Development](docs/development.md) : compiler depuis les sources, fabriquer l'AppImage, lancer les tests
 - [Compatibility](docs/compatibility.md) : ce qu'il faut à GeoNesClick, les systèmes testés et signalés
-- [Changelog](CHANGELOG.md) : ce qui change d'une version à l'autre (en anglais)
+- [Journal des modifications](CHANGELOG.fr.md) : ce qui change d'une version à l'autre
 - [Contributing](CONTRIBUTING.md) et [Security](SECURITY.md) : comment contribuer, comment signaler une faille
 
 ## Licence

@@ -71,7 +71,8 @@ The app icon's source is `app/src-tauri/icons/icon.svg`; after changing it, rege
 Releases are built by GitHub Actions ([release.yml](../.github/workflows/release.yml)), never from a developer's
 machine. The work for a version lives on its branch (`work/0.2.0`), never on `main`; everything below happens on that
 branch until the merge. Write the version's section in [CHANGELOG.md](../CHANGELOG.md) (move the `[Unreleased]` items under
-`## [x.y.z] - date`, written for the people who use the app). The section sets the number, strict SemVer: only `Fixed`
+`## [x.y.z] - date`, written for the people who use the app), and the same in [CHANGELOG.fr.md](../CHANGELOG.fr.md)
+from `[Non publié]`. The section sets the number, strict SemVer: only `Fixed`
 entries → PATCH; any `Added`, `Changed` or `Deprecated` → MINOR; anything that breaks (a setting or data file no
 longer read without a migration, a raised system requirement, a removed feature) → MAJOR, or MINOR before 1.0.0. Then
 bump the version in the four manifests (`engine/pyproject.toml`, `app/package.json`, `app/src-tauri/Cargo.toml`,
@@ -87,7 +88,8 @@ The run first waits for the repository owner to approve it (Actions tab › the 
 `release` environment, limited to `v*` tags, requires that approval, so a pushed tag alone publishes nothing. The
 workflow then checks that the tag matches the four versions, that CHANGELOG.md has a section for it
 (`scripts/release-notes.sh 0.2.0` prints it) and that the number follows the rule above against the previous tag
-(`scripts/check-version.py 0.2.0`, which gives the expected number otherwise). It then runs the tests and the
+(`scripts/check-version.py 0.2.0`, which gives the expected number otherwise, and also checks that CHANGELOG.fr.md
+translates the section: same headings, same number of entries). It then runs the tests and the
 interface tests, builds the AppImage on Ubuntu 24.04, installs the engine bundle it has just built on six systems
 (`scripts/test-install.py`), and only then publishes the release with the AppImage, its SHA-256 checksum and that
 section as release notes. A failure at any step publishes nothing.

@@ -13,7 +13,7 @@ function status(packageManager: string | null, missing: Record<string, string> =
     downloads: fixture("downloads.json"), packages_cuda: [], packages_cpu: [], package_manager: packageManager,
     data_dir: "~/Mes données/geonesclick", models_dir: "~/.cache/huggingface/hub",
     upgrade: false, older: false, installed_variant: null, installed_copy: false, copy_dir: "~/Mes données/geonesclick",
-    whats_new: [],
+    whats_new: {},
   };
 }
 
@@ -21,7 +21,10 @@ function status(packageManager: string | null, missing: Record<string, string> =
 function update() {
   return {
     ...status("apt"), version: "0.5.0", installed: "0.4.1", upgrade: true, installed_variant: "cpu", gpu: true,
-    whats_new: [{ version: "0.5.0", text: "### Added\n\n- A capture that is nearly a single colour comes with a note.\n\n### Changed\n\n- A [CHANGELOG](https://x) line." }],
+    whats_new: {
+      en: [{ version: "0.5.0", text: "### Added\n\n- A capture that is nearly a single colour comes with a note.\n\n### Changed\n\n- A [CHANGELOG](https://x) line." }],
+      fr: [{ version: "0.5.0", text: "### Ajouté\n\n- Une capture presque d'une seule couleur porte une note.\n\n### Modifié\n\n- Une ligne du [JOURNAL](https://x)." }],
+    },
     update_fetches: [],
   };
 }
@@ -37,6 +40,15 @@ test("an update is asked first, with what it would download; Later keeps the ins
   await page.getByRole("button", { name: en["setup.update.later"] }).click();
   await expect.poll(() => tauriCalls(page)).toContain("plugin:window|close");
   expect(await tauriCalls(page)).not.toContain("setup_install");
+});
+
+test("in the French interface, what an update brings is the French changelog, its own headings kept", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("geonesclick.lang", "fr"));
+  await tauri(page, { setup_status: update() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText("• Une ligne du JOURNAL.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ajouté", exact: true })).toBeVisible();
+  await expect(page.getByText("A CHANGELOG line.")).toHaveCount(0);
 });
 
 test("an update runs without a question, keeps the installed engine's variant, and says what changed", async ({ page }) => {

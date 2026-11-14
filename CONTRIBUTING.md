@@ -24,7 +24,9 @@ Follow [docs/development.md](docs/development.md) to build from source and run t
 
 - Add a line to the `[Unreleased]` section of [CHANGELOG.md](CHANGELOG.md) when the change alters what the
   application does (a feature, a behaviour, a fix, a setting, what it sends or stores), written for the people who use
-  it. Changes to the documentation, the wording of texts, the tests, the tools or the repository's rules get no line.
+  it, and its French translation to `[Non publié]` in [CHANGELOG.fr.md](CHANGELOG.fr.md) (same headings in French, same
+  number of entries). Changes to the documentation, the wording of texts, the tests, the tools or the repository's
+  rules get no line.
 - Code, comments, commit messages and documentation are in English. Texts shown to the player are never written in
   the code: they go in the catalogs (below).
 - A commit says in its first line what it does ("Reopen the GNOME picker when restarting the sharing"), and in its

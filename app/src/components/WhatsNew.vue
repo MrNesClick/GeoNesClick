@@ -1,16 +1,29 @@
-<script setup lang="ts">
-// What an update brings: the CHANGELOG.md sections since the installed version (setup.rs, releases_between).
+<script lang="ts">
+// What an update brings: the CHANGELOG sections since the installed version (setup.rs, whats_new), in the UI's
+// language: CHANGELOG.<lang>.md when the bundle has it, CHANGELOG.md (English) otherwise.
 // The Markdown is read line by line into headings, items and paragraphs, shown as text (never as HTML).
+import { i18n } from "../i18n";
+
+export interface Release { version: string; text: string }
+/** The releases by language ("en", "fr"…), as setup.rs sends them. */
+export type WhatsNewByLang = Record<string, Release[]>;
+/** The releases in the UI's language, English otherwise; a list saved before the languages (0.5.0) is English. */
+export function inLanguage(byLang: WhatsNewByLang | Release[] | undefined): Release[] {
+  if (Array.isArray(byLang)) return byLang;
+  return byLang?.[i18n.lang] ?? byLang?.en ?? [];
+}
+</script>
+
+<script setup lang="ts">
 import { computed } from "vue";
 import { t, type Key } from "../i18n";
 
-export interface Release { version: string; text: string }
-const props = defineProps<{ releases: Release[] }>();
+const props = defineProps<{ releases: WhatsNewByLang | Release[] }>();
 
 type Block = { kind: "heading" | "item" | "text"; text: string };
 
 /** Links keep their words, code its letters: "[CHANGELOG](https://…)" → "CHANGELOG", "`crop`" → "crop". */
-/** Keep a Changelog's headings in the UI's language; the entries stay as the CHANGELOG writes them (English). */
+/** Keep a Changelog's English headings in the UI's language (CHANGELOG.<lang>.md already writes them in its own). */
 const HEADINGS: Record<string, Key> = {
   Added: "whats_new.added", Changed: "whats_new.changed", Deprecated: "whats_new.deprecated", Removed: "whats_new.removed",
   Fixed: "whats_new.fixed", Security: "whats_new.security", Migration: "whats_new.migration",
@@ -31,7 +44,7 @@ function blocks(text: string): Block[] {
   return out;
 }
 
-const shown = computed(() => props.releases.map((r) => ({ version: r.version, blocks: blocks(r.text) })));
+const shown = computed(() => inLanguage(props.releases).map((r) => ({ version: r.version, blocks: blocks(r.text) })));
 </script>
 
 <template>

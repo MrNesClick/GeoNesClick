@@ -24,19 +24,24 @@ These rules apply to every change, whoever (or whatever) writes it. The rest is 
 
 ## French texts
 
-- The French texts shown to users (catalog `engine/src/geonesclick/locales/fr.json`, `README.fr.md`) say "vous", never
-  "tu": "Vous pouvez supprimer…", "Choisissez…".
+- The French texts shown to users (catalog `engine/src/geonesclick/locales/fr.json`, `README.fr.md`,
+  `CHANGELOG.fr.md`) say "vous", never "tu": "Vous pouvez supprimer…", "Choisissez…".
 
 ## Changelog
 
 - Every change to what the application does adds a line to `## [Unreleased]` in [CHANGELOG.md](CHANGELOG.md), in
   the same commit, written for the people who use it (what changes for them, not how it is coded).
+- The same commit adds its French translation to `## [Non publié]` in [CHANGELOG.fr.md](CHANGELOG.fr.md) ("vous", the
+  French interface's own labels): the **What's new** panel shows it in the French interface. Same headings, in
+  French (Ajouté, Modifié, Obsolète, Supprimé, Corrigé, Sécurité, Migration), and the same number of entries.
 - Only the application itself goes in it: a feature, a behaviour, a fix, a setting, what it sends or stores. Not the
   repository's rules or process (branches, reviews), the documentation, the wording or tone of texts, tests or tools.
 - A release moves those lines under `## [x.y.z] - YYYY-MM-DD`, in the order Added, Changed, Deprecated, Removed,
-  Fixed, Security (then Migration if needed), and updates the comparison links at the bottom of the file.
-- Each section becomes the release notes on GitHub: links in it are absolute (`https://github.com/...`), since
-  relative links break there. `scripts/release-notes.sh x.y.z` prints what will be published.
+  Fixed, Security (then Migration if needed), and updates the comparison links at the bottom of the file; the same in
+  CHANGELOG.fr.md (`scripts/check-version.py`, run by the release workflow, refuses a version whose French section
+  differs in headings or number of entries).
+- Each English section becomes the release notes on GitHub (English only): links in it are absolute
+  (`https://github.com/...`), since relative links break there. `scripts/release-notes.sh x.y.z` prints what will be published.
 - Releases are built by the GitHub Action only, from an annotated `v*` tag (see docs/development.md).
 
 ## Versions
