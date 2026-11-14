@@ -736,7 +736,7 @@
   "setup.install.done": "Installation terminée.",
   "setup.install.failed": "L'installation a échoué.",
   "setup.install.log": "Journal d'installation",
-  "setup.install.share": "Au démarrage, GNOME demandera quelle fenêtre partager : sélectionner celle du navigateur de jeu.",
+  "setup.install.share": "Pour commencer, cliquez sur « Partager la fenêtre du jeu » : GNOME demande quelle fenêtre partager, choisissez celle du navigateur de jeu.",
   "setup.footer.download_next": "Le téléchargement des composants requis ({size}) démarre à l'étape suivante.",
   "setup.skip": "Ignorer",
   "setup.recheck": "Revérifier",

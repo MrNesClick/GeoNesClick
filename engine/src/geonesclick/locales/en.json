@@ -736,7 +736,7 @@
   "setup.install.done": "Installation finished.",
   "setup.install.failed": "The installation failed.",
   "setup.install.log": "Installation log",
-  "setup.install.share": "At startup, GNOME will ask which window to share: select the game's browser.",
+  "setup.install.share": "To start, click “Share the game window”: GNOME asks which window to share, choose the game's browser.",
   "setup.footer.download_next": "The download of the required components ({size}) starts at the next step.",
   "setup.skip": "Skip",
   "setup.recheck": "Check again",
