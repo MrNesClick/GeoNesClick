@@ -8,6 +8,8 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ## [Non publié]
 
+## [0.6.0] - 2026-11-14
+
 ### Modifié
 
 - Dans une fenêtre large (1024 pixels et plus), le coach s'affiche sur deux colonnes : ce qui vous aide à décider
@@ -247,7 +249,8 @@ Première version.
 - « C'était où ? » après la manche, pour constituer un jeu de test et suivre vos progrès.
 - Tous les réglages modifiables dans l'application ; « Tout effacer » supprime toutes vos données.
 
-[Non publié]: https://github.com/MrNesClick/GeoNesClick/compare/v0.5.0...HEAD
+[Non publié]: https://github.com/MrNesClick/GeoNesClick/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.3.2...v0.4.0
