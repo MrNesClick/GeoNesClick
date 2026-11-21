@@ -12,7 +12,9 @@ share: choose the browser window where you play. The permission is remembered
 sharing from GNOME's indicator, the coach says so and offers **Restart sharing**, which also opens the picker; only
 **Share the game window** resumes the remembered window without asking. If that window no longer exists, the coach
 forgets it and opens the picker. A capture that is the same image as the previous one is analysed with a note: if the
-game view changed in between, the sharing is frozen; restart it.
+game view changed in between, the sharing is frozen. The shared image stops updating while the game window is
+minimized, and resumes as soon as the window is back on screen; a window covered by others (even a full-screen one) or
+on another workspace is still captured (measured with Google Chrome in a GNOME Wayland session).
 
 ## Installed copy and updates (AppImage)
 

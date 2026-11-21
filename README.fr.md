@@ -11,8 +11,9 @@ les indices utiles, avec autant d'aide que vous le souhaitez.
 > tiers qui donne un avantage injuste : ne l'utilisez jamais en multijoueur ou en compétition, ni partout où votre score
 > est comparé à celui des autres.
 
-> **Conçu pour GeoGuessr.** Sur d'autres images, le coach fonctionne moins bien. La fenêtre du jeu doit rester visible à
-> l'écran pendant la capture ; une façon plus pratique de capturer le jeu est à l'étude.
+> **Conçu pour GeoGuessr.** Sur d'autres images, le coach fonctionne moins bien. Ne réduisez pas la fenêtre du jeu
+> pendant la capture : son image cesse alors d'être mise à jour. Recouverte par d'autres fenêtres ou sur un autre espace
+> de travail, elle reste capturée.
 
 ## Fonctionnalités
 
