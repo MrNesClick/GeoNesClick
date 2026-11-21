@@ -22,6 +22,8 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 - L'indice « Alphabet grec » nomme aussi Chypre, et celui du russe ne présente plus ы et э comme propres au russe :
   le biélorusse les écrit aussi.
+- En français, un « ? », « : », « ; », « ! » ou « » » ne se retrouve plus seul en début de ligne quand la fenêtre est
+  étroite (comme dans le titre de la fenêtre de mise à jour).
 
 ## [0.7.0] - 2026-11-21
 

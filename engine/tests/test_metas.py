@@ -163,7 +163,7 @@ def test_seed_shows_in_the_coach_language_and_keeps_its_id(tmp_path):
         seed = {m.seed: m for m in load_metas(None, True, cfg.streetclip.countries.values())}
     finally:
         i18n.set_language("en")
-    assert seed["language_rs"].hint.startswith("Serbe : cyrillique")
+    assert seed["language_rs"].hint.startswith("Serbe\u00a0: cyrillique")
     assert seed["road_lines_yellow"].look == "la couleur de la ligne centrale"
     assert seed["domains_se"].hint == ".se"  # nothing to translate: the file's text
 

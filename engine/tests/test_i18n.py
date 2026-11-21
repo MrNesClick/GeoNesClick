@@ -118,3 +118,10 @@ def test_settings_tool_refuses_a_coach_section_that_is_not_an_object(monkeypatch
     finally:
         i18n.set_language("en")
     assert "settings refused" in capsys.readouterr().err
+
+
+def test_french_punctuation_is_never_alone_at_the_start_of_a_line():
+    # French puts a space before : ; ? ! » and after «: a non-breaking one, or a narrow window wraps the sign alone
+    # (the update dialog's title showed its "?" alone on a line).
+    wrapping = [k for k, v in catalog("fr").items() if re.search(r" [:;?!»]|« ", v)]
+    assert not wrapping

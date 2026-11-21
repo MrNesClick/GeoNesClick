@@ -20,6 +20,8 @@ its release notes.
 
 - The "Greek alphabet" clue also names Cyprus, and the Russian one no longer gives ы and э as Russian only:
   Belarusian writes them too.
+- In French, a "?", ":", ";", "!" or "»" no longer starts a line on its own when the window is narrow (as in the
+  title of the update window).
 
 ## [0.7.0] - 2026-11-21
 
