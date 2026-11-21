@@ -1,0 +1,22 @@
+# Words of road signs, shops and brands that are also the name of some place in GeoNames ("Limit" is a village in
+# Jamaica, "Progress" one in the United States): read alone on a mark, they prove no place. Measured on the 89 local
+# rounds, an OCR of the views turned "LIMIT", "PROGRESS" and the "Google" watermark into place proofs.
+#
+# Only words that match a place of the index, and never one that is also a city of more than 50,000 inhabitants
+# (Sale, Toyota, Orange, Independence…): those stay places. "Google" is the exception: the watermark of every view.
+# A place name of several words that contains one of them ("Limit Road", "Bahnhof Süd") is still looked up.
+# Compared after the same normalisation as the place names (lower case, no accents).
+
+words = [
+    # road and street signs
+    "limit", "park", "welcome", "station", "post", "police", "church", "centre", "center", "central", "north", "west",
+    "main", "old", "town", "passage", "halt", "hall", "home", "garden",
+    # shops and businesses
+    "market", "store", "mart", "plus", "bank", "cafe", "salon", "tires", "guest", "commerce", "industry",
+    # names businesses and streets take after virtues and places of dreams
+    "progress", "liberty", "victory", "hope", "eden", "sunshine", "harmony", "friendship", "unity",
+    # brands
+    "google", "coca", "cola", "shell", "esso", "honda", "nissan", "samsung", "nokia", "mtn",
+    # French, Spanish, German
+    "ville", "marche", "alto", "salida", "entrada", "venta", "peligro", "iglesia", "zentrum", "bahnhof",
+]

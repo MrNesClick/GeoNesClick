@@ -50,6 +50,7 @@ the answer cites the marks that prove it:
 | **Place names** (GeoNames) | Благоевград, София | **certain** country, if confirmed by another proof, **seconded** by a 2nd mark or by StreetCLIP at 10 % at least (`prior_min`), and **no mark contradicts it** |
 | **Lone place** | "MANTO" | a mere **clue**: it takes a 2nd nearby place, a letter or a word of the language, or StreetCLIP at 10 % at least (`prior_min`) |
 | **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street") |
+| **Sign word or brand** | "SPEED LIMIT", "Google", "Bahnhof" | not a place, though GeoNames has a village of that name (`not_places.toml`); a city of more than 50,000 inhabitants keeps counting |
 | **Country outside the candidates** | Manto → 🇭🇳 | shown, does not count |
 
 Measured: in one day, **lone** places were wrong four times (Gare → 🇫🇷🇱🇺, Laas → 🇮🇹, Orion →

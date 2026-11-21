@@ -24,6 +24,9 @@ ROWS = [  # real coordinates (GeoNames)
     ("13", "Catania", "Catania", "Catane", "IT", "290927", "37.49223", "15.07041"),
     ("14", "Manto", "Manto", "", "HN", "4000", "14.9", "-86.4"),
     ("15", "Roma", "Roma", "Rome", "IT", "2318895", "41.89193", "12.51133"),
+    ("20", "Limit", "Limit", "", "JM", "1500", "18.27", "-77.11"),  # real villages named like sign words
+    ("21", "Progress", "Progress", "", "US", "9000", "40.29", "-76.83"),
+    ("22", "Google", "Google", "", "US", "60000", "37.42", "-122.08"),  # stands for the watermark on every view
 ]
 
 
@@ -99,6 +102,16 @@ def test_letters_of_the_added_cyrillic_languages(text, includes, excludes):
         assert not letters
         return
     assert letters and all(includes <= set(e.countries) and not excludes & set(e.countries) for e in letters)
+
+
+@pytest.mark.parametrize("line", ["SPEED LIMIT 50", "Work in progress", "© 2026 Google"])
+def test_sign_words_and_brands_are_not_places(gazetteer, line):
+    # Measured: an OCR of the views turned these into proofs (Jamaica, Russia/United States, United States).
+    assert not [e for e in gazetteer.match([line]) if e.kind == "place"]
+
+
+def test_a_place_that_is_not_a_sign_word_is_still_found(gazetteer):
+    assert [e.countries for e in gazetteer.match(["Gare"]) if e.kind == "place"] == [["FR", "LU"]]
 
 
 def test_tie_alone_is_english_not_finnish():

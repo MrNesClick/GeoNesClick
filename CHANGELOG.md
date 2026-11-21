@@ -19,6 +19,8 @@ its release notes.
 ### Fixed
 
 - The AI's conclusion on the view is no longer given as the answer when it cites no text read as proof.
+- Common words of signs and shops ("LIMIT", "PROGRESS", "Bahnhof"…) and brands such as the "Google" watermark read on a
+  mark no longer count as place names, even though a village somewhere bears that name.
 - The "Greek alphabet" clue also names Cyprus, and the Russian one no longer gives ы and э as Russian only:
   Belarusian writes them too.
 - In French, a "?", ":", ";", "!" or "»" no longer starts a line on its own when the window is narrow (as in the

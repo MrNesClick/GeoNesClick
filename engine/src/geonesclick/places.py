@@ -18,9 +18,11 @@ import math
 import re
 import sqlite3
 import threading
+import tomllib
 import unicodedata
 import urllib.request
 import zipfile
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -72,6 +74,11 @@ def normalise(name: str) -> str:
     name = "".join(_fold(ch) for ch in name)
     name = re.sub(r"[-'’‐‑]", " ", name)
     return " ".join(name.split()).strip(" .,;:!?()[]\"«»")
+
+
+# Sign words, shop words and brands that are also a place somewhere: alone, they prove no place (not_places.toml).
+NOT_PLACES = frozenset(normalise(w) for w in tomllib.loads(
+    resources.files(__package__).joinpath("not_places.toml").read_text())["words"])
 
 
 def variants(key: str) -> list[str]:
@@ -384,7 +391,7 @@ class Places:
                         continue
                     candidate = " ".join(words[start:start + size])
                     key = normalise(candidate)
-                    if len(key) < min_len or key in seen:
+                    if len(key) < min_len or key in seen or key in NOT_PLACES:
                         continue
                     rows = self.lookup(candidate)
                     if not rows:
