@@ -49,7 +49,7 @@ the answer cites the marks that prove it:
 | **Street words** | "utca", "iela", "-katu", "вулиця" | language → **very likely** country |
 | **Place names** (GeoNames) | Благоевград, София | **certain** country, if confirmed by another proof, **seconded** by a 2nd mark or by StreetCLIP at 10 % at least (`prior_min`), and **no mark contradicts it** |
 | **Lone place** | "MANTO" | a mere **clue**: it takes a 2nd nearby place, a letter or a word of the language, or StreetCLIP at 10 % at least (`prior_min`) |
-| **Street name** | "Via Paolo Lo Manto", "Main Street" | does not locate the view: its words are not places (shown as "Street") |
+| **Street name** | "Via Paolo Lo Manto", "Main Street", "N Iron Ave" | does not locate the view: its words are not places (shown as "Street"); an English abbreviation (Ave, Rd, St, Dr…) counts once a name precedes it, so "St Albans" stays a place |
 | **Sign word or brand** | "SPEED LIMIT", "Google", "Bahnhof" | not a place, though GeoNames has a village of that name (`not_places.toml`); a city of more than 50,000 inhabitants keeps counting |
 | **Country outside the candidates** | Manto → 🇭🇳 | shown, does not count |
 

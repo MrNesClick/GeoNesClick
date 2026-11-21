@@ -27,6 +27,8 @@ ROWS = [  # real coordinates (GeoNames)
     ("20", "Limit", "Limit", "", "JM", "1500", "18.27", "-77.11"),  # real villages named like sign words
     ("21", "Progress", "Progress", "", "US", "9000", "40.29", "-76.83"),
     ("22", "Google", "Google", "", "US", "60000", "37.42", "-122.08"),  # stands for the watermark on every view
+    ("23", "Iron", "Iron", "", "RU", "500", "55.07", "40.67"),
+    ("24", "St Albans", "St Albans", "Saint Albans", "GB", "82000", "51.75", "-0.34"),
 ]
 
 
@@ -112,6 +114,17 @@ def test_sign_words_and_brands_are_not_places(gazetteer, line):
 
 def test_a_place_that_is_not_a_sign_word_is_still_found(gazetteer):
     assert [e.countries for e in gazetteer.match(["Gare"]) if e.kind == "place"] == [["FR", "LU"]]
+
+
+@pytest.mark.parametrize("line", ["N IRON AVE", "Iron Rd", "IRON ST.", "Av. Iron"])
+def test_abbreviated_street_names_are_not_places(gazetteer, line):
+    # Measured on a simulated mark: "N IRON AVE" (United States) gave a place proof for Russia.
+    found = gazetteer.match([line])
+    assert not [e for e in found if e.kind == "place"] and [e for e in found if e.kind == "street"]
+
+
+def test_saint_at_the_start_still_names_a_place(gazetteer):
+    assert [e.countries for e in gazetteer.match(["St Albans"]) if e.kind == "place"] == [["GB"]]
 
 
 def test_tie_alone_is_english_not_finnish():

@@ -24,6 +24,8 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
   preuve.
 - Les mots courants des panneaux et des commerces (« LIMIT », « PROGRESS », « Bahnhof »…) et les marques comme le
   filigrane « Google » lus sur une marque ne comptent plus comme noms de lieux, même si un village porte ce nom.
+- Un nom de rue anglais écrit avec une abréviation (« N IRON AVE », « Main St », « Cashman Rd ») sur une marque est
+  reconnu comme une rue : ses mots ne comptent plus comme noms de lieux ; « St Albans » désigne toujours une ville.
 - L'indice « Alphabet grec » nomme aussi Chypre, et celui du russe ne présente plus ы et э comme propres au russe :
   le biélorusse les écrit aussi.
 - En français, un « ? », « : », « ; », « ! » ou « » » ne se retrouve plus seul en début de ligne quand la fenêtre est

@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any
 
 from .i18n import t
-from .evidence import STREET_AFTER, STREET_BEFORE, Evidence
+from .evidence import STREET_AFTER, STREET_AFTER_ABBR, STREET_BEFORE, Evidence
 from .locate import haversine
 
 # v3: comparison without Latin accents or hyphens ("Sauveterre de Bearn"); v4: region of each place
@@ -378,7 +378,7 @@ class Places:
             for i, w in enumerate(norm):
                 if w in STREET_BEFORE:
                     blocked |= set(range(i, len(words)))
-                if w in STREET_AFTER:
+                if w in STREET_AFTER or (w in STREET_AFTER_ABBR and i > 0):
                     blocked |= set(range(i + 1))
             if blocked and len(blocked) > 1:
                 street = f"{street_next} {line}".strip() if street_next else line.strip()

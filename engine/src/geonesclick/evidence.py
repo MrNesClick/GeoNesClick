@@ -145,12 +145,16 @@ STREET_BEFORE = {
     "via", "viale", "vicolo", "piazza", "piazzale", "corso", "largo", "rue", "avenue", "boulevard", "place", "chemin",
     "allee", "impasse", "quai", "calle", "avenida", "avda", "plaza", "paseo", "carrer", "rua", "travessa", "praca",
     "strada", "bulevardul", "ulica", "ul", "ulice", "namesti", "trg", "plac", "aleja", "улица", "ул", "бульвар",
-    "проспект", "вулиця", "вул", "площа", "οδος", "λεωφορος",
+    "проспект", "вулиця", "вул", "площа", "οδος", "λεωφορος", "av",
 }
 STREET_AFTER = {
     "utca", "ut", "ter", "iela", "gatve", "tanav", "gatan", "vagen", "gade", "vej", "veien", "gata", "strasse",
     "straat", "weg", "laan", "sokak", "sokagi", "caddesi", "street", "road", "lane", "drive", "avenue",
 }
+# English abbreviations after the name ("N IRON AVE", "Main St"): only once a name precedes them, since "St" or "Dr" at
+# the start is a saint or a title ("St Albans" stays a place).
+STREET_AFTER_ABBR = {"ave", "av", "rd", "st", "dr", "blvd", "ln", "hwy", "ct", "pl", "pkwy", "cres", "tce", "pde", "cir",
+                     "sq"}
 # Languages that weld the word to the name (Mannerheimintie, Storgatan, Vesterbrogade): also recognised at the end
 # of a word, preceded by at least 3 letters ("tie" alone would be English).
 SUFFIXES = {"katu", "tie", "gatan", "vägen", "gade", "vej", "veien", "straße", "strasse", "straat", "iela", "tänav"}
