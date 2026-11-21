@@ -77,7 +77,8 @@ export interface Conclusion {
   confirmed: boolean;
 }
 
-/** Reads the "conclusion" key of the sheet; null if missing, empty or a country unknown to the configuration. */
+/** Reads the "conclusion" key of the sheet; null if missing, empty, a country unknown to the configuration, or
+ * without the text read that proves it (the instructions require one; measured: the AI concluded without it). */
 export function conclusionOf(fiche: Fiche): Conclusion | null {
   const c = fiche.conclusion;
   if (!c || typeof c !== "object") return null;
@@ -86,7 +87,7 @@ export function conclusionOf(fiche: Fiche): Conclusion | null {
     return typeof v === "string" ? v.trim() : "";
   };
   const country = field("country").toUpperCase();
-  if (!engine.countries.includes(country)) return null;
+  if (!engine.countries.includes(country) || !field("proof")) return null;
   return {
     source: "vision", country, region: field("region"), proof: field("proof"),
     certainty: field("certainty").toLowerCase(),

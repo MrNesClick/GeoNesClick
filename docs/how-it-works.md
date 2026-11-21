@@ -6,10 +6,11 @@
 
 At level 4, the Answer card honestly says what the coach knows:
 - **an AI reading** (text naming a place, domain, plate…) goes first as **"very likely: read by the AI, to be
-  confirmed"**, with what it read; the other countries stay visible. Measured on a "Repkény utca"
+  confirmed"**, with what it read, and only if it cites that text (a conclusion without its proof is ignored: the model
+  gave one, right but unproven, on the 89 local rounds); the other countries stay visible. Measured on a "Repkény utca"
   sign (Budapest): out of 8 calls, the model wrongly concluded twice with "strong certainty" (Czechia without having
-  read the sign, Slovakia reading "ulica"). A conclusion only becomes **"certain"** (country first, others ruled
-  out, `[coach] trust_proof`) when the local rules confirm it on your marks (see below);
+  read the sign, Slovakia reading "ulica"). A conclusion only becomes **"certain"** (country first, others ruled out,
+  `[coach] trust_proof`) when the local rules confirm it on your marks (see below);
 - **without a reading**, a country is given only if it **stands out** from the look of the view (StreetCLIP): at
   least 70 % and a 15-point lead over the 2nd (`[coach] leader_min`, `leader_margin`; from 58 % the lead always
   holds, so it only acts with a lower `leader_min`). Otherwise: **"Hesitation"**

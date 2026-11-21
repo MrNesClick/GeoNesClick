@@ -75,6 +75,27 @@ test("a country above the leader threshold is given as the answer, from the look
   await expect(answer.getByText(en["summary.hesitation"], { exact: true })).toHaveCount(0);
 });
 
+test("the AI's conclusion is given as the answer only with the text it read as proof", async ({ page }) => {
+  // Measured: the AI concluded with an empty proof, which its instructions forbid.
+  const engine = await fakeEngine(page, { state: sharing() });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByText(en["app.status.ready_marks"])).toBeVisible();
+  const messages = round() as { type: string; id?: string }[];
+  messages.forEach((message) => engine.send(message));
+  const id = messages.find((m) => m.type === "capture")!.id;
+  const vision = (proof: string) => ({
+    type: "vision", id, model: "test", seconds: 3,
+    fiche: { conclusion: { country: "DE", region: "", proof, certainty: "strong" } },
+  });
+  const answer = page.getByRole("region", { name: new RegExp(`^${en["app.section.answer"]}`) });
+  engine.send(vision(""));
+  await expect(answer.getByText(en["summary.hesitation"], { exact: true })).toBeVisible();
+  await expect(answer).not.toContainText("Germany");
+  engine.send(vision("Bahnhofstraße"));
+  await expect(answer).toContainText("Germany");
+  await expect(answer).toContainText("Bahnhofstraße");
+});
+
 test("while the Plonk It tips are prepared, the coach shows the progress", async ({ page }) => {
   const progress = "preparing the tips close to the view: 1200 / 4054 (first launch only)";
   const state = fixture("state.json");
