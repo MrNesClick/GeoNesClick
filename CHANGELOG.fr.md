@@ -8,6 +8,8 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ## [Non publié]
 
+## [0.7.0] - 2026-11-21
+
 ### Ajouté
 
 - 18 pays de plus parmi ceux que montre GeoGuessr : Biélorussie, Chine, Costa Rica, Chypre, Égypte, Irak, Kazakhstan,
@@ -266,7 +268,8 @@ Première version.
 - « C'était où ? » après la manche, pour constituer un jeu de test et suivre vos progrès.
 - Tous les réglages modifiables dans l'application ; « Tout effacer » supprime toutes vos données.
 
-[Non publié]: https://github.com/MrNesClick/GeoNesClick/compare/v0.6.0...HEAD
+[Non publié]: https://github.com/MrNesClick/GeoNesClick/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.1...v0.5.0
 [0.4.1]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.0...v0.4.1
