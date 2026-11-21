@@ -118,6 +118,36 @@ def test_every_candidate_country_has_its_driving_side(tmp_path):
     assert all(sum(code in side for side in sides) == 1 for code in cfg.streetclip.countries.values())
 
 
+ADDED_FOR_GEOGUESSR = ["BY", "CN", "CR", "CY", "EG", "IQ", "KZ", "LA", "LB", "MG", "ML", "NA", "NP", "OM", "PK", "QA",
+                      "TZ", "VU"]
+
+
+def seed_metas(tmp_path):
+    cfg = load_config(tmp_path / "absent.toml")
+    return load_metas(None, True, cfg.streetclip.countries.values())
+
+
+def test_each_added_country_has_a_clue_beyond_its_driving_side(tmp_path):
+    seed = seed_metas(tmp_path)
+    assert all(any(code in m.countries for m in seed if m.category != "driving") for code in ADDED_FOR_GEOGUESSR)
+
+
+@pytest.mark.parametrize(("pair", "category", "told_apart"), [
+    (("BY", "RU"), "language", True),  # ў, і against и
+    (("LA", "TH"), "language", True),  # two scripts
+    (("TZ", "UG"), "language", True),  # Swahili
+    (("CY", "GR"), "driving", True),  # both write Greek: the driving side tells them apart
+])
+def test_seed_tells_the_likely_confusions_apart(tmp_path, pair, category, told_apart):
+    res = tiebreak([(pair[0], 0.5), (pair[1], 0.5)], seed_metas(tmp_path), max_categories=12)
+    assert (category in {r.category for r in res}) == told_apart
+
+
+def test_a_shared_alphabet_lists_every_country_that_writes_it(tmp_path):
+    greek = next(m for m in seed_metas(tmp_path) if m.seed == "language_gr")
+    assert {"GR", "CY"} <= greek.countries
+
+
 def test_seed_separates_serbia_from_croatia(tmp_path):
     cfg = load_config(tmp_path / "absent.toml")
     seed = load_metas(None, True, cfg.streetclip.countries.values())

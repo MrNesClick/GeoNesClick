@@ -146,8 +146,10 @@ one that tells two outsiders apart.
 
 Sources, from highest to lowest priority:
 1. **Your metas**: `~/.config/geonesclick/my-metas.toml`, shown as "(your meta)";
-2. **The seed** (`metas_amorce.toml`): about fifty well-established facts (alphabets, driving side, colour of the
-   centre line, domains), written without a verified source, shown as "(seed, to be checked)".
+2. **The seed** (`metas_amorce.toml`): about 110 well-established facts (languages and alphabets, driving side,
+   colour of the centre line, number plates, domains), written without a verified source, shown as "(seed, to be
+   checked)". Beyond Europe, they are written for the countries StreetCLIP is likely to confuse (Belarus or Kazakhstan
+   and Russia, Laos and Thailand, Tanzania and Uganda…): a clue only helps when each country of the pair has one.
 
 Format (categories: `language`, `driving`, `road_lines`, `poles`, `bollards`, `plates`, `signs`, `domains`, `car`,
 `vegetation`, `architecture`, `other`):

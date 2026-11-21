@@ -7,6 +7,18 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- Clues for the countries added in 0.7.0 and for those they are most often confused with: language or alphabet
+  (Belarusian, Kazakh, Kyrgyz, Mongolian, Arabic with English or French, Kurdish, Urdu, Thai, Khmer, Lao, Swahili,
+  Afrikaans, Malagasy, Chinese, Japanese, Bislama), the number plates of Nepal and India, and internet domains.
+  "Where to look" can now tell apart Belarus and Russia, Laos and Thailand, Tanzania and Uganda, and more.
+
+### Fixed
+
+- The "Greek alphabet" clue also names Cyprus, and the Russian one no longer gives ы and э as Russian only:
+  Belarusian writes them too.
+
 ## [0.7.0] - 2026-11-21
 
 ### Added

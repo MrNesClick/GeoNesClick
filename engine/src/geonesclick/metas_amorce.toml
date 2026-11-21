@@ -1,4 +1,4 @@
-# Metas seed: only well-established facts (alphabets, driving side, colour of the centre lines, domains). Written by
+# Metas seed: only well-established facts (alphabets, driving side, colour of the centre lines, plates, domains). Written by
 # the assistant, NOT checked against a source: verified = false. It will be completed or replaced by a real metas
 # source, and your own metas (~/.config/geonesclick/my-metas.toml) always come first.
 #
@@ -118,7 +118,7 @@ hint = "Ukrainian: Cyrillic with і, ї, є"
 id = "language_ru"
 category = "language"
 countries = ["RU"]
-hint = "Russian: Cyrillic with ы, э"
+hint = "Russian: Cyrillic with и, ы, э, but neither і nor ў"
 
 [[meta]]
 id = "language_ro"
@@ -129,7 +129,7 @@ hint = "Romanian: ă, â, î, ș, ț; “strada”"
 [[meta]]
 id = "language_de_at"
 category = "language"
-countries = ["DE", "AT"]
+countries = ["DE", "AT", "NA"]
 hint = "German with ß; “Straße”"
 
 [[meta]]
@@ -147,7 +147,7 @@ hint = "Dutch: “ij”, “straat”, “weg”"
 [[meta]]
 id = "language_fr"
 category = "language"
-countries = ["FR"]
+countries = ["FR", "ML", "SN"]
 hint = "French: “rue”, “avenue”, é, è, à"
 
 [[meta]]
@@ -177,7 +177,7 @@ hint = "Italian: “via”, “strada”"
 [[meta]]
 id = "language_gr"
 category = "language"
-countries = ["GR"]
+countries = ["GR", "CY"]
 hint = "Greek alphabet"
 
 [[meta]]
@@ -185,6 +185,120 @@ id = "language_tr"
 category = "language"
 countries = ["TR"]
 hint = "Turkish: ı (dotless i), ğ, ş, ç; “cadde”, “sokak”"
+
+[[meta]]
+id = "language_by"
+category = "language"
+countries = ["BY"]
+hint = "Belarusian: Cyrillic with і and ў, no и (Russian is also common)"
+
+[[meta]]
+id = "language_kz"
+category = "language"
+countries = ["KZ"]
+hint = "Kazakh: Cyrillic with ә, ғ, қ, ң, ө, ұ, ү, һ, і, next to Russian"
+
+[[meta]]
+id = "language_kg"
+category = "language"
+countries = ["KG"]
+hint = "Kyrgyz: Cyrillic with ң, ө, ү, but neither ә, ғ, қ nor ұ"
+
+[[meta]]
+id = "language_mn"
+category = "language"
+countries = ["MN"]
+hint = "Mongolian: Cyrillic with ө, ү, but neither ң, қ nor ә"
+
+[[meta]]
+id = "language_arabic_english"
+category = "language"
+countries = ["AE", "OM", "QA", "JO", "EG", "IQ"]
+hint = "Arabic with English on the signs"
+
+[[meta]]
+id = "language_arabic_french"
+category = "language"
+countries = ["LB", "TN"]
+hint = "Arabic with French on the signs"
+
+[[meta]]
+id = "language_ku"
+category = "language"
+countries = ["IQ"]
+hint = "Kurdish (Sorani) in the north: Arabic script with ێ, ۆ, ڵ, ڕ"
+
+[[meta]]
+id = "language_pk"
+category = "language"
+countries = ["PK"]
+hint = "Urdu: Arabic script in a slanted, hanging style (Nastaliq), often with English"
+
+[[meta]]
+id = "language_th"
+category = "language"
+countries = ["TH"]
+hint = "Thai script"
+
+[[meta]]
+id = "language_kh"
+category = "language"
+countries = ["KH"]
+hint = "Khmer script"
+
+[[meta]]
+id = "language_la"
+category = "language"
+countries = ["LA"]
+hint = "Lao script: rounder and simpler than Thai"
+
+[[meta]]
+id = "language_swahili"
+category = "language"
+countries = ["TZ", "KE"]
+hint = "Swahili: “barabara”, “mtaa”, “karibu”"
+
+[[meta]]
+id = "language_ug"
+category = "language"
+countries = ["UG"]
+hint = "English, sometimes Luganda; little Swahili"
+
+[[meta]]
+id = "language_af"
+category = "language"
+countries = ["ZA", "NA"]
+hint = "Afrikaans next to English: “straat”, “weg”, “kerk” (no “ij”)"
+
+[[meta]]
+id = "language_mg"
+category = "language"
+countries = ["MG"]
+hint = "Malagasy: long words without c, q, u, w or x (“lalana”, “-ana”), with French"
+
+[[meta]]
+id = "language_cn"
+category = "language"
+countries = ["CN"]
+hint = "Simplified Chinese characters, no kana"
+
+[[meta]]
+id = "language_tw"
+category = "language"
+countries = ["TW"]
+hint = "Traditional Chinese characters (more strokes: 臺, 灣)"
+
+[[meta]]
+id = "language_jp"
+category = "language"
+countries = ["JP"]
+hint = "Japanese: kanji mixed with kana (ひらがな, カタカナ)"
+
+[[meta]]
+id = "language_vu"
+category = "language"
+countries = ["VU"]
+hint = "Bislama, English and French: “blong”, “long”"
 
 # --- Driving side ---------------------------------------------------------------------------------
 
@@ -222,6 +336,20 @@ countries = ["SE", "DK", "DE", "AT", "CH", "FR", "BE", "NL", "LU", "GB", "IE", "
              "PL", "CZ", "SK", "HU", "SI", "HR", "RS", "RO", "BG", "EE", "LV", "LT", "UA", "RU"]
 hint = "White centre line"
 look = "the colour of the centre line"
+
+# --- Number plates ---------------------------------------------------------------------------------
+
+[[meta]]
+id = "plates_np"
+category = "plates"
+countries = ["NP"]
+hint = "Private vehicles: red plates with white Devanagari letters"
+
+[[meta]]
+id = "plates_in"
+category = "plates"
+countries = ["IN"]
+hint = "Private vehicles: white plates with black Latin letters (yellow for commercial ones)"
 
 # --- Domain names (shop signs, vehicles, billboards) ----------------------------------------------
 
@@ -332,3 +460,237 @@ id = "domains_bg"
 category = "domains"
 countries = ["BG"]
 hint = ".bg"
+
+[[meta]]
+id = "domains_by"
+category = "domains"
+countries = ["BY"]
+hint = ".by"
+
+[[meta]]
+id = "domains_kz"
+category = "domains"
+countries = ["KZ"]
+hint = ".kz"
+
+[[meta]]
+id = "domains_kg"
+category = "domains"
+countries = ["KG"]
+hint = ".kg"
+
+[[meta]]
+id = "domains_ru"
+category = "domains"
+countries = ["RU"]
+hint = ".ru"
+
+[[meta]]
+id = "domains_ua"
+category = "domains"
+countries = ["UA"]
+hint = ".ua"
+
+[[meta]]
+id = "domains_mn"
+category = "domains"
+countries = ["MN"]
+hint = ".mn"
+
+[[meta]]
+id = "domains_ae"
+category = "domains"
+countries = ["AE"]
+hint = ".ae"
+
+[[meta]]
+id = "domains_om"
+category = "domains"
+countries = ["OM"]
+hint = ".om"
+
+[[meta]]
+id = "domains_qa"
+category = "domains"
+countries = ["QA"]
+hint = ".qa"
+
+[[meta]]
+id = "domains_jo"
+category = "domains"
+countries = ["JO"]
+hint = ".jo"
+
+[[meta]]
+id = "domains_eg"
+category = "domains"
+countries = ["EG"]
+hint = ".eg"
+
+[[meta]]
+id = "domains_iq"
+category = "domains"
+countries = ["IQ"]
+hint = ".iq"
+
+[[meta]]
+id = "domains_lb"
+category = "domains"
+countries = ["LB"]
+hint = ".lb"
+
+[[meta]]
+id = "domains_tn"
+category = "domains"
+countries = ["TN"]
+hint = ".tn"
+
+[[meta]]
+id = "domains_cy"
+category = "domains"
+countries = ["CY"]
+hint = ".cy"
+
+[[meta]]
+id = "domains_gr"
+category = "domains"
+countries = ["GR"]
+hint = ".gr"
+
+[[meta]]
+id = "domains_la"
+category = "domains"
+countries = ["LA"]
+hint = ".la"
+
+[[meta]]
+id = "domains_th"
+category = "domains"
+countries = ["TH"]
+hint = ".th"
+
+[[meta]]
+id = "domains_kh"
+category = "domains"
+countries = ["KH"]
+hint = ".kh"
+
+[[meta]]
+id = "domains_np"
+category = "domains"
+countries = ["NP"]
+hint = ".np"
+
+[[meta]]
+id = "domains_in"
+category = "domains"
+countries = ["IN"]
+hint = ".in"
+
+[[meta]]
+id = "domains_pk"
+category = "domains"
+countries = ["PK"]
+hint = ".pk"
+
+[[meta]]
+id = "domains_tz"
+category = "domains"
+countries = ["TZ"]
+hint = ".tz"
+
+[[meta]]
+id = "domains_ke"
+category = "domains"
+countries = ["KE"]
+hint = ".ke"
+
+[[meta]]
+id = "domains_ug"
+category = "domains"
+countries = ["UG"]
+hint = ".ug"
+
+[[meta]]
+id = "domains_na"
+category = "domains"
+countries = ["NA"]
+hint = ".na"
+
+[[meta]]
+id = "domains_bw"
+category = "domains"
+countries = ["BW"]
+hint = ".bw"
+
+[[meta]]
+id = "domains_za"
+category = "domains"
+countries = ["ZA"]
+hint = ".za (.co.za)"
+
+[[meta]]
+id = "domains_mg"
+category = "domains"
+countries = ["MG"]
+hint = ".mg"
+
+[[meta]]
+id = "domains_ml"
+category = "domains"
+countries = ["ML"]
+hint = ".ml"
+
+[[meta]]
+id = "domains_sn"
+category = "domains"
+countries = ["SN"]
+hint = ".sn"
+
+[[meta]]
+id = "domains_cn"
+category = "domains"
+countries = ["CN"]
+hint = ".cn"
+
+[[meta]]
+id = "domains_tw"
+category = "domains"
+countries = ["TW"]
+hint = ".tw"
+
+[[meta]]
+id = "domains_jp"
+category = "domains"
+countries = ["JP"]
+hint = ".jp"
+
+[[meta]]
+id = "domains_cr"
+category = "domains"
+countries = ["CR"]
+hint = ".cr"
+
+[[meta]]
+id = "domains_pa"
+category = "domains"
+countries = ["PA"]
+hint = ".pa"
+
+[[meta]]
+id = "domains_gt"
+category = "domains"
+countries = ["GT"]
+hint = ".gt"
+
+[[meta]]
+id = "domains_mx"
+category = "domains"
+countries = ["MX"]
+hint = ".mx"
+
+[[meta]]
+id = "domains_vu"
+category = "domains"
+countries = ["VU"]
+hint = ".vu"

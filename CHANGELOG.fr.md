@@ -8,6 +8,19 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ## [Non publié]
 
+### Ajouté
+
+- Des indices pour les pays ajoutés en 0.7.0 et pour ceux avec lesquels ils sont le plus souvent confondus : langue ou
+  alphabet (biélorusse, kazakh, kirghiz, mongol, arabe avec anglais ou français, kurde, ourdou, thaï, khmer, lao,
+  swahili, afrikaans, malgache, chinois, japonais, bichelamar), les plaques du Népal et de l'Inde, et les domaines
+  internet. « Où regarder » peut maintenant départager la Biélorussie et la Russie, le Laos et la Thaïlande, la
+  Tanzanie et l'Ouganda, entre autres.
+
+### Corrigé
+
+- L'indice « Alphabet grec » nomme aussi Chypre, et celui du russe ne présente plus ы et э comme propres au russe :
+  le biélorusse les écrit aussi.
+
 ## [0.7.0] - 2026-11-21
 
 ### Ajouté
