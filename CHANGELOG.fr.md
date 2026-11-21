@@ -8,6 +8,11 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ## [Non publié]
 
+### Corrigé
+
+- « C'était où ? » n'indique plus « pays inconnu » pour un lien Google Maps en bord de mer : un lieu situé jusqu'à 15 km
+  en mer sur la carte simplifiée du coach prend le pays le plus proche.
+
 ## [0.6.0] - 2026-11-14
 
 ### Modifié

@@ -825,6 +825,8 @@ class Engine(MarksMixin, LocksMixin):
         if self.borders is None:
             self.borders = await asyncio.to_thread(Borders)
         [country] = await asyncio.to_thread(self.borders.countries_of, [lat], [lon])
+        if not country:  # a coastal place that the simplified coastline puts at sea
+            country = await asyncio.to_thread(self.borders.nearest_country, lat, lon)
         region, region_name = "", ""
         if country and self.places is not None:
             near = await asyncio.to_thread(self.places.around, lat, lon, 30.0, country)

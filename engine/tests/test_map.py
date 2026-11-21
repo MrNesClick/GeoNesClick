@@ -52,6 +52,17 @@ def test_country_of_a_point(borders, lat, lon, code):
     assert borders.countries_of(np.array([lat]), np.array([lon])) == [code]
 
 
+def test_a_point_just_off_the_coast_takes_the_nearest_country(borders):
+    surabaya = (-7.2107, 112.7342)  # a GeoGuessr round's true place, 4.8 km out at sea in the 1:50m coastline
+    assert borders.countries_of(np.array([surabaya[0]]), np.array([surabaya[1]])) == [""]
+    assert borders.nearest_country(*surabaya) == "ID"
+    assert borders.nearest_country(*surabaya, max_km=3) == ""  # beyond the distance allowed: still unknown
+
+
+def test_the_open_sea_has_no_nearest_country(borders):
+    assert borders.nearest_country(40.0, -30.0) == ""  # Atlantic, hundreds of km from the Azores
+
+
 def test_outlines_keep_only_the_code(borders):
     features = borders.geojson["features"]
     assert len(features) > 200

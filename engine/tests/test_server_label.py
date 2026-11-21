@@ -113,6 +113,12 @@ def test_label_with_a_link_stores_the_true_place_and_the_round(setup):
     assert round_["marks"] == [{"n": 1, "text": ["Ниш 12"], "object": None, "unreadable": None}]
 
 
+def test_a_coastal_link_gets_the_nearest_country(setup):
+    client, *_ = setup
+    link = "https://www.google.com/maps/@-7.2107,112.7342,3a"  # Surabaya: at sea in the simplified coastline
+    assert client.post("/label/preview", json={"link": link}, headers=ORIGIN).json()["country"] == "ID"
+
+
 def test_link_and_chosen_country_must_agree(setup):
     client, *_ = setup
     res = client.post("/label", json={"id": CAPTURE_ID, "country": "HR", "link": "43.3209, 21.8958"}, headers=ORIGIN)

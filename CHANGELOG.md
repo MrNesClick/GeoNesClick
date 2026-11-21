@@ -7,6 +7,11 @@ its release notes.
 
 ## [Unreleased]
 
+### Fixed
+
+- "Where was it?" no longer says "unknown country" for a Google Maps link on the coast: a place up to 15 km out at sea
+  on the coach's simplified map takes the nearest country.
+
 ## [0.6.0] - 2026-11-14
 
 ### Changed

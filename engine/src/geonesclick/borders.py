@@ -16,6 +16,10 @@ from typing import Any
 import numpy as np
 
 DATA_FILE = "ne_50m_admin_0_countries.geojson"
+# The 1:50m coastline is simplified: a coastal road can fall a few km out at sea (a GeoGuessr round in Surabaya: 4.8 km).
+COAST_KM = 15.0
+KM_PER_DEG_LAT = 110.57
+KM_PER_DEG_LON_EQUATOR = 111.32
 
 
 @dataclass(frozen=True)
@@ -81,3 +85,24 @@ class Borders:
                 hit |= inside
             found[idx[hit]] = country.code
         return found.tolist()
+
+    def nearest_country(self, lat: float, lon: float, max_km: float = COAST_KM) -> str:
+        """Code of the country whose outline is closest to a point at sea, if within max_km ("" otherwise). Distances
+        on a local flat projection: exact enough over a few tens of km."""
+        km_lon = KM_PER_DEG_LON_EQUATOR * np.cos(np.radians(lat))
+        margin_lat, margin_lon = max_km / KM_PER_DEG_LAT, max_km / max(km_lon, 1e-6)
+        best, best_km = "", max_km
+        for country in self.countries:
+            x0, y0, x1, y1 = country.bbox
+            if not (x0 - margin_lon <= lon <= x1 + margin_lon and y0 - margin_lat <= lat <= y1 + margin_lat):
+                continue
+            for poly in country.polygons:
+                for ring in (poly.outer, *poly.holes):
+                    x, y = (ring[:, 0] - lon) * km_lon, (ring[:, 1] - lat) * KM_PER_DEG_LAT
+                    ax, ay, dx, dy = x[:-1], y[:-1], np.diff(x), np.diff(y)
+                    length2 = dx * dx + dy * dy
+                    t = np.clip(-(ax * dx + ay * dy) / np.where(length2 == 0, 1, length2), 0, 1)
+                    km = float(np.hypot(ax + t * dx, ay + t * dy).min())
+                    if km < best_km:
+                        best, best_km = country.code, km
+        return best
