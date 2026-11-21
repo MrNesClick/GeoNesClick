@@ -85,6 +85,22 @@ def test_street_words_never_rule_out_a_country_that_writes_them(text, country):
     assert all(country in e.countries for e in text_evidence([text]) if e.kind != "alphabet")
 
 
+@pytest.mark.parametrize(("text", "includes", "excludes"), [
+    ("праспект Пераможцаў", {"BY"}, {"RU", "UA"}),  # Belarusian: ў
+    ("Бiрлiк", set(), set()),  # Latin i inside a Cyrillic word (a misread): proves nothing
+    ("Бірлік", {"KZ", "UA", "BY"}, {"RU", "BG"}),  # і: Ukrainian, Belarusian or Kazakh
+    ("Тұран", {"KZ"}, {"RU", "UZ"}),  # ұ: Kazakh only
+    ("Қазақстан", {"KZ", "UZ", "TJ"}, {"RU", "UA"}),  # қ: Kazakh, Uzbek, Tajik
+    ("Казан, Гәҗәт", {"KZ", "RU"}, {"UA"}),  # ә: Kazakh, but also Tatar in Russia: Russia is not ruled out
+])
+def test_letters_of_the_added_cyrillic_languages(text, includes, excludes):
+    letters = [e for e in text_evidence([text]) if e.kind == "letters"]
+    if not includes:
+        assert not letters
+        return
+    assert letters and all(includes <= set(e.countries) and not excludes & set(e.countries) for e in letters)
+
+
 def test_tie_alone_is_english_not_finnish():
     assert not text_evidence(["tie"])
 

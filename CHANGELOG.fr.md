@@ -15,6 +15,8 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
   swahili, afrikaans, malgache, chinois, japonais, bichelamar), les plaques du Népal et de l'Inde, et les domaines
   internet. « Où regarder » peut maintenant départager la Biélorussie et la Russie, le Laos et la Thaïlande, la
   Tanzanie et l'Ouganda, entre autres.
+- Les lettres du biélorusse (ў) et du kazakh (ұ, ainsi que ғ, қ, ә, һ, і partagées avec des langues voisines) lues
+  sur une marque comptent désormais comme preuve des pays qui les écrivent, sans jamais écarter un pays qui les écrit.
 
 ### Corrigé
 

@@ -13,6 +13,8 @@ its release notes.
   (Belarusian, Kazakh, Kyrgyz, Mongolian, Arabic with English or French, Kurdish, Urdu, Thai, Khmer, Lao, Swahili,
   Afrikaans, Malagasy, Chinese, Japanese, Bislama), the number plates of Nepal and India, and internet domains.
   "Where to look" can now tell apart Belarus and Russia, Laos and Thailand, Tanzania and Uganda, and more.
+- The letters of Belarusian (ў) and Kazakh (ұ, and ғ, қ, ә, һ, і shared with neighbouring languages) read on a mark
+  now count as evidence of the countries that write them, without ever ruling out one that does.
 
 ### Fixed
 

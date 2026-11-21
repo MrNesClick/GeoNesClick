@@ -79,6 +79,11 @@ LETTERS: list[tuple[str, str, str, set[str], str]] = [
     (r"[ђћ]", "ђ, ћ", "serbian", {"RS", "ME", "BA"}, WIKI + "Serbian_Cyrillic_alphabet"),
     (r"[ѓќѕ]", "ѓ, ќ, ѕ", "macedonian", {"MK"}, WIKI + "Macedonian_alphabet"),
     (r"[өү]", "ө, ү", "kyrgyz_kazakh_mongolian", {"KG", "KZ", "MN"}, WIKI + "Kyrgyz_alphabets"),
+    (r"ў", "ў", "belarusian", {"BY", "UZ"}, WIKI + "Short_U"),
+    (r"і", "і", "ukrainian_belarusian_kazakh", {"UA", "BY", "KZ"}, WIKI + "Dotted_I_(Cyrillic)"),
+    (r"ұ", "ұ", "kazakh", {"KZ"}, WIKI + "Kazakh_alphabets"),
+    (r"[ғқ]", "ғ, қ", "kazakh_uzbek_tajik", {"KZ", "UZ", "TJ"}, WIKI + "Kazakh_alphabets"),
+    (r"[әһ]", "ә, һ", "kazakh_tatar_bashkir", {"KZ", "RU"}, WIKI + "Schwa_(Cyrillic)"),  # Tatar, Bashkir: Russia
     (r"[őű]", "ő, ű", "hungarian", {"HU"}, WIKI + "Hungarian_alphabet"),
     (r"[șțţ]", "ș, ț", "romanian", {"RO", "MD"}, WIKI + "Romanian_alphabet"),
     (r"[łżśźń]", "ł, ż, ś, ź, ń", "polish", {"PL"}, WIKI + "Polish_alphabet"),
