@@ -7,6 +7,8 @@ its release notes.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-21
+
 ### Added
 
 - Clues for the countries added in 0.7.0 and for those they are most often confused with: language or alphabet
@@ -281,7 +283,8 @@ First release.
 - "Where was it?" after the round, to build a test set and follow your progress.
 - Every setting editable in the app; "Erase everything" removes all your data.
 
-[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/MrNesClick/GeoNesClick/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.7.0...v0.8.0
 [0.7.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MrNesClick/GeoNesClick/compare/v0.4.1...v0.5.0
