@@ -132,7 +132,7 @@ avant tout téléchargement. Les options se coupent dans les Réglages.
 | Modèle StreetCLIP **(obligatoire)** | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 1,7 Go | CC BY-NC 4.0 (non commercial) | une fois, à l'installation | — |
 | Répertoire des lieux GeoNames et noms des régions | `download.geonames.org` | 11 Mo | CC BY 4.0 | une fois, si vous l'acceptez | — |
 | Villages du pays en tête (GeoNames) | `download.geonames.org` | 8 Mo | CC BY 4.0 | à la demande | — |
-| Guides Plonk It | `www.plonkit.net` | 2 Mo | pour votre usage personnel, jamais redistribués | si vous l'acceptez : une fois, puis les guides modifiés tous les 30 jours | — |
+| Guides Plonk It | `www.plonkit.net` | 2 Mo | pour votre usage personnel, jamais redistribués | si vous l'acceptez : une fois, puis les guides modifiés tous les 30 jours, et le guide d'un nouveau pays candidat au démarrage suivant | — |
 | Modèle PLONK | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 Mo | MIT | une fois, si vous l'acceptez | — |
 | Modèle de vision NVIDIA (API en ligne) | `integrate.api.nvidia.com` | — | conditions de l'API NVIDIA ; votre clé | à chaque usage | vos captures sans les barres du navigateur (réduites à 1 280 px), les découpes de vos marques, les astuces Plonk It à classer et à traduire |
 | Tuiles de carte OpenStreetMap | `tile.openstreetmap.org` | — | ODbL ; politique des tuiles de l'OSMF | à chaque usage | votre adresse IP et les zones de carte affichées |

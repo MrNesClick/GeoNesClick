@@ -77,6 +77,14 @@ def test_language_markers(text, country):
     assert any(country in e.countries for e in text_evidence([text]))
 
 
+@pytest.mark.parametrize("text, country", [
+    ("Kerkstraat", "ZA"), ("Kerkstraat", "NA"), ("Bahnhofstraße", "NA"),  # Afrikaans and German in southern Africa
+    ("rue Hassan Kamel", "LB"), ("rue de l'Indépendance", "MG"), ("rue 310", "ML"), ("rue Pasteur", "VU"),
+])
+def test_street_words_never_rule_out_a_country_that_writes_them(text, country):
+    assert all(country in e.countries for e in text_evidence([text]) if e.kind != "alphabet")
+
+
 def test_tie_alone_is_english_not_finnish():
     assert not text_evidence(["tie"])
 

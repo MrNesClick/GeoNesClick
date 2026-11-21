@@ -115,6 +115,17 @@ def tips_of(guide: dict[str, Any]) -> list[Tip]:
     return tips
 
 
+def guide_countries(dest: Path = DATA_DIR) -> set[str]:
+    """Codes of the countries whose guide was collected (index.json names the guides by slug, not by country)."""
+    codes = set()
+    for path in (dest / "raw").glob("*.json"):
+        try:
+            codes.add(str(json.loads(path.read_text()).get("code", "")).upper())
+        except (OSError, ValueError, AttributeError):
+            continue  # damaged file: load_tips skips it too
+    return codes
+
+
 def load_tips(dest: Path = DATA_DIR) -> list[Tip]:
     """All the collected tips (local reading only)."""
     tips = []

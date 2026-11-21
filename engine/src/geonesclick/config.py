@@ -124,6 +124,7 @@ class PlonkitConfig(BaseModel):
     enabled: bool  # collect and use the Plonk It guides (local database, never redistributed)
     data_dir: str  # empty = ~/.local/share/geonesclick/plonkit
     refresh_days: int = Field(ge=1, le=365)  # check the list of guides at most every N days
+    check_new_countries: bool  # a candidate country without its guide: checked at the next start, not after N days
     delay_s: float = Field(ge=1.0, le=60.0)  # pause between two pages during a collection
     similar_tips: bool  # "the tips that look like your view", for each candidate country
     similar_per_country: int = Field(ge=1, le=5)

@@ -119,6 +119,25 @@ vision model sheet and leader thresholds as the engine):
   (`spikes/view_bench.py`, StreetCLIP alone on the page as the engine crops it), the first country from 70 % is
   right 57 times and wrong 2: the threshold holds, but a clear leader is not a proof.
 
+## Candidate countries
+
+Plonk It has a guide for 131 countries and territories that GeoGuessr can show. Each candidate added to StreetCLIP
+can take a round from another, so the list was measured on the 89 rounds (StreetCLIP alone on the page as the engine
+crops it; "first at 70 %" counts the first country from 70 %, without the leader's margin), none of them in an added
+country:
+
+| Candidates | First country right | Right country in the first 5 | First at 70 %: right / wrong |
+|---|---|---|---|
+| 84 | 63 | 86 | 57 / 5 |
+| 84 + the 47 others (131) | 60 | 81 | 41 / 3 |
+| 84 + 18 sovereign states (102) | 62 | 84 | 52 / 4 |
+
+The small territories take rounds from large countries (South Georgia at 86 % for the United States, Jersey, the
+Cocos Islands), so only the 18 states were added: Belarus, China, Costa Rica, Cyprus, Egypt, Iraq, Kazakhstan, Laos,
+Lebanon, Madagascar, Mali, Namibia, Nepal, Oman, Pakistan, Qatar, Tanzania and Vanuatu. Their cost on the set: Vanuatu
+first for an Indonesian round, Oman for an Emirati one. Their gain is not measured: no round of the set is in one of
+them.
+
 ## Cropping and masking the game's UI
 
 Measured on the 30 captures (`spikes/compare_views.py --no-vision`):

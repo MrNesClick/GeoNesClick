@@ -58,7 +58,7 @@ from .places import Places
 from .metas import MetaError, UserMetasError, judge_seed, load_metas, select_candidates, tiebreak
 from .settings import RESTART, SettingsError, current, file_only, save
 from .notify import Notifier
-from .plonkit import CHECKED_FILE, PlonkitError, collect, load_tips
+from .plonkit import CHECKED_FILE, PlonkitError, collect, guide_countries, load_tips
 from .plonkit_ai import classify as classify_tips
 from .plonkit_ai import translate as translate_tips
 from .plonkit_index import TipIndex, similar_tips
@@ -472,12 +472,16 @@ class Engine(MarksMixin, LocksMixin):
         return self.plonkit_base[0]
 
     def plonkit_due(self) -> bool:
-        """Was the last check of the guides list more than refresh_days days ago?"""
+        """Was the last check of the guides list more than refresh_days days ago, or has a candidate country no guide
+        yet (added by a new version or in the Settings)?"""
         try:
             last = float((self.cfg.plonkit.path / CHECKED_FILE).read_text())
         except (OSError, ValueError):
             return True
-        return time.time() - last > self.cfg.plonkit.refresh_days * 86400
+        if time.time() - last > self.cfg.plonkit.refresh_days * 86400:
+            return True
+        return self.cfg.plonkit.check_new_countries and not (
+            set(self.cfg.streetclip.countries.values()) <= guide_countries(self.cfg.plonkit.path))
 
     def schedule_plonkit(self, check: bool) -> bool:
         """Starts the update in the background; False if one is already running."""

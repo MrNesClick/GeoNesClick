@@ -103,12 +103,22 @@ def test_failed_check_keeps_the_previous_base(engine, monkeypatch):
 
 
 def test_check_is_due_only_after_refresh_days(engine):
+    engine.cfg.streetclip.countries = {"Norway": "NO", "Sweden": "SE"}  # both have their guide
     checked = engine.cfg.plonkit.path / CHECKED_FILE
     assert engine.plonkit_due()  # never checked
     checked.write_text(str(time.time()))
     assert not engine.plonkit_due()
     checked.write_text(str(time.time() - 31 * 86400))
     assert engine.plonkit_due()
+
+
+def test_check_is_due_at_once_for_a_candidate_country_without_its_guide(engine):
+    # A version that adds countries: their guides come at the next start, not after up to 30 days.
+    (engine.cfg.plonkit.path / CHECKED_FILE).write_text(str(time.time()))
+    engine.cfg.streetclip.countries = {"Norway": "NO", "Sweden": "SE", "Oman": "OM"}
+    assert engine.plonkit_due()
+    engine.cfg.plonkit.check_new_countries = False  # turned off: the guide waits for the next check
+    assert not engine.plonkit_due()
 
 
 def test_similar_tips_can_be_disabled(engine):

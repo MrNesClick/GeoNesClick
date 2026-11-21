@@ -192,7 +192,7 @@ hint = "Turkish: ı (dotless i), ğ, ş, ç; “cadde”, “sokak”"
 id = "driving_left"
 category = "driving"
 countries = ["GB", "IE", "MT", "JP", "AU", "NZ", "ZA", "IN", "TH", "ID", "MY", "SG", "KE", "UG",
-             "BD", "LK", "BT", "BW", "LS", "SZ"]
+             "BD", "LK", "BT", "BW", "LS", "SZ", "CY", "NA", "NP", "PK", "TZ"]
 hint = "Driving on the left"
 
 [[meta]]
@@ -202,7 +202,8 @@ countries = ["AL", "AD", "AR", "AT", "BE", "BO", "BR", "BG", "KH", "CA", "CL", "
              "DK", "DO", "EC", "EE", "FI", "FR", "DE", "GH", "GR", "GT", "HU", "IS", "IL", "IT",
              "JO", "KG", "LV", "LT", "LU", "MX", "MN", "ME", "NL", "NG", "MK", "NO", "PA", "PE",
              "PH", "PL", "PT", "RO", "RU", "RW", "SN", "RS", "SK", "SI", "KR", "ES", "SE", "CH",
-             "TW", "TN", "TR", "UA", "AE", "US", "UY", "VN"]
+             "TW", "TN", "TR", "UA", "AE", "US", "UY", "VN", "BY", "CN", "CR", "EG", "IQ", "KZ",
+             "LA", "LB", "MG", "ML", "OM", "QA", "VU"]
 hint = "Driving on the right"
 
 # --- Road markings --------------------------------------------------------------------------------

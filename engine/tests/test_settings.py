@@ -10,6 +10,7 @@ from geonesclick.server import create_app
 from geonesclick.settings import SettingsError, current, save
 
 ORIGIN = {"Origin": "http://localhost:1420"}
+ALL_BUT_ONE = sorted(load_config(Path("/nonexistent/config.toml")).streetclip.countries.values())[1:]
 
 
 def test_save_merges_into_existing_user_file(tmp_path):
@@ -179,13 +180,7 @@ def test_excluded_country_can_be_restored(client):
         {"streetclip": {"prompt": "A photo in {}{0.__class__}"}},
         {"streetclip": {"device": "cuda; rm -rf /"}},
         {"streetclip": {"countries": {"Atlantis": "atl"}}},
-        {"streetclip": {"exclude_countries": ["AL", "AD", "AR", "AU", "AT", "BD", "BE", "BT", "BO", "BW", "BR", "BG",
-                                              "KH", "CA", "CL", "CO", "HR", "CZ", "DK", "DO", "EC", "EE", "SZ", "FI",
-                                              "FR", "DE", "GH", "GR", "GT", "HU", "IS", "IN", "ID", "IE", "IL", "IT",
-                                              "JP", "JO", "KE", "KG", "LV", "LS", "LT", "LU", "MY", "MT", "MX", "MN",
-                                              "ME", "NL", "NZ", "NG", "MK", "NO", "PA", "PE", "PH", "PL", "PT", "RO",
-                                              "RU", "RW", "SN", "RS", "SG", "SK", "SI", "ZA", "KR", "ES", "LK", "SE",
-                                              "CH", "TW", "TH", "TN", "TR", "UG", "UA", "AE", "GB", "US", "UY"]}},
+        {"streetclip": {"exclude_countries": ALL_BUT_ONE}},  # at least two countries must stay
     ],
 )
 def test_invalid_analysis_settings_are_refused(tmp_path, changes):

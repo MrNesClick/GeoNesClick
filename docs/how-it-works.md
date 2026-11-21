@@ -181,11 +181,13 @@ time, a 2 s pause (plus a random delay), immediate stop if the site answers 429,
 to (the `__PRELOADED_DATA__` block of the pages; their API only serves the beginner's guide). The site's
 `robots.txt` allows access (`Allow: /`) and only forbids AI training, which the coach does not do.
 
-- **First start**: built in the background: about 3 min to collect the 84 guides (4,060 tips), then their comparison
-  with the view is prepared (6 s with an NVIDIA card, about 5 min on a 4-core processor; see
+- **First start**: built in the background: about 4 min to collect the 102 guides (4,706 tips), then their comparison
+  with the view is prepared (6 s with an NVIDIA card, about 5 min on a 4-core processor for 4,060 tips; see
   [benchmarks](benchmarks.md#response-times)). The coach works without them in the meantime and shows the progress.
 - **Afterwards**: one request on the list of guides at most every `refresh_days` days (30 by default), and only the
-  modified guides are reloaded. "Update now" button in the Settings.
+  modified guides are reloaded. A candidate country without its guide (added by a new version or in the Settings) brings
+  that check forward to the next start, unless `[plonkit] check_new_countries` is turned off (Settings › Clues); a
+  country Plonk It has no guide for then costs that one request at each start. "Update now" button in the Settings.
 - **Storage**: `~/.local/share/geonesclick/plonkit/` (raw pages + `plonkit.sqlite`: tips, FTS5 full-text search,
   cached CLIP vectors).
 - **From level 3**, when the countries are revealed: for each candidate, the Plonk It tips ranked by similarity with

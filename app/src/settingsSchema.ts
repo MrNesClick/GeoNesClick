@@ -105,6 +105,7 @@ export const GROUPS: Group[] = [
       { section: "plonkit", key: "translate_timeout_s", kind: "float", min: 5, max: 120, advanced: true, needs: ["plonkit", "translate"] },
       { section: "plonkit", key: "ai_classify", kind: "bool", needs: ["plonkit", "enabled"] },
       { section: "plonkit", key: "refresh_days", kind: "int", min: 1, max: 365, needs: ["plonkit", "enabled"] },
+      { section: "plonkit", key: "check_new_countries", kind: "bool", needs: ["plonkit", "enabled"] },
       { section: "metas", key: "min_probability", kind: "float", min: 0, max: 1, step: 0.01, advanced: true },
       { section: "metas", key: "max_candidates", kind: "int", min: 2, max: 20, advanced: true },
       { section: "metas", key: "max_looks", kind: "int", min: 1, max: 5, advanced: true },

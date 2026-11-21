@@ -110,6 +110,14 @@ def test_seed_loads_and_only_uses_configured_countries(tmp_path):
     assert all(not m.verified and m.source == SEED and m.seed for m in seed)
 
 
+def test_every_candidate_country_has_its_driving_side(tmp_path):
+    # Without it, "drives on the left: GB" in a Cyprus/UK tie would hint that Cyprus drives on the right.
+    cfg = load_config(tmp_path / "absent.toml")
+    seed = load_metas(None, True, cfg.streetclip.countries.values())
+    sides = [set(m.countries) for m in seed if m.category == "driving"]
+    assert all(sum(code in side for side in sides) == 1 for code in cfg.streetclip.countries.values())
+
+
 def test_seed_separates_serbia_from_croatia(tmp_path):
     cfg = load_config(tmp_path / "absent.toml")
     seed = load_metas(None, True, cfg.streetclip.countries.values())

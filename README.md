@@ -128,7 +128,7 @@ before anything is downloaded. Options can be turned off in the Settings.
 | StreetCLIP model **(required)** | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 1.7 GB | CC BY-NC 4.0 (non-commercial) | once, at installation | — |
 | GeoNames places directory and region names | `download.geonames.org` | 11 MB | CC BY 4.0 | once, if you accept it | — |
 | Villages of the leading country (GeoNames) | `download.geonames.org` | 8 MB | CC BY 4.0 | on demand | — |
-| Plonk It guides | `www.plonkit.net` | 2 MB | for your personal use, never redistributed | if you accept it: once, then the changed guides every 30 days | — |
+| Plonk It guides | `www.plonkit.net` | 2 MB | for your personal use, never redistributed | if you accept it: once, then the changed guides every 30 days, and a new candidate country's guide at the next start | — |
 | PLONK model | `huggingface.co`, `cas-bridge.xethub.hf.co`, `cdn-lfs.hf.co` | 144 MB | MIT | once, if you accept it | — |
 | NVIDIA vision model (online API) | `integrate.api.nvidia.com` | — | NVIDIA API terms; your key | on every use | your captures without the browser's bars (shrunk to 1,280 px), the crops of your marks, the Plonk It tips to classify and translate |
 | OpenStreetMap map tiles | `tile.openstreetmap.org` | — | ODbL; OSMF tile policy | on every use | your IP address and the map areas shown |

@@ -7,10 +7,21 @@ its release notes.
 
 ## [Unreleased]
 
+### Added
+
+- 18 more countries that GeoGuessr shows: Belarus, China, Costa Rica, Cyprus, Egypt, Iraq, Kazakhstan, Laos, Lebanon,
+  Madagascar, Mali, Namibia, Nepal, Oman, Pakistan, Qatar, Tanzania and Vanuatu (102 in all). The coach can now
+  suggest them and record a round played there; their Plonk It guides are collected at the next start, and their
+  driving side helps tell them apart. No clue of their own yet, and a few rounds elsewhere may now hesitate with one of
+  them.
+- The guide of a candidate country that has none yet (added by this version or in the Settings) is collected at the
+  next start instead of at the next monthly check. It can be turned off in **Settings › Clues**.
+
 ### Fixed
 
 - "Where was it?" no longer says "unknown country" for a Google Maps link on the coast: a place up to 15 km out at sea
   on the coach's simplified map takes the nearest country.
+- A street name in "…straat" on a mark no longer rules out South Africa (Afrikaans).
 
 ## [0.6.0] - 2026-11-14
 

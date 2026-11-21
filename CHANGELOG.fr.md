@@ -8,10 +8,22 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ## [Non publié]
 
+### Ajouté
+
+- 18 pays de plus parmi ceux que montre GeoGuessr : Biélorussie, Chine, Costa Rica, Chypre, Égypte, Irak, Kazakhstan,
+  Laos, Liban, Madagascar, Mali, Namibie, Népal, Oman, Pakistan, Qatar, Tanzanie et Vanuatu (102 en tout). Le coach
+  peut désormais les proposer et enregistrer une manche jouée là-bas ; leurs guides Plonk It sont récupérés au
+  démarrage suivant, et leur sens de circulation aide à les départager. Pas encore d'indice qui leur soit propre, et
+  quelques manches ailleurs peuvent maintenant hésiter avec l'un d'eux.
+
+- Le guide d'un pays candidat qui n'en a pas encore (ajouté par cette version ou dans les Réglages) est récupéré au
+  démarrage suivant au lieu du prochain contrôle mensuel. Vous pouvez le désactiver dans **Réglages › Indices**.
+
 ### Corrigé
 
 - « C'était où ? » n'indique plus « pays inconnu » pour un lien Google Maps en bord de mer : un lieu situé jusqu'à 15 km
   en mer sur la carte simplifiée du coach prend le pays le plus proche.
+- Un nom de rue en « …straat » sur une marque n'écarte plus l'Afrique du Sud (afrikaans).
 
 ## [0.6.0] - 2026-11-14
 

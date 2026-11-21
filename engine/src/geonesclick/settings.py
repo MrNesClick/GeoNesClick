@@ -30,7 +30,7 @@ EDITABLE: dict[str, tuple[str, ...]] = {
         "judge_buttons", "category_looks", "category_weights",
     ),
     "plonkit": (
-        "enabled", "refresh_days", "delay_s", "similar_tips", "similar_per_country", "keywords", "ai_classify",
+        "enabled", "refresh_days", "check_new_countries", "delay_s", "similar_tips", "similar_per_country", "keywords", "ai_classify",
         "ai_model", "ai_batch", "ai_pause_s", "translate", "translate_timeout_s", "pretranslate",
     ),
     "streetclip": ("enabled", "device", "prompt", "top_k", "countries", "exclude_countries"),
