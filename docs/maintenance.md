@@ -36,6 +36,13 @@ interface's language when there is one, English otherwise); the sections after t
 downloaded, the steps stay under Details. An older AppImage (`older`) changes nothing and offers
 to open the installed copy.
 
+An installation stays unfinished when its window is closed on the last step: the engine is complete (`engine/INSTALLED`)
+but the choices are not written (`engine/VERSION` is written after them, so that the engine never starts on the
+default settings). The same AppImage opens on the options again (`engine_ready`). A newer one (`resume`, the version in
+`unfinished`) asks first, like an update, with what it would really download; "Resume" updates the engine (same
+variant) then opens the options, the choices made before restored, and writes `VERSION` at the launch. An older
+AppImage than that unfinished engine changes nothing.
+
 ## Updates and data
 
 **Update (from source)**: `git pull`, then `scripts/install.sh` (safe to run again: it re-syncs the venv with

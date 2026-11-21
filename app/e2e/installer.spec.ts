@@ -89,6 +89,47 @@ test("an update whose copy could not be made still says once what changed", asyn
   await expect(page.getByRole("dialog")).not.toContainText("You can delete");
 });
 
+/** setup_status for a newer AppImage over a 0.4.1 engine installed but never launched (window closed on the last step). */
+function resume() {
+  return { ...update(), installed: null, upgrade: false, unfinished: "0.4.1", resume: true };
+}
+
+test("a newer AppImage over an unfinished installation asks to resume it, with what it would really download", async ({ page }) => {
+  await tauri(page, { setup_status: { ...resume(), update_fetches: [{ name: "torch", version: "2.15.0+cpu", size: 200_000_000 }] } });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByRole("heading", { name: "Resume the installation of GeoNesClick 0.5.0?" })).toBeVisible();
+  await expect(page.getByText("To download: 200 MB (PyPI, PyTorch)")).toBeVisible(); // not the first installation's 4 GB
+  await expect(page.getByText("• A CHANGELOG line.")).toBeVisible();
+  await page.waitForTimeout(300);
+  expect(await tauriCalls(page)).not.toContain("setup_install");
+  await page.getByRole("button", { name: en["setup.update.later"] }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("plugin:window|close");
+});
+
+test("resuming updates the installed engine's variant, then the options are chosen and applied at the launch", async ({ page }) => {
+  await tauri(page, { setup_status: resume() });
+  await fakeEngine(page);
+  await page.goto("/e2e/harness.html");
+  await page.getByRole("button", { name: en["setup.resume.go"] }).click();
+  await expect.poll(() => tauriArgs(page, "setup_install")).toEqual([{ variant: "cpu" }]); // the engine there, not the GPU
+  await page.getByRole("checkbox", { name: en["setup.no_key"] }).check(); // the options step, during the update
+  await page.evaluate(() => window.__GNC_EMIT__("setup-progress", { phase: null, line: null, done: true, ok: true, reason: null }));
+  await page.getByRole("button", { name: en["setup.next"], exact: true }).click();
+  expect(await tauriCalls(page)).not.toContain("setup_finish_update"); // never started on the default settings
+  await page.getByRole("button", { name: en["setup.launch"], exact: true }).click();
+  await expect.poll(() => tauriCalls(page)).toContain("restart_engine");
+  const calls = await tauriCalls(page);
+  expect(calls.indexOf("setup_apply")).toBeLessThan(calls.indexOf("restart_engine"));
+});
+
+test("an AppImage older than an unfinished installation touches nothing", async ({ page }) => {
+  await tauri(page, { setup_status: { ...status("apt"), version: "0.4.1", installed: null, unfinished: "0.5.0", older: true } });
+  await page.goto("/e2e/harness.html");
+  await expect(page.getByRole("heading", { name: en["setup.older.title"] })).toBeVisible();
+  await expect(page.getByText("0.5.0", { exact: false })).toBeVisible();
+  expect(await tauriCalls(page)).not.toContain("setup_install");
+});
+
 test("an older AppImage touches nothing and opens the installed version", async ({ page }) => {
   await tauri(page, { setup_status: { ...status("apt"), version: "0.4.1", installed: "0.5.0", older: true, installed_copy: true } });
   await page.goto("/e2e/harness.html");

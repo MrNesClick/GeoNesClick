@@ -108,6 +108,33 @@ fn older(version: &str, than: &str) -> bool {
     matches!((numbers(version), numbers(than)), (Some(a), Some(b)) if a < b)
 }
 
+/// What this AppImage does with the engine on the disk. `installed`: the version whose choices are written (VERSION);
+/// `unfinished`: the last complete engine (INSTALLED), which counts alone when the window was closed on the last step;
+/// `engine`: that engine and its variant are there.
+#[derive(Debug, PartialEq)]
+struct OnDisk {
+    /// Another version than this one is on the disk.
+    other: bool,
+    /// This AppImage is older than it: nothing is touched.
+    older: bool,
+    /// An update of an installation with its choices: done without asking them again.
+    upgrade: bool,
+    /// An installation never launched: its engine is updated, then the choices are asked (VERSION written after them).
+    resume: bool,
+}
+
+fn on_disk(version: Option<&str>, installed: Option<&str>, unfinished: Option<&str>, engine: bool) -> OnDisk {
+    let found = installed.or(unfinished);
+    let other = matches!((version, found), (Some(v), Some(f)) if v != f);
+    let older = matches!((version, found), (Some(v), Some(f)) if self::older(v, f));
+    OnDisk {
+        other,
+        older,
+        upgrade: other && !older && engine && installed.is_some(),
+        resume: other && !older && engine && installed.is_none(),
+    }
+}
+
 /// A library an update would download: in the new version's list, not installed at that version.
 #[derive(Serialize, Debug, PartialEq)]
 pub struct Fetch {
@@ -410,6 +437,10 @@ pub struct Status {
     upgrade: bool,
     /// This AppImage is older than the installed version: nothing is touched, the installed one is to be opened.
     older: bool,
+    /// A newer version over an installation never launched: its engine is updated, then its options are chosen.
+    resume: bool,
+    /// The version of that unfinished installation.
+    unfinished: Option<String>,
     /// The variant to update ("cuda" or "cpu"), the one installed.
     installed_variant: Option<String>,
     /// The installed copy of the application exists (it can be opened instead of an older AppImage).
@@ -437,9 +468,11 @@ pub fn setup_status(app: AppHandle) -> Status {
     let file = |name: &str| bundle.as_ref().map(|b| read_json(&b.join(name))).unwrap_or(Value::Null);
     let version = bundle.as_ref().and_then(|b| read_version(&b.join("VERSION")));
     let installed = read_version(&engine_home().join("VERSION"));
-    let other = matches!((&version, &installed), (Some(v), Some(i)) if v != i);
-    let older = matches!((&version, &installed), (Some(v), Some(i)) if self::older(v, i));
+    let unfinished = if installed.is_none() { read_version(&engine_home().join("INSTALLED")) } else { None };
     let installed_variant = installed_variant();
+    let found = on_disk(version.as_deref(), installed.as_deref(), unfinished.as_deref(),
+                        venv_python().is_file() && installed_variant.is_some());
+    let (other, older) = (found.other, found.older);
     Status {
         bundled: bundle.is_some(),
         needed: needed(&app),
@@ -454,9 +487,10 @@ pub fn setup_status(app: AppHandle) -> Status {
             }
             _ => Vec::new(),
         },
-        upgrade: other && !older && venv_python().is_file() && installed_variant.is_some(),
+        upgrade: found.upgrade,
+        resume: found.resume,
         installed_copy: installed_appimage().is_file(),
-        whats_new: match (&bundle, &version, &installed) {
+        whats_new: match (&bundle, &version, installed.as_ref().or(unfinished.as_ref())) {
             (Some(b), Some(v), Some(i)) => whats_new(b, i, v),
             _ => BTreeMap::new(),
         },
@@ -465,6 +499,7 @@ pub fn setup_status(app: AppHandle) -> Status {
         installed_variant,
         version,
         installed,
+        unfinished,
         engine_ready: venv_python().is_file()
             && bundle.as_ref().and_then(|b| read_version(&b.join("VERSION"))).is_some_and(|v| {
                 read_version(&engine_home().join("INSTALLED")).as_deref() == Some(v.as_str())
@@ -751,6 +786,22 @@ pub fn remove_engine(app: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_installation_never_launched_is_resumed_and_an_older_appimage_touches_nothing() {
+        // Window closed on the last step of 0.4.1 (INSTALLED, no VERSION), then 0.5.0 opened: resumed, never updated
+        // as if its choices were written.
+        let found = on_disk(Some("0.5.0"), None, Some("0.4.1"), true);
+        assert!(found.resume && !found.upgrade && !found.older);
+        // The same version: nothing to resume, the installer opens on the options (engine_ready).
+        assert_eq!(on_disk(Some("0.4.1"), None, Some("0.4.1"), true), OnDisk { other: false, older: false, upgrade: false, resume: false });
+        // 0.4.1 opened over an unfinished 0.5.0: older, touches nothing.
+        let found = on_disk(Some("0.4.1"), None, Some("0.5.0"), true);
+        assert!(found.older && !found.resume && !found.upgrade);
+        // A finished installation is an update; no engine on the disk, a first installation.
+        assert!(on_disk(Some("0.5.0"), Some("0.4.1"), None, true).upgrade);
+        assert_eq!(on_disk(Some("0.5.0"), None, Some("0.4.1"), false), OnDisk { other: true, older: false, upgrade: false, resume: false });
+    }
 
     #[test]
     fn an_update_downloads_only_the_libraries_missing_or_at_another_version() {

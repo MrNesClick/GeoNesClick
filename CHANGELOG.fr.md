@@ -20,6 +20,9 @@ Ce qui change d'une version de GeoNesClick à la suivante, pour les personnes qu
 
 ### Corrigé
 
+- Fermer l'installateur à sa dernière étape puis ouvrir une version plus récente ne recommence plus l'installation
+  depuis le début en annonçant les téléchargements d'une première installation : la nouvelle version propose de la
+  reprendre, avec ce qu'elle téléchargerait vraiment, puis les options.
 - La conclusion de l'IA sur la vue n'est plus donnée comme réponse quand elle ne cite aucun texte lu comme
   preuve.
 - Les mots courants des panneaux et des commerces (« LIMIT », « PROGRESS », « Bahnhof »…) et les marques comme le

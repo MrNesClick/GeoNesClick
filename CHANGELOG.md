@@ -18,6 +18,9 @@ its release notes.
 
 ### Fixed
 
+- Closing the installer on its last step, then opening a newer version, no longer restarts the installation from
+  the beginning announcing the first installation's downloads: it offers to resume it, with what it would really
+  download, then the options.
 - The AI's conclusion on the view is no longer given as the answer when it cites no text read as proof.
 - Common words of signs and shops ("LIMIT", "PROGRESS", "Bahnhof"…) and brands such as the "Google" watermark read on a
   mark no longer count as place names, even though a village somewhere bears that name.
