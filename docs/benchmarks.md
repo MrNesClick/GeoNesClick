@@ -153,6 +153,33 @@ Capturing the **window** (not the screen) is enough: no clear gain from cropping
 game's mini-map. Masks stay available in the configuration; the browser's bars are cut by default, for privacy
 (see [configuration.md](configuration.md)).
 
+Measured again on the 89 rounds, masking the logo, compass, score, buttons, mini-map and bottom bar (fractions of the
+view, the same at 1920 and 3840 pixels wide): StreetCLIP 62 first-country right against 61, right country in the
+first 5 85 against 84, first at 70 % right 49 against 52: neutral. The vision model gave 2 right conclusions in both
+cases; without the masks it also concluded France with "strong" certainty on a Jordanian round, citing a text that
+is not in the view, while the game's interface in French is ("Données cartographiques"). That error did not come
+back in 4 new calls, with or without the masks: a one-off invention, not an effect of the interface. Not masked by
+default; the coach ignores a conclusion that cites no text read (one on the set).
+
+## Reading the text of the whole view
+
+On the 89 rounds, labelled blind from the pixels: 5 show a clearly legible place name (a street, an address, a
+newspaper's region), 5 a partly legible one, 79 none. Reading the whole view with a local OCR model, its lines then
+going through the coach's rules (alphabets, letters, place names) as a mark's text would:
+
+| Reader | Legible place texts read (of 10) | Rounds with a right / WRONG proof | Time per view |
+|---|---|---|---|
+| RapidOCR 3.10, PP-OCRv6 small (31 MB, processor) | 2 | 1 / 8 | ~2 s |
+| RapidOCR on full-resolution tiles | 2 | 1 / 2 (on the 10) | 8 to 14 s |
+| EasyOCR 1.7.2, 8 script readers (778 MB, NVIDIA card) | 0 | 0 / 8 | ~9.5 s |
+| Vision model (level 2), whole view | 1 | 2 right conclusions | remote |
+
+The text is small and oblique, and common words read by an OCR model match place names ("LIMIT" in Jamaica,
+"PROGRESS" in Russia and the United States, the "Google" watermark). Identifying the SCRIPT of each text zone instead
+of reading it (StreetCLIP on the zones the OCR detects) corrected none of StreetCLIP's errors: when a script is
+visible, StreetCLIP already gives a country that writes it. No local text reading on the whole view; reading the
+marks, where the text is enlarged, remains unmeasured (no round of the set has marks).
+
 ## Vision model prompts
 
 - Making the prompt longer degrades text reading: on the "Repkény utca" sign, 8 exact readings out of 10 with the
